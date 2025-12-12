@@ -16,7 +16,8 @@
         app:layout_constraintStart_toStartOf="parent"
         app:srcCompat="@drawable/logo_sin_fondo"
         tools:layout_editor_absoluteY="45dp"
-        tools:ignore="MissingConstraints" />
+        app:layout_constraintTop_toTopOf="parent"
+        android:layout_marginTop="45dp" />
 
     <!-- EMAIL -->
     <com.google.android.material.textfield.TextInputLayout
@@ -70,40 +71,35 @@
     </com.google.android.material.textfield.TextInputLayout>
 
     <!-- BOTÓN INICIAR SESIÓN -->
-    <!-- Verde pastel / acento -->
-
-
-    <!-- OLVIDÉ CONTRASEÑA -->
-
-    <!-- REGISTRARSE -->
-
     <com.google.android.material.button.MaterialButton
         android:id="@+id/loginButton"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="32dp"
+        android:layout_marginStart="16dp"
         android:layout_marginTop="24dp"
-        android:layout_marginEnd="32dp"
-        android:backgroundTint="#4CAF50"
+        android:layout_marginEnd="16dp"
+        android:backgroundTint="@color/color_acento_primario"
         android:text="Iniciar sesión"
+        app:cornerRadius="8dp"
         android:textAllCaps="false"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/passwordInputLayout"
-        tools:ignore="MissingConstraints" />
+        app:layout_constraintTop_toBottomOf="@+id/passwordInputLayout" />
 
+    <!-- OLVIDÉ CONTRASEÑA -->
     <TextView
         android:id="@+id/forgotPasswordTextView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
-        android:layout_marginEnd="156dp"
         android:text="Olvidé mi contraseña"
         android:textColor="#757575"
         android:textSize="14sp"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/loginButton" />
 
+    <!-- REGISTRARSE -->
     <TextView
         android:id="@+id/registerTextView"
         android:layout_width="wrap_content"
@@ -119,18 +115,19 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="32dp"
         android:layout_marginEnd="16dp"
-        android:backgroundTint="#FFFFFF"
+        android:backgroundTint="@color/white"
         android:text="Continuar con Google"
         android:textColor="#000000"
-        app:cornerRadius="12dp"
-        app:icon="@drawable/ic_google_logo"
+        app:cornerRadius="8dp"
+        app:icon="@drawable/google_logo"
         app:iconGravity="textStart"
-        app:iconPadding="8dp"
+        app:iconPadding="10dp"
+        app:iconTint="@null"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/forgotPasswordTextView" />
+        app:layout_constraintTop_toTopOf="@+id/orSeparator" />
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/facebookLoginButton"
@@ -139,16 +136,28 @@
         android:layout_marginStart="16dp"
         android:layout_marginTop="12dp"
         android:layout_marginEnd="16dp"
-        android:backgroundTint="#1877F2"
+        android:backgroundTint="@color/color_facebook"
         android:text="Continuar con Facebook"
-        android:textColor="#FFFFFF"
-        app:cornerRadius="12dp"
-        app:icon="@drawable/ic_facebook_logo"
+        android:textColor="@color/white"
+        app:cornerRadius="8dp"
+        app:icon="@drawable/facebook_logo"
         app:iconGravity="textStart"
-        app:iconPadding="8dp"
+        app:iconPadding="10dp"
+        app:iconTint="@null"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/googleLoginButton" />
+
+    <TextView
+        android:id="@+id/orSeparator"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:text="O continuar con"
+        android:textColor="#757575"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/forgotPasswordTextView" />
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>
