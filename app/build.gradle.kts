@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.android.application)
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -42,4 +43,8 @@ dependencies {
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
     implementation("com.google.android.material:material:1.11.0")  //Dependencia de Material Components
+    // Dependencias Firebase
+    implementation(platform("com.google.firebase:firebase-bom:34.8.0")) //Firebase BoM -> Herramientas Generales de Firebase
+    implementation("com.google.firebase:firebase-analytics") // Herramientas de Análisis de Uso
+    implementation("com.google.firebase:firebase-database") // Módulo Firebase Real Time
 }
