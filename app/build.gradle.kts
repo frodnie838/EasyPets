@@ -46,5 +46,6 @@ dependencies {
     // Dependencias Firebase
     implementation(platform("com.google.firebase:firebase-bom:34.8.0")) //Firebase BoM -> Herramientas Generales de Firebase
     implementation("com.google.firebase:firebase-analytics") // Herramientas de Análisis de Uso
+    implementation("com.google.firebase:firebase-auth") // Autenticación de usuarios
     implementation("com.google.firebase:firebase-database") // Módulo Firebase Real Time
 }
