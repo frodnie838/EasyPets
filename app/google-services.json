@@ -13,7 +13,20 @@
           "package_name": "com.easypets"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "946063971515-jrvjpri2nf2as4hn1qo8t8tbjrlqu3e0.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.easypets",
+            "certificate_hash": "f800f3195456140f509120966951026070de7ac9"
+          }
+        },
+        {
+          "client_id": "946063971515-k1utkhhrbogefnajgs4olokqbfod0obf.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBVDwvBEYvXCehwWaYFBLfdsPYrvhaVxbc"
@@ -21,7 +34,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "946063971515-k1utkhhrbogefnajgs4olokqbfod0obf.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

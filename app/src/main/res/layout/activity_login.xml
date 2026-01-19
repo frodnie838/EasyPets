@@ -8,8 +8,9 @@
     android:background="@color/fondo_base"
     tools:context=".LoginActivity">
 
+    <!-- Logo -->
     <ImageView
-        android:id="@+id/imageView"
+        android:id="@+id/logoImage"
         android:layout_width="180dp"
         android:layout_height="180dp"
         app:layout_constraintEnd_toEndOf="parent"
@@ -34,7 +35,7 @@
         app:boxCornerRadiusTopStart="8dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/imageView">
+        app:layout_constraintTop_toBottomOf="@+id/logoImage">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/emailEditText"
@@ -71,7 +72,7 @@
 
     <!-- BOTÓN INICIAR SESIÓN -->
     <com.google.android.material.button.MaterialButton
-        android:id="@+id/loginButton"
+        android:id="@+id/btnLogin"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
@@ -99,10 +100,30 @@
         android:textSize="14sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/loginButton" />
+        app:layout_constraintTop_toBottomOf="@+id/btnLogin" />
+    <View
+        android:id="@+id/divider"
+        android:layout_width="373dp"
+        android:layout_height="1dp"
+        android:background="?android:attr/listDivider"
+        app:layout_constraintBottom_toTopOf="@+id/orSeparator"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/forgotPasswordTextView"
+        app:layout_constraintVertical_bias="0.516" />
+    <TextView
+        android:id="@+id/orSeparator"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="32dp"
+        android:text="O continuar con"
+        android:textColor="#D1000000"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/forgotPasswordTextView" />
 
     <com.google.android.material.button.MaterialButton
-        android:id="@+id/googleLoginButton"
+        android:id="@+id/btnGoogle"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
@@ -120,36 +141,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/orSeparator" />
 
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/facebookLoginButton"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="10dp"
-        android:layout_marginEnd="16dp"
-        android:backgroundTint="@color/color_facebook"
-        android:text="Continuar con Facebook"
-        android:textColor="@color/white"
-        app:cornerRadius="8dp"
-        app:icon="@drawable/facebook_logo"
-        app:iconGravity="textStart"
-        app:iconPadding="10dp"
-        app:iconTint="@null"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/googleLoginButton" />
-
-    <TextView
-        android:id="@+id/orSeparator"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="32dp"
-        android:text="O continuar con"
-        android:textColor="#D1000000"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/forgotPasswordTextView" />
-
     <!-- REGISTRARSE -->
     <TextView
         android:id="@+id/registerTextView"
@@ -165,18 +156,9 @@
         android:background="?attr/selectableItemBackground"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/facebookLoginButton" />
+        app:layout_constraintTop_toBottomOf="@+id/btnGoogle" />
 
-    <View
-        android:id="@+id/divider"
-        android:layout_width="373dp"
-        android:layout_height="1dp"
-        android:background="?android:attr/listDivider"
-        app:layout_constraintBottom_toTopOf="@+id/orSeparator"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/forgotPasswordTextView"
-        app:layout_constraintVertical_bias="0.516" />
+
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>

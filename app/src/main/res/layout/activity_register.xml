@@ -56,14 +56,14 @@
                     android:inputType="textPersonName" />
             </com.google.android.material.textfield.TextInputLayout>
 
-            <!-- Apellido 1 -->
+            <!-- Apellidos -->
             <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/apellido1InputLayout"
+                android:id="@+id/apellidosInputLayout"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="16dp"
                 android:layout_marginEnd="16dp"
-                android:hint="Primer Apellido"
+                android:hint="Apellidos"
                 app:boxBackgroundMode="outline"
                 app:boxCornerRadiusBottomEnd="8dp"
                 app:boxCornerRadiusBottomStart="8dp"
@@ -72,37 +72,12 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/nombreInputLayout">
+
                 <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/apellido1EditText"
+                    android:id="@+id/apellidosEditText"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:inputType="textPersonName" />
-            </com.google.android.material.textfield.TextInputLayout>
-
-            <!-- Apellido 2 -->
-            <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/apellido2InputLayout"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
-                android:layout_marginEnd="16dp"
-                android:hint="Segundo Apellido"
-                app:boxBackgroundMode="outline"
-                app:boxCornerRadiusBottomEnd="8dp"
-                app:boxCornerRadiusBottomStart="8dp"
-                app:boxCornerRadiusTopEnd="8dp"
-                app:boxCornerRadiusTopStart="8dp"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/apellido1InputLayout">
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/apellido2EditText"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:focusable="false"
-                    android:clickable="true"
-                    android:cursorVisible="false"
-                    android:inputType="none" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <!-- Email -->
@@ -120,7 +95,7 @@
                 app:boxCornerRadiusTopStart="8dp"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/apellido2InputLayout">
+                app:layout_constraintTop_toBottomOf="@+id/apellidosInputLayout">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/emailEditText"
@@ -236,7 +211,7 @@
 
             <!-- Continuar con Google -->
             <com.google.android.material.button.MaterialButton
-                android:id="@+id/googleLoginButton"
+                android:id="@+id/btnGoogle"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="16dp"
@@ -254,26 +229,6 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/orSeparator" />
 
-            <!-- Continuar con Facebook -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/facebookLoginButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
-                android:layout_marginTop="10dp"
-                android:layout_marginEnd="16dp"
-                android:backgroundTint="@color/color_facebook"
-                android:text="Continuar con Facebook"
-                android:textColor="@color/white"
-                app:cornerRadius="8dp"
-                app:icon="@drawable/facebook_logo"
-                app:iconGravity="textStart"
-                app:iconPadding="10dp"
-                app:iconTint="@null"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/googleLoginButton" />
-
             <!-- Iniciar Sesión -->
             <TextView
                 android:id="@+id/loginTextView"
@@ -289,7 +244,7 @@
                 android:background="?attr/selectableItemBackground"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/facebookLoginButton" />
+                app:layout_constraintTop_toBottomOf="@+id/btnGoogle" />
         </androidx.constraintlayout.widget.ConstraintLayout>
     </ScrollView>
 </androidx.constraintlayout.widget.ConstraintLayout>
