@@ -15,6 +15,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "946063971515-b14nha6eo1vfsj9j79arqfu534ugjlos.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.easypets",
+            "certificate_hash": "a2c207fb7c4aee3c2d844bdf45df34b6323672bf"
+          }
+        },
+        {
           "client_id": "946063971515-jrvjpri2nf2as4hn1qo8t8tbjrlqu3e0.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
