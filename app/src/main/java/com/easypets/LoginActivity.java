@@ -34,7 +34,7 @@ public class LoginActivity extends AppCompatActivity {
 
     private EditText emailEditText, passwordEditText;
     private MaterialButton btnLogin, btnGoogle;
-    private TextView registerTextView, forgotPasswordTextView;
+    private TextView registerTextView, forgotPasswordTextView, guestTextView;
 
     private FirebaseAuth mAuth;
     private GoogleSignInClient mGoogleSignInClient;
@@ -61,6 +61,7 @@ public class LoginActivity extends AppCompatActivity {
         btnLogin = findViewById(R.id.btnLogin);
         btnGoogle = findViewById(R.id.btnGoogle);
         registerTextView = findViewById(R.id.registerTextView);
+        guestTextView = findViewById(R.id.guestTextView);
         forgotPasswordTextView = findViewById(R.id.forgotPasswordTextView);
 
         // 4. Listeners (Botones)
@@ -83,6 +84,12 @@ public class LoginActivity extends AppCompatActivity {
         registerTextView.setOnClickListener(v -> {
             Intent i = new Intent(LoginActivity.this, RegisterActivity.class);
             startActivity(i);
+        });
+        // Ir al Main
+        guestTextView.setOnClickListener(v -> {
+            Intent i = new Intent(LoginActivity.this, MainActivity.class);
+            startActivity(i);
+            finish();
         });
 
         // Olvidé contraseña
@@ -132,7 +139,6 @@ public class LoginActivity extends AppCompatActivity {
             Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
             try {
                 GoogleSignInAccount account = task.getResult(ApiException.class);
-                // CAMBIO: Pasamos la cuenta entera
                 firebaseAuthWithGoogle(account);
             } catch (ApiException e) {
                 Toast.makeText(this, "Fallo Google: " + e.getMessage(), Toast.LENGTH_SHORT).show();
@@ -148,16 +154,16 @@ public class LoginActivity extends AppCompatActivity {
                     if (task.isSuccessful()) {
                         FirebaseUser user = mAuth.getCurrentUser();
 
-                        // COMPROBACIÓN: ¿Este usuario ya tiene datos en la BD?
+                        // Comprobación si tiene cuenta registrada
                         DatabaseReference userRef = FirebaseDatabase.getInstance().getReference().child("users").child(user.getUid());
 
                         userRef.get().addOnCompleteListener(dbTask -> {
                             if (dbTask.isSuccessful()) {
                                 if (dbTask.getResult().exists()) {
-                                    // CASO A: YA EXISTE -> Entramos directamente sin tocar nada
+                                    // Si ya tiene entramos directamente sin tocar nada
                                     irAMainActivity();
                                 } else {
-                                    // CASO B: NO EXISTE -> Es la primera vez, guardamos sus datos
+                                    // Si no tiene y es la primera vez, guardamos sus datos
                                     String nombre = account.getGivenName();
                                     String apellidos = account.getFamilyName();
                                     String correo = user.getEmail();
@@ -195,7 +201,6 @@ public class LoginActivity extends AppCompatActivity {
         usuario.put("correo", email);
         usuario.put("fechaRegistro", fechaBonita);
         usuario.put("timestamp", timestamp);
-        usuario.put("esPremium", false);
 
         // Usamos FirebaseDatabase.getInstance().getReference() directamente si no tienes variable global mDatabase
         FirebaseDatabase.getInstance().getReference().child("users").child(uid).setValue(usuario)

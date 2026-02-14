@@ -2,19 +2,20 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
         android:id="@+id/nav_home"
-        android:title="Inicio"
-        android:icon="@android:drawable/ic_menu_compass" /> <item
-    android:id="@+id/nav_pets"
-    android:title="Mascotas"
-    android:icon="@android:drawable/ic_menu_myplaces" />
+        android:icon="@drawable/ic_home"
+        android:title="Inicio" />
+    <item
+        android:id="@+id/nav_pets"
+        android:icon="@drawable/huella"
+        android:title="Mascotas" />
 
     <item
         android:id="@+id/nav_calendar"
-        android:title="Calendario"
-        android:icon="@android:drawable/ic_menu_today" />
+        android:icon="@drawable/calendar"
+        android:title="Calendario" />
 
     <item
         android:id="@+id/nav_profile"
-        android:title="Perfil"
-        android:icon="@android:drawable/ic_menu_my_calendar" />
+        android:icon="@drawable/profile"
+        android:title="Perfil" />
 </menu>

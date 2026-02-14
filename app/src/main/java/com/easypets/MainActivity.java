@@ -12,11 +12,13 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+
         setContentView(R.layout.activity_main);
 
         bottomNav = findViewById(R.id.bottom_navigation);
 
-        // 1. Configurar el listener de la barra
+        // Configurar el listener de la barra
         bottomNav.setOnItemSelectedListener(item -> {
             Fragment selectedFragment = null;
 

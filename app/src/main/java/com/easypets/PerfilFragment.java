@@ -81,6 +81,17 @@ public class PerfilFragment extends Fragment {
                     tvNombre.setText("Usuario");
                 }
             });
+        }else {
+            // Lógica invitado:
+            tvNombre.setText("Modo Invitado");
+            tvCorreo.setText("Sin registrar");
+
+            // Cambiamos el texto y función del botón
+            btnLogout.setText("Iniciar Sesión");
+            btnLogout.setBackgroundTintList(null); // O el color que quieras
+            btnLogout.setOnClickListener(v -> {
+                startActivity(new Intent(getActivity(), LoginActivity.class));
+            });
         }
     }
 
