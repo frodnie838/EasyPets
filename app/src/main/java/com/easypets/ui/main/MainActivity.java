@@ -1,8 +1,12 @@
-package com.easypets;
+package com.easypets.ui.main;
 
 import android.os.Bundle;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
+
+import com.easypets.ui.mascotas.MascotasFragment;
+import com.easypets.ui.perfil.PerfilFragment;
+import com.easypets.R;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 public class MainActivity extends AppCompatActivity {

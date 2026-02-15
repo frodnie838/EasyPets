@@ -7,7 +7,7 @@
     android:layout_height="match_parent"
     android:background="@color/fondo_base"
     android:fitsSystemWindows="true"
-    tools:context=".RegisterActivity">
+    tools:context=".ui.auth.RegisterActivity">
     <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
         xmlns:app="http://schemas.android.com/apk/res-auto"
         xmlns:tools="http://schemas.android.com/tools"
@@ -20,7 +20,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:background="@color/fondo_base"
-            tools:context=".RegisterActivity">
+            tools:context=".ui.auth.RegisterActivity">
 
             <!-- Logo -->
             <ImageView
