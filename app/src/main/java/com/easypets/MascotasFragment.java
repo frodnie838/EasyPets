@@ -39,6 +39,13 @@ public class MascotasFragment extends Fragment {
             layoutLogueado.setVisibility(View.VISIBLE);
             layoutInvitado.setVisibility(View.GONE);
 
+            // Justo debajo de layoutLogueado.setVisibility(View.VISIBLE);
+            View fabAgregar = view.findViewById(R.id.fabAgregarMascota);
+            fabAgregar.setOnClickListener(v -> {
+                Intent intent = new Intent(getActivity(), AgregarMascotaActivity.class);
+                startActivity(intent);
+            });
+
             // Aquí llamarías a cargarMascotas() más adelante...
         } else {
             // --- ES UN INVITADO ---
