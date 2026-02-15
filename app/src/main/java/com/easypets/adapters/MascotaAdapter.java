@@ -1,4 +1,4 @@
-package com.easypets.adapters; // Asegúrate de que este es tu paquete correcto
+package com.easypets.adapters;
 
 import android.view.LayoutInflater;
 import android.view.View;
@@ -16,36 +16,47 @@ import java.util.List;
 public class MascotaAdapter extends RecyclerView.Adapter<MascotaAdapter.MascotaViewHolder> {
 
     private List<Mascota> listaMascotas;
+    private OnItemClickListener listener; // NUEVO: El escuchador de clics
 
-    // Constructor: le pasamos la lista de mascotas cuando creamos el adaptador
-    public MascotaAdapter(List<Mascota> listaMascotas) {
+    // NUEVO: Creamos una interfaz para comunicar el clic a la pantalla
+    public interface OnItemClickListener {
+        void onItemClick(Mascota mascota);
+    }
+
+    // Constructor actualizado (ahora pide la lista y el escuchador)
+    public MascotaAdapter(List<Mascota> listaMascotas, OnItemClickListener listener) {
         this.listaMascotas = listaMascotas;
+        this.listener = listener;
     }
 
     @NonNull
     @Override
     public MascotaViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        // Aquí le decimos qué diseño XML usar para cada fila (nuestro item_mascota)
         View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_mascota, parent, false);
         return new MascotaViewHolder(view);
     }
 
     @Override
     public void onBindViewHolder(@NonNull MascotaViewHolder holder, int position) {
-        // Aquí "pintamos" los datos de la mascota en su fila correspondiente
         Mascota mascota = listaMascotas.get(position);
 
         holder.tvNombre.setText(mascota.getNombre());
         holder.tvRaza.setText(mascota.getEspecie() + " • " + mascota.getRaza());
         holder.tvPeso.setText("Peso: " + mascota.getPeso() + " kg");
+
+        // ✨ NUEVO: Le decimos a la fila entera que reaccione al clic ✨
+        holder.itemView.setOnClickListener(v -> {
+            if (listener != null) {
+                listener.onItemClick(mascota);
+            }
+        });
     }
 
     @Override
     public int getItemCount() {
-        return listaMascotas.size(); // Le dice a Android cuántas filas tiene que dibujar
+        return listaMascotas.size();
     }
 
-    // Esta clase "sujeta" las vistas de la tarjeta para no tener que buscarlas todo el rato
     public static class MascotaViewHolder extends RecyclerView.ViewHolder {
         TextView tvNombre, tvRaza, tvPeso;
 

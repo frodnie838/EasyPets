@@ -8,18 +8,19 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
+import androidx.credentials.CredentialManager;
+import androidx.credentials.CredentialManagerCallback;
+import androidx.credentials.GetCredentialRequest;
+import androidx.credentials.GetCredentialResponse;
+import androidx.credentials.exceptions.GetCredentialException;
 
-import com.easypets.ui.main.MainActivity;
 import com.easypets.R;
-import com.google.android.gms.auth.api.signin.GoogleSignIn;
-import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
-import com.google.android.gms.auth.api.signin.GoogleSignInClient;
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
-import com.google.android.gms.common.api.ApiException;
-import com.google.android.gms.tasks.Task;
+import com.easypets.ui.main.MainActivity;
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption;
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential;
 import com.google.android.material.button.MaterialButton;
 import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.FirebaseAuth;
@@ -38,8 +39,8 @@ public class LoginActivity extends AppCompatActivity {
     private TextView registerTextView, forgotPasswordTextView, guestTextView;
 
     private FirebaseAuth mAuth;
-    private GoogleSignInClient mGoogleSignInClient;
-    private static final int RC_SIGN_IN = 9001;
+    // LA NUEVA HERRAMIENTA DE GOOGLE (ANDROID 14+)
+    private CredentialManager credentialManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -49,12 +50,8 @@ public class LoginActivity extends AppCompatActivity {
         // 1. Inicializar Firebase Auth
         mAuth = FirebaseAuth.getInstance();
 
-        // 2. Configurar Google Sign In (Igual que en Registro)
-        GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-                .requestIdToken(getString(R.string.default_web_client_id))
-                .requestEmail()
-                .build();
-        mGoogleSignInClient = GoogleSignIn.getClient(this, gso);
+        // 2. Inicializar el nuevo Credential Manager
+        credentialManager = CredentialManager.create(this);
 
         // 3. Vincular Vistas
         emailEditText = findViewById(R.id.emailEditText);
@@ -69,15 +66,16 @@ public class LoginActivity extends AppCompatActivity {
 
         // Botón Login Normal
         btnLogin.setOnClickListener(v -> loginUsuario());
+
         // Configurar el "Enter" en el teclado
         passwordEditText.setOnEditorActionListener((v, actionId, event) -> {
-            // Si la acción es "Done" (Hecho) o "Go" (Ir)
             if (actionId == EditorInfo.IME_ACTION_DONE || actionId == EditorInfo.IME_ACTION_GO) {
-                loginUsuario(); // <--- Llamamos a tu función de login
-                return true;    // Indicamos que ya hemos manejado el evento
+                loginUsuario();
+                return true;
             }
             return false;
         });
+
         // Botón Login Google
         btnGoogle.setOnClickListener(v -> signInConGoogle());
 
@@ -86,7 +84,8 @@ public class LoginActivity extends AppCompatActivity {
             Intent i = new Intent(LoginActivity.this, RegisterActivity.class);
             startActivity(i);
         });
-        // Ir al Main
+
+        // Ir al Main (Invitado)
         guestTextView.setOnClickListener(v -> {
             Intent i = new Intent(LoginActivity.this, MainActivity.class);
             startActivity(i);
@@ -105,11 +104,11 @@ public class LoginActivity extends AppCompatActivity {
         String password = passwordEditText.getText().toString().trim();
 
         if (TextUtils.isEmpty(email)) {
-            emailEditText.setError("El correo es obligatorio");
+            emailEditText.setError(getString(R.string.error_correo_vacio));
             return;
         }
         if (TextUtils.isEmpty(password)) {
-            passwordEditText.setError("La contraseña es obligatoria");
+            passwordEditText.setError(getString(R.string.error_password_vacio));
             return;
         }
 
@@ -125,72 +124,81 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     // ------------------------------------------------------------
-    // LÓGICA DE LOGIN CON GOOGLE
+    // LÓGICA DE LOGIN CON GOOGLE (NUEVO SISTEMA)
     // ------------------------------------------------------------
     private void signInConGoogle() {
-        Intent signInIntent = mGoogleSignInClient.getSignInIntent();
-        startActivityForResult(signInIntent, RC_SIGN_IN);
+        // Configuramos la petición para obtener el ID de Google
+        GetGoogleIdOption googleIdOption = new GetGoogleIdOption.Builder()
+                .setFilterByAuthorizedAccounts(false)
+                .setServerClientId(getString(R.string.default_web_client_id))
+                .setAutoSelectEnabled(true)
+                .build();
+
+        GetCredentialRequest request = new GetCredentialRequest.Builder()
+                .addCredentialOption(googleIdOption)
+                .build();
+
+        // Lanzamos la nueva interfaz nativa de Android
+        credentialManager.getCredentialAsync(
+                this,
+                request,
+                new android.os.CancellationSignal(),
+                ContextCompat.getMainExecutor(this),
+                new CredentialManagerCallback<GetCredentialResponse, GetCredentialException>() {
+                    @Override
+                    public void onResult(GetCredentialResponse result) {
+                        manejarRespuestaGoogle(result);
+                    }
+
+                    @Override
+                    public void onError(GetCredentialException e) {
+                        Toast.makeText(LoginActivity.this, "Error de Google: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    }
+                }
+        );
     }
 
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
+    private void manejarRespuestaGoogle(GetCredentialResponse result) {
+        try {
+            androidx.credentials.Credential credential = result.getCredential();
 
-        if (requestCode == RC_SIGN_IN) {
-            Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
-            try {
-                GoogleSignInAccount account = task.getResult(ApiException.class);
-                firebaseAuthWithGoogle(account);
-            } catch (ApiException e) {
-                Toast.makeText(this, "Fallo Google: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-            }
-        }
-    }
+            if (credential instanceof androidx.credentials.CustomCredential &&
+                    credential.getType().equals(GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL)) {
 
-    private void firebaseAuthWithGoogle(GoogleSignInAccount account) {
-        AuthCredential credential = GoogleAuthProvider.getCredential(account.getIdToken(), null);
+                GoogleIdTokenCredential googleCredential = GoogleIdTokenCredential.createFrom(credential.getData());
 
-        mAuth.signInWithCredential(credential)
-                .addOnCompleteListener(this, task -> {
+                // Autenticamos en Firebase con el Token obtenido
+                AuthCredential authCredential = GoogleAuthProvider.getCredential(googleCredential.getIdToken(), null);
+
+                mAuth.signInWithCredential(authCredential).addOnCompleteListener(this, task -> {
                     if (task.isSuccessful()) {
                         FirebaseUser user = mAuth.getCurrentUser();
-
-                        // Comprobación si tiene cuenta registrada
                         DatabaseReference userRef = FirebaseDatabase.getInstance().getReference().child("users").child(user.getUid());
 
                         userRef.get().addOnCompleteListener(dbTask -> {
-                            if (dbTask.isSuccessful()) {
-                                if (dbTask.getResult().exists()) {
-                                    // Si ya tiene entramos directamente sin tocar nada
-                                    irAMainActivity();
-                                } else {
-                                    // Si no tiene y es la primera vez, guardamos sus datos
-                                    String nombre = account.getGivenName();
-                                    String apellidos = account.getFamilyName();
-                                    String correo = user.getEmail();
-
-                                    if (nombre == null) nombre = "";
-                                    if (apellidos == null) apellidos = "";
-
-                                    // Llamamos al método de guardar (tienes que copiarlo abajo)
-                                    guardarDatosEnBaseDeDatos(user.getUid(), nombre, apellidos, correo);
-                                }
+                            if (dbTask.isSuccessful() && !dbTask.getResult().exists()) {
+                                // Es la primera vez: Guardamos sus datos
+                                String nombreCompleto = googleCredential.getDisplayName();
+                                if (nombreCompleto == null) nombreCompleto = "Usuario";
+                                guardarDatosEnBaseDeDatos(user.getUid(), nombreCompleto, "", user.getEmail());
                             } else {
-                                // Si falla la conexión a la BD, dejamos entrar igual
+                                // Ya existía, simplemente lo dejamos entrar
                                 irAMainActivity();
                             }
                         });
-
                     } else {
-                        Toast.makeText(this, "Error Auth: " + task.getException().getMessage(), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(LoginActivity.this, "Error Auth: " + task.getException().getMessage(), Toast.LENGTH_SHORT).show();
                     }
                 });
+            }
+        } catch (Exception e) {
+            Toast.makeText(this, "Fallo al procesar credencial", Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void guardarDatosEnBaseDeDatos(String uid, String nombre, String apellidos, String email) {
         long timestamp = System.currentTimeMillis();
 
-        // Formatear fecha
         java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.getDefault());
         sdf.setTimeZone(java.util.TimeZone.getTimeZone("Europe/Madrid"));
         String fechaBonita = sdf.format(new java.util.Date(timestamp));
@@ -203,17 +211,16 @@ public class LoginActivity extends AppCompatActivity {
         usuario.put("fechaRegistro", fechaBonita);
         usuario.put("timestamp", timestamp);
 
-        // Usamos FirebaseDatabase.getInstance().getReference() directamente si no tienes variable global mDatabase
         FirebaseDatabase.getInstance().getReference().child("users").child(uid).setValue(usuario)
                 .addOnSuccessListener(aVoid -> {
-                    Toast.makeText(LoginActivity.this, "¡Bienvenido "+nombre+"!", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(LoginActivity.this, "¡Bienvenido " + nombre + "!", Toast.LENGTH_SHORT).show();
                     irAMainActivity();
                 })
                 .addOnFailureListener(e -> {
-                    // Si falla al guardar, entramos igualmente (mejor eso que quedarse bloqueado)
-                    irAMainActivity();
+                    irAMainActivity(); // Si falla al guardar, lo dejamos entrar igual
                 });
     }
+
     // ------------------------------------------------------------
     // LÓGICA DE RECUPERAR CONTRASEÑA
     // ------------------------------------------------------------
@@ -221,7 +228,10 @@ public class LoginActivity extends AppCompatActivity {
         EditText resetMail = new EditText(this);
         AlertDialog.Builder passwordResetDialog = new AlertDialog.Builder(this);
         passwordResetDialog.setTitle("Recuperar Contraseña");
-        passwordResetDialog.setMessage("Introduce tu correo para recibir el enlace de recuperación.");
+
+        // Fíjate que aquí uso una string externa si la tienes, o pongo el texto normal
+        passwordResetDialog.setMessage(getString(R.string.correo_recuperar_pass) != null ? getString(R.string.correo_recuperar_pass) : "Introduce tu correo para recibir el enlace.");
+
         passwordResetDialog.setView(resetMail);
 
         passwordResetDialog.setPositiveButton("Enviar", (dialog, which) -> {
@@ -238,7 +248,7 @@ public class LoginActivity extends AppCompatActivity {
             });
         });
 
-        passwordResetDialog.setNegativeButton("Cancelar", (dialog, which) -> {
+        passwordResetDialog.setNegativeButton(getString(R.string.cancelar) != null ? getString(R.string.cancelar) : "Cancelar", (dialog, which) -> {
             // No hacer nada
         });
 
@@ -255,7 +265,6 @@ public class LoginActivity extends AppCompatActivity {
         finish();
     }
 
-    // Opcional: Si el usuario ya está logueado, saltar login al abrir app
     @Override
     protected void onStart() {
         super.onStart();

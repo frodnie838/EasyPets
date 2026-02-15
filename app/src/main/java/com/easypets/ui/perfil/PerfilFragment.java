@@ -8,13 +8,12 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
 
+import androidx.credentials.CredentialManager;
 import androidx.fragment.app.Fragment;
 
 import com.easypets.R;
 import com.easypets.ui.auth.LoginActivity;
-import com.google.android.gms.auth.api.signin.GoogleSignIn;
-import com.google.android.gms.auth.api.signin.GoogleSignInClient;
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
+import com.easypets.ui.main.MainActivity;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
@@ -27,7 +26,7 @@ public class PerfilFragment extends Fragment {
     private Button btnLogout;
     private FirebaseAuth mAuth;
     private DatabaseReference mDatabase;
-    private GoogleSignInClient mGoogleSignInClient;
+    private CredentialManager credentialManager;
 
     public PerfilFragment() {
         // Constructor vacío requerido
@@ -39,27 +38,20 @@ public class PerfilFragment extends Fragment {
         // 1. Inflar el diseño
         View view = inflater.inflate(R.layout.fragment_perfil, container, false);
 
-        // 2. Inicializar Firebase
+        // 2. Inicializar Firebase y Google
         mAuth = FirebaseAuth.getInstance();
         mDatabase = FirebaseDatabase.getInstance().getReference();
-
-        // Configurar Google (Para poder cerrar sesión)
-        GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-                .requestIdToken(getString(R.string.default_web_client_id))
-                .requestEmail()
-                .build();
-        mGoogleSignInClient = GoogleSignIn.getClient(requireActivity(), gso);
+        credentialManager = CredentialManager.create(requireContext());
 
         // 3. Vincular Vistas
         tvNombre = view.findViewById(R.id.tvNombrePerfil);
         tvCorreo = view.findViewById(R.id.tvCorreoPerfil);
         btnLogout = view.findViewById(R.id.btnLogout);
 
-        // 4. Cargar datos del usuario
+        // 4. Cargar datos del usuario y configurar el botón DEPENDIENDO de quién sea
         cargarDatosUsuario();
 
-        // 5. Configurar Botón Salir
-        btnLogout.setOnClickListener(v -> cerrarSesion());
+        // (¡ELIMINADO EL PASO 5 QUE SOBREESCRIBÍA EL BOTÓN!)
 
         return view;
     }
@@ -67,7 +59,7 @@ public class PerfilFragment extends Fragment {
     private void cargarDatosUsuario() {
         FirebaseUser user = mAuth.getCurrentUser();
         if (user != null) {
-            // Ponemos el correo directamente del Auth (es más rápido)
+            // --- LÓGICA USUARIO LOGUEADO ---
             tvCorreo.setText(user.getEmail());
 
             // Leemos el nombre y apellidos de la Base de Datos
@@ -82,14 +74,19 @@ public class PerfilFragment extends Fragment {
                     tvNombre.setText("Usuario");
                 }
             });
-        }else {
-            // Lógica invitado:
+
+            // Configuramos su botón específicamente para SALIR
+            btnLogout.setText("Cerrar Sesión");
+            btnLogout.setOnClickListener(v -> cerrarSesion());
+
+        } else {
+            // --- LÓGICA INVITADO ---
             tvNombre.setText("Modo Invitado");
             tvCorreo.setText("Sin registrar");
 
-            // Cambiamos el texto y función del botón
+            // Configuramos su botón específicamente para ENTRAR
             btnLogout.setText("Iniciar Sesión");
-            btnLogout.setBackgroundTintList(null); // O el color que quieras
+            btnLogout.setBackgroundTintList(null);
             btnLogout.setOnClickListener(v -> {
                 startActivity(new Intent(getActivity(), LoginActivity.class));
             });
@@ -97,15 +94,37 @@ public class PerfilFragment extends Fragment {
     }
 
     private void cerrarSesion() {
-        // Cerrar Firebase
+        // 1. Cerrar Firebase
         mAuth.signOut();
 
-        // Cerrar Google y volver al Login
-        mGoogleSignInClient.signOut().addOnCompleteListener(requireActivity(), task -> {
-            Intent intent = new Intent(getActivity(), LoginActivity.class);
-            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK);
-            startActivity(intent);
-            // requireActivity().finish(); // Opcional
-        });
+        // 2. Limpiar las credenciales en el teléfono (El nuevo método)
+        credentialManager.clearCredentialStateAsync(
+                new androidx.credentials.ClearCredentialStateRequest(),
+                new android.os.CancellationSignal(),
+                androidx.core.content.ContextCompat.getMainExecutor(requireContext()),
+                new androidx.credentials.CredentialManagerCallback<Void, androidx.credentials.exceptions.ClearCredentialException>() {
+                    @Override
+                    public void onResult(Void result) {
+                        irAlLogin();
+                    }
+
+                    @Override
+                    public void onError(androidx.credentials.exceptions.ClearCredentialException e) {
+                        volverAlInicio();
+                    }
+                }
+        );
+    }
+
+    private void volverAlInicio() {
+        Intent intent = new Intent(requireActivity(), MainActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(intent);
+    }
+
+    private void irAlLogin() {
+        Intent intent = new Intent(requireActivity(), LoginActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(intent);
     }
 }

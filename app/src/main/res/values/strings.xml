@@ -1,5 +1,25 @@
 <resources>
     <string name="app_name">EasyPets</string>
-    <!-- TODO: Remove or change this placeholder text -->
-    <string name="hello_blank_fragment">Hello blank fragment</string>
+
+    <string name="modo_invitado">Modo Invitado</string>
+    <string name="sin_registrar">Sin registrar</string>
+    <string name="usuario">Usuario</string>
+    <string name="iniciar_sesion">Iniciar Sesión</string>
+    <string name="cerrar_sesion">Cerrar Sesión</string>
+    <string name="registrarse">Registrarse</string>
+    <string name="guardar">Guardar</string>
+    <string name="cancelar">Cancelar</string>
+
+    <string name="error_correo_vacio">El correo es obligatorio</string>
+    <string name="error_password_vacio">La contraseña es obligatoria</string>
+    <string name="error_password_corta">La contraseña debe tener al menos 6 caracteres</string>
+    <string name="error_nombre_vacio">El nombre es obligatorio</string>
+    <string name="bienvenido">¡Bienvenido %1$s!</string>
+
+    <string name="titulo_invitado_mascotas">Identifícate para ver a tus peludos</string>
+    <string name="desc_invitado_mascotas">Necesitas una cuenta para guardar y gestionar las fichas de tus mascotas.</string>
+    <string name="error_cargar_mascotas">Error al cargar mascotas: %1$s</string>
+    <string name="peso_formato">Peso: %1$s kg</string>
+    <string name="correo_recuperar_pass">Introduce un correo para recuperar la contraseña</string>
+
 </resources>

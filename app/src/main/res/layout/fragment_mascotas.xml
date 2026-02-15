@@ -20,6 +20,49 @@
             android:paddingBottom="80dp"
             android:paddingTop="16dp"/>
 
+        <LinearLayout
+            android:id="@+id/layoutEstadoVacio"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:visibility="gone"
+            android:padding="32dp">
+
+            <ImageView
+                android:layout_width="200dp"
+                android:layout_height="200dp"
+                android:adjustViewBounds="true"
+                android:src="@drawable/transportin"
+                android:alpha="0.6"
+                android:layout_marginBottom="8dp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="¡Aún no tienes peludos!"
+                android:textSize="22sp"
+                android:textStyle="bold"
+                android:textColor="@color/black"
+                android:layout_marginBottom="8dp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Añade a tu primera mascota para empezar a guardar su información y recordatorios."
+                android:textAlignment="center"
+                android:textColor="#757575"
+                android:layout_marginBottom="24dp"/>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnAñadirPrimeraMascota"
+                android:layout_width="wrap_content"
+                android:layout_height="50dp"
+                android:text="Añadir Mascota"
+                app:cornerRadius="12dp"
+                app:backgroundTint="@color/color_acento_primario" />
+        </LinearLayout>
+
         <com.google.android.material.floatingactionbutton.FloatingActionButton
             android:id="@+id/fabAgregarMascota"
             android:layout_width="wrap_content"
