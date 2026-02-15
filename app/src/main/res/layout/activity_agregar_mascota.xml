@@ -1,13 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fillViewport="true"
-    android:fitsSystemWindows="true"
-    android:background="@color/fondo_base"
-    tools:context=".ui.mascotas.AgregarMascotaActivity">
+    android:background="@color/fondo_base">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -16,75 +13,154 @@
         android:padding="24dp">
 
         <TextView
-            android:layout_width="match_parent"
+            android:id="@+id/tvTituloAgregarMascota"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Nueva Mascota"
-            android:textSize="28sp"
-            android:textStyle="bold"
-            android:textColor="@color/black"
             android:layout_marginBottom="24dp"
-            android:textAlignment="center"/>
+            android:text="Nueva Mascota"
+            android:textColor="@color/black"
+            android:textSize="28sp"
+            android:textStyle="bold" />
 
         <com.google.android.material.textfield.TextInputLayout
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            app:boxBackgroundColor="@color/white">
+            android:layout_marginBottom="12dp"
+            android:hint="Nombre de la mascota *">
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/etNombreMascota"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Nombre de la mascota *"
                 android:inputType="textCapWords" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.textfield.TextInputLayout
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            app:boxBackgroundColor="@color/white">
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/etEspecie"
+            android:layout_marginBottom="12dp"
+            android:hint="Especie *">
+            <AutoCompleteTextView
+                android:id="@+id/dropdownEspecie"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Especie (Ej. Perro, Gato) *"
+                android:inputType="none" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            android:hint="Raza">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etRazaMascota"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textCapWords" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Sexo *"
+            android:textColor="#757575"
+            android:layout_marginTop="8dp"/>
+        <RadioGroup
+            android:id="@+id/rgSexo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="12dp">
+            <RadioButton
+                android:id="@+id/rbMacho"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Macho"
+                android:layout_marginEnd="24dp"/>
+            <RadioButton
+                android:id="@+id/rbHembra"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Hembra" />
+        </RadioGroup>
+
+        <com.google.android.material.textfield.TextInputLayout
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            android:hint="Fecha de Nacimiento">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etFechaNacimiento"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:focusable="false"
+                android:cursorVisible="false"
+                app:drawableEndCompat="@drawable/calendar" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            android:hint="Color o marcas">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etColorMascota"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
                 android:inputType="textCapWords" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.textfield.TextInputLayout
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            app:boxBackgroundColor="@color/white">
+            android:layout_marginBottom="24dp"
+            android:hint="Peso (kg)">
             <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/etRaza"
+                android:id="@+id/etPesoMascota"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Raza (Opcional)"
-                android:inputType="textCapWords" />
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <com.google.android.material.textfield.TextInputLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="32dp"
-            app:boxBackgroundColor="@color/white">
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/etPeso"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="Peso en Kg (Ej. 12.5)"
                 android:inputType="numberDecimal" />
         </com.google.android.material.textfield.TextInputLayout>
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnGuardarMascota"
+        <Space
             android:layout_width="match_parent"
-            android:layout_height="60dp"
-            android:text="Guardar Mascota"
-            android:textSize="18sp"
-            app:backgroundTint="@color/color_acento_primario"
-            app:cornerRadius="12dp" />
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="16dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnGuardarMascota"
+                android:layout_width="0dp"
+                android:layout_height="55dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="8dp"
+                android:text="@string/guardar"
+                app:cornerRadius="12dp"
+                app:backgroundTint="@color/color_acento_primario" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnCancelarMascota"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="55dp"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:text="@string/cancelar"
+                android:textColor="#757575"
+                app:strokeColor="#757575"
+                app:cornerRadius="12dp" />
+
+        </LinearLayout>
 
     </LinearLayout>
 </ScrollView>

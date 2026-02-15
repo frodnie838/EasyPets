@@ -80,4 +80,37 @@ public class MascotaRepository {
             mascotasRef.removeEventListener(mascotasListener);
         }
     }
+
+    // --- INTERFAZ PARA LEER UNA SOLA MASCOTA ---
+    public interface LeerUnaMascotaCallback {
+        void onResultado(Mascota mascota);
+        void onError(String error);
+    }
+
+    // --- 4. OBTENER UNA MASCOTA ESPECÍFICA ---
+    public void obtenerMascotaPorId(String uid, String idMascota, LeerUnaMascotaCallback callback) {
+        mDatabase.child("mascotas").child(uid).child(idMascota).get().addOnCompleteListener(task -> {
+            if (task.isSuccessful() && task.getResult().exists()) {
+                Mascota mascota = task.getResult().getValue(Mascota.class);
+                callback.onResultado(mascota);
+            } else {
+                callback.onError("No se encontraron los datos de la mascota.");
+            }
+        });
+    }
+
+    // --- 5. ELIMINAR UNA MASCOTA ---
+    public void eliminarMascota(String uid, String idMascota, AccionCallback callback) {
+        mDatabase.child("mascotas").child(uid).child(idMascota).removeValue()
+                .addOnSuccessListener(aVoid -> callback.onExito())
+                .addOnFailureListener(e -> callback.onError(e.getMessage()));
+    }
+
+    // --- 6. ACTUALIZAR UNA MASCOTA EXISTENTE ---
+    public void actualizarMascota(String uid, Mascota mascota, AccionCallback callback) {
+        // En lugar de push(), usamos directamente el idMascota que ya tiene
+        mDatabase.child("mascotas").child(uid).child(mascota.getIdMascota()).setValue(mascota)
+                .addOnSuccessListener(aVoid -> callback.onExito())
+                .addOnFailureListener(e -> callback.onError(e.getMessage()));
+    }
 }

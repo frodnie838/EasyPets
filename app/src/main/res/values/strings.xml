@@ -21,5 +21,18 @@
     <string name="error_cargar_mascotas">Error al cargar mascotas: %1$s</string>
     <string name="peso_formato">Peso: %1$s kg</string>
     <string name="correo_recuperar_pass">Introduce un correo para recuperar la contraseña</string>
+    <string name="error_cargar_datos">Error al cargar datos</string>
 
+    <string-array name="lista_especies">
+        <item>Perro</item>
+        <item>Gato</item>
+        <item>Ave</item>
+        <item>Roedor</item>
+        <item>Pez</item>
+        <item>Reptil</item>
+        <item>Anfibio</item>
+        <item>Equino</item>
+        <item>Exótico</item>
+        <item>Otro</item>
+    </string-array>
 </resources>
