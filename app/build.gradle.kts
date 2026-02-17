@@ -39,17 +39,22 @@ dependencies {
     implementation(libs.material)
     implementation(libs.activity)
     implementation(libs.constraintlayout)
-    testImplementation(libs.junit)
-    androidTestImplementation(libs.ext.junit)
-    androidTestImplementation(libs.espresso.core)
-    implementation("com.google.android.material:material:1.11.0")  //Dependencia de Material Components
-    // Dependencias Firebase
-    implementation(platform("com.google.firebase:firebase-bom:34.8.0")) //Firebase BoM -> Herramientas Generales de Firebase
-    implementation("com.google.firebase:firebase-analytics") // Herramientas de Análisis de Uso
-    implementation("com.google.firebase:firebase-auth") // Autenticación de usuarios
-    implementation("com.google.firebase:firebase-database") // Módulo Firebase Real Time
+
+    // Firebase
+    implementation(platform("com.google.firebase:firebase-bom:34.8.0"))
+    implementation("com.google.firebase:firebase-analytics")
+    implementation("com.google.firebase:firebase-auth")
+    implementation("com.google.firebase:firebase-database")
+
+    // Google Sign In
     implementation("com.google.android.gms:play-services-auth:21.0.0")
     implementation("androidx.credentials:credentials:1.3.0")
     implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
+    implementation("com.google.android.material:material:1.11.0")
+
+    // Pruebas
+    testImplementation(libs.junit)
+    androidTestImplementation(libs.ext.junit)
+    androidTestImplementation(libs.espresso.core)
 }

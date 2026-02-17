@@ -24,8 +24,7 @@ import com.google.firebase.database.ValueEventListener;
 public class MascotaDetalleActivity extends AppCompatActivity {
 
     private TextView tvNombre, tvEspecie, tvRaza, tvPeso, tvSexo, tvColor, tvFechaNacimiento;
-    private MaterialButton btnEliminar;
-    private FloatingActionButton fabEditar;
+    private MaterialButton btnEliminar, btnEditar;
 
     private String idMascotaSeleccionada;
     private FirebaseUser user;
@@ -49,14 +48,14 @@ public class MascotaDetalleActivity extends AppCompatActivity {
         tvColor = findViewById(R.id.tvDetalleColor);
         tvFechaNacimiento = findViewById(R.id.tvDetalleFechaNacimiento);
         btnEliminar = findViewById(R.id.btnEliminarMascota);
-        fabEditar = findViewById(R.id.fabEditarMascota);
+        btnEditar = findViewById(R.id.btnEditarMascota);
 
         if (user != null && idMascotaSeleccionada != null) {
             iniciarListenerTiempoReal();
         }
 
         // Botón Editar
-        fabEditar.setOnClickListener(v -> {
+        btnEditar.setOnClickListener(v -> {
             Intent intent = new Intent(MascotaDetalleActivity.this, AgregarMascotaActivity.class);
             intent.putExtra("idMascota", idMascotaSeleccionada);
             startActivity(intent);

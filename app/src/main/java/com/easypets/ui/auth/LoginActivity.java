@@ -131,7 +131,7 @@ public class LoginActivity extends AppCompatActivity {
         GetGoogleIdOption googleIdOption = new GetGoogleIdOption.Builder()
                 .setFilterByAuthorizedAccounts(false)
                 .setServerClientId(getString(R.string.default_web_client_id))
-                .setAutoSelectEnabled(true)
+                .setAutoSelectEnabled(false)
                 .build();
 
         GetCredentialRequest request = new GetCredentialRequest.Builder()
@@ -152,7 +152,27 @@ public class LoginActivity extends AppCompatActivity {
 
                     @Override
                     public void onError(GetCredentialException e) {
-                        Toast.makeText(LoginActivity.this, "Error de Google: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        // ✨ AQUÍ ESTÁ LA MAGIA ✨
+                        // Si nos dice que no hay credenciales (No credentials available)
+                        // o el usuario cierra la ventana, intentamos el modo "Registro" como fallback.
+                        if (e instanceof androidx.credentials.exceptions.NoCredentialException ||
+                                e.getMessage().contains("No credentials available")) {
+
+                            // Mostramos un mensajito amable al usuario
+                            Toast.makeText(LoginActivity.this, "No se encontraron cuentas guardadas. Vamos a añadir una.", Toast.LENGTH_SHORT).show();
+
+                            // Redirigimos al usuario a la pantalla de Registro,
+                            // que sabemos que SÍ funciona para emuladores vacíos.
+                            Intent intent = new Intent(LoginActivity.this, RegisterActivity.class);
+                            // Le pasamos un aviso a RegisterActivity de que venimos de un fallo de Login
+                            intent.putExtra("abrirGoogleAutomatico", true);
+                            startActivity(intent);
+                            finish(); // Cerramos el login actual
+
+                        } else {
+                            // Para cualquier otro error (sin internet, etc), mostramos el mensaje normal
+                            Toast.makeText(LoginActivity.this, "Error de Google: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        }
                     }
                 }
         );

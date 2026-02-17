@@ -1,17 +1,26 @@
 package com.easypets.ui.mascotas;
 
+import android.app.Activity;
 import android.app.DatePickerDialog;
+import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.net.Uri;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.util.Base64;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.easypets.R;
@@ -20,6 +29,8 @@ import com.easypets.repositories.MascotaRepository;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.util.Calendar;
 
 public class AgregarMascotaActivity extends AppCompatActivity {
@@ -29,10 +40,56 @@ public class AgregarMascotaActivity extends AppCompatActivity {
     private RadioGroup rgSexo;
     private RadioButton rbMacho, rbHembra;
     private Button btnGuardar, btnCancelar;
-    private TextView tvTitulo; // Para cambiar de "Nueva" a "Editar"
+    private TextView tvTitulo;
+    private ImageView ivFotoMascota;
 
     private MascotaRepository mascotaRepository;
-    private String idMascotaAEditar = null; // ✨ EDICIÓN: Variable para saber en qué modo estamos
+    private String idMascotaAEditar = null;
+
+    // ✨ AQUÍ GUARDAMOS LA FOTO CONVERTIDA A TEXTO ✨
+    private String fotoBase64 = "";
+
+    // ✨ EL LANZADOR DE LA GALERÍA Y COMPRESOR DE IMAGEN ✨
+    private final ActivityResultLauncher<Intent> galleryLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
+                    Uri uri = result.getData().getData();
+                    try {
+                        // 1. Leer imagen de la galería
+                        InputStream inputStream = getContentResolver().openInputStream(uri);
+                        Bitmap bitmapOriginal = BitmapFactory.decodeStream(inputStream);
+
+                        // 2. Reducir tamaño a 400x400 para no saturar Firebase
+                        int maxResolucion = 400;
+                        int ancho = bitmapOriginal.getWidth();
+                        int alto = bitmapOriginal.getHeight();
+                        float ratio = (float) ancho / alto;
+                        if (ancho > alto) {
+                            ancho = maxResolucion;
+                            alto = (int) (ancho / ratio);
+                        } else {
+                            alto = maxResolucion;
+                            ancho = (int) (alto * ratio);
+                        }
+                        Bitmap bitmapReducido = Bitmap.createScaledBitmap(bitmapOriginal, ancho, alto, true);
+
+                        // 3. Mostrar en la pantalla (Quitando el padding de la huella)
+                        ivFotoMascota.setImageBitmap(bitmapReducido);
+                        ivFotoMascota.setPadding(0, 0, 0, 0);
+
+                        // 4. Convertir a Texto Base64
+                        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                        bitmapReducido.compress(Bitmap.CompressFormat.JPEG, 70, baos); // Calidad 70%
+                        byte[] bytesImagen = baos.toByteArray();
+                        fotoBase64 = Base64.encodeToString(bytesImagen, Base64.DEFAULT);
+
+                    } catch (Exception e) {
+                        Toast.makeText(this, "Error al procesar la imagen", Toast.LENGTH_SHORT).show();
+                    }
+                }
+            }
+    );
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -41,8 +98,8 @@ public class AgregarMascotaActivity extends AppCompatActivity {
 
         mascotaRepository = new MascotaRepository();
 
-        // 1. Vincular vistas
-        tvTitulo = findViewById(R.id.tvTituloAgregarMascota); // <-- NECESITARÁS AÑADIRLE UN ID EN EL XML (Ver nota abajo)
+        // Vincular vistas
+        tvTitulo = findViewById(R.id.tvTituloAgregarMascota);
         etNombre = findViewById(R.id.etNombreMascota);
         dropdownEspecie = findViewById(R.id.dropdownEspecie);
         etRaza = findViewById(R.id.etRazaMascota);
@@ -54,27 +111,33 @@ public class AgregarMascotaActivity extends AppCompatActivity {
         etPeso = findViewById(R.id.etPesoMascota);
         btnGuardar = findViewById(R.id.btnGuardarMascota);
         btnCancelar = findViewById(R.id.btnCancelarMascota);
+        ivFotoMascota = findViewById(R.id.ivFotoMascota);
 
-        // 2. Configurar el Desplegable de Especies
+        // Desplegable de Especies
         String[] especies = getResources().getStringArray(R.array.lista_especies);
         ArrayAdapter<String> adapterEspecies = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, especies);
         dropdownEspecie.setAdapter(adapterEspecies);
 
-        // 3. Configurar el Calendario
+        // Calendario
         etFechaNacimiento.setOnClickListener(v -> mostrarCalendario());
 
-        // 4. Botones
+        // Botones
         btnCancelar.setOnClickListener(v -> finish());
         btnGuardar.setOnClickListener(v -> guardarOActualizarMascota());
 
-        // ✨ EDICIÓN: Comprobamos si venimos desde el botón Editar de la Ficha
+        // Al tocar la foto, abrir la galería
+        findViewById(R.id.cardFotoMascota).setOnClickListener(v -> {
+            Intent intent = new Intent(Intent.ACTION_PICK, android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+            galleryLauncher.launch(intent);
+        });
+
+        // Comprobamos si venimos a Editar
         idMascotaAEditar = getIntent().getStringExtra("idMascota");
         if (idMascotaAEditar != null) {
             prepararModoEdicion();
         }
     }
 
-    // ✨ EDICIÓN: Descargamos los datos y rellenamos los campos CON PARACAÍDAS
     private void prepararModoEdicion() {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user == null) return;
@@ -85,29 +148,36 @@ public class AgregarMascotaActivity extends AppCompatActivity {
         mascotaRepository.obtenerMascotaPorId(user.getUid(), idMascotaAEditar, new MascotaRepository.LeerUnaMascotaCallback() {
             @Override
             public void onResultado(Mascota mascota) {
-                // 1. Datos básicos (Comprobamos que no sean nulos)
                 if (mascota.getNombre() != null) etNombre.setText(mascota.getNombre());
                 if (mascota.getEspecie() != null) dropdownEspecie.setText(mascota.getEspecie(), false);
 
-                // 2. Datos que pueden estar en blanco o como "Desconocido"
                 etRaza.setText(mascota.getRaza() != null && !mascota.getRaza().equals("Desconocida") ? mascota.getRaza() : "");
                 etColor.setText(mascota.getColor() != null && !mascota.getColor().equals("Desconocido") ? mascota.getColor() : "");
                 etPeso.setText(mascota.getPeso() != null && !mascota.getPeso().equals("0") ? mascota.getPeso() : "");
                 etFechaNacimiento.setText(mascota.getFechaNacimiento() != null && !mascota.getFechaNacimiento().equals("Desconocida") ? mascota.getFechaNacimiento() : "");
 
-                // 3. ✨ EL CULPABLE DEL CRASHEO ✨: El Sexo
                 if (mascota.getSexo() != null) {
-                    if (mascota.getSexo().equals("Macho")) {
-                        rbMacho.setChecked(true);
-                    } else if (mascota.getSexo().equals("Hembra")) {
-                        rbHembra.setChecked(true);
+                    if (mascota.getSexo().equals("Macho")) rbMacho.setChecked(true);
+                    else if (mascota.getSexo().equals("Hembra")) rbHembra.setChecked(true);
+                }
+
+                // ✨ RECUPERAR FOTO DE LA BASE DE DATOS Y DECODIFICARLA ✨
+                if (mascota.getFotoPerfilUrl() != null && !mascota.getFotoPerfilUrl().isEmpty()) {
+                    fotoBase64 = mascota.getFotoPerfilUrl(); // La guardamos por si el usuario actualiza sin cambiar de foto
+                    try {
+                        byte[] decodedString = Base64.decode(fotoBase64, Base64.DEFAULT);
+                        Bitmap decodedByte = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
+                        ivFotoMascota.setImageBitmap(decodedByte);
+                        ivFotoMascota.setPadding(0, 0, 0, 0); // Quitar el padding de la huella
+                    } catch (Exception e) {
+                        e.printStackTrace();
                     }
                 }
             }
 
             @Override
             public void onError(String error) {
-                Toast.makeText(AgregarMascotaActivity.this, R.string.error_cargar_datos, Toast.LENGTH_SHORT).show();
+                Toast.makeText(AgregarMascotaActivity.this, "Error al cargar datos", Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -148,8 +218,9 @@ public class AgregarMascotaActivity extends AppCompatActivity {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user == null) return;
 
+        // ✨ CREAMOS LA MASCOTA CON EL TEXTO DE LA FOTO ✨
         Mascota mascotaListaParaSubir = new Mascota(
-                idMascotaAEditar, // Si es nueva será null, si es editar mantendrá su ID
+                idMascotaAEditar,
                 nombre,
                 especie,
                 raza.isEmpty() ? "Desconocida" : raza,
@@ -160,34 +231,27 @@ public class AgregarMascotaActivity extends AppCompatActivity {
                 "",
                 false,
                 "",
-                "",
+                fotoBase64, // Pasamos la foto en texto
                 System.currentTimeMillis()
         );
 
-        // ✨ EDICIÓN: Decidimos si creamos o actualizamos
         if (idMascotaAEditar == null) {
-            // MODO CREAR NUEVA
             mascotaRepository.guardarMascota(user.getUid(), mascotaListaParaSubir, new MascotaRepository.AccionCallback() {
                 @Override
                 public void onExito() {
-                    Toast.makeText(AgregarMascotaActivity.this, "¡Mascota Guardada!", Toast.LENGTH_SHORT).show();
                     finish();
                 }
-
                 @Override
                 public void onError(String error) {
                     Toast.makeText(AgregarMascotaActivity.this, "Error: " + error, Toast.LENGTH_LONG).show();
                 }
             });
         } else {
-            // MODO ACTUALIZAR
             mascotaRepository.actualizarMascota(user.getUid(), mascotaListaParaSubir, new MascotaRepository.AccionCallback() {
                 @Override
                 public void onExito() {
-                    Toast.makeText(AgregarMascotaActivity.this, "¡Mascota Actualizada!", Toast.LENGTH_SHORT).show();
                     finish();
                 }
-
                 @Override
                 public void onError(String error) {
                     Toast.makeText(AgregarMascotaActivity.this, "Error al actualizar: " + error, Toast.LENGTH_LONG).show();

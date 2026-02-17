@@ -16,12 +16,32 @@
             android:id="@+id/tvTituloAgregarMascota"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
+            android:layout_marginBottom="16dp"
+            android:layout_gravity="center_horizontal"
             android:text="Nueva Mascota"
-            android:textColor="@color/black"
+            android:textColor="#333333"
             android:textSize="28sp"
             android:textStyle="bold" />
 
+        <androidx.cardview.widget.CardView
+            android:id="@+id/cardFotoMascota"
+            android:layout_width="120dp"
+            android:layout_height="120dp"
+            android:layout_gravity="center"
+            android:layout_marginBottom="24dp"
+            app:cardCornerRadius="60dp"
+            app:cardElevation="4dp"
+            android:foreground="?attr/selectableItemBackground">
+
+            <ImageView
+                android:id="@+id/ivFotoMascota"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"
+                android:src="@drawable/huella"
+                android:padding="20dp"
+                app:tint="@color/color_acento_primario" />
+        </androidx.cardview.widget.CardView>
         <com.google.android.material.textfield.TextInputLayout
             style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
             android:layout_width="match_parent"
@@ -139,27 +159,26 @@
             android:layout_marginTop="16dp">
 
             <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnGuardarMascota"
-                android:layout_width="0dp"
-                android:layout_height="55dp"
-                android:layout_weight="1"
-                android:layout_marginEnd="8dp"
-                android:text="@string/guardar"
-                app:cornerRadius="12dp"
-                app:backgroundTint="@color/color_acento_primario" />
-
-            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnCancelarMascota"
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                 android:layout_width="0dp"
                 android:layout_height="55dp"
                 android:layout_weight="1"
-                android:layout_marginStart="8dp"
-                android:text="@string/cancelar"
+                android:layout_marginEnd="8dp"
+                android:text="Cancelar"
                 android:textColor="#757575"
                 app:strokeColor="#757575"
                 app:cornerRadius="12dp" />
 
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnGuardarMascota"
+                android:layout_width="0dp"
+                android:layout_height="55dp"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:text="Guardar"
+                app:cornerRadius="12dp"
+                app:backgroundTint="@color/color_acento_primario" />
         </LinearLayout>
 
     </LinearLayout>

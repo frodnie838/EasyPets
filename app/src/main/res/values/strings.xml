@@ -35,4 +35,5 @@
         <item>Exótico</item>
         <item>Otro</item>
     </string-array>
+    <string name="cloudinary_url">cloudinary://839665213444776:8zzzbT-oUpsygyycdJ-MrqgniN4@ds3fwdvn0</string>
 </resources>

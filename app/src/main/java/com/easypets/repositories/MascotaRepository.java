@@ -113,4 +113,5 @@ public class MascotaRepository {
                 .addOnSuccessListener(aVoid -> callback.onExito())
                 .addOnFailureListener(e -> callback.onError(e.getMessage()));
     }
+
 }
