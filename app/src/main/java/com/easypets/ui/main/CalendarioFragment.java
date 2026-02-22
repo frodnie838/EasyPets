@@ -118,40 +118,74 @@ public class CalendarioFragment extends Fragment {
         datePickerDialog.show();
     }
     private void mostrarDialogoAgregarEvento() {
-        // 1. Crear el constructor del Diálogo
         android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(requireContext());
-
-        // 2. Inflar el diseño XML que acabamos de crear
         View dialogView = getLayoutInflater().inflate(R.layout.dialog_agregar_evento, null);
         builder.setView(dialogView);
 
         android.app.AlertDialog dialog = builder.create();
 
-        // 3. Vincular las vistas del XML del diálogo
+        // Vincular las vistas del XML del diálogo
         com.google.android.material.textfield.TextInputEditText etTitulo = dialogView.findViewById(R.id.etTituloEvento);
         android.widget.RadioGroup rgTipo = dialogView.findViewById(R.id.rgTipoEvento);
-        TextView tvFecha = dialogView.findViewById(R.id.tvFechaDialog);
+        MaterialButton btnFechaDialog = dialogView.findViewById(R.id.btnFechaDialog);
         MaterialButton btnCancelar = dialogView.findViewById(R.id.btnCancelarDialog);
         MaterialButton btnGuardar = dialogView.findViewById(R.id.btnGuardarDialog);
 
-        // 4. Pre-configurar la fecha elegida en el calendario
-        String fechaActual = String.format(java.util.Locale.getDefault(), "%02d/%02d/%d",
-                calendarioActual.get(Calendar.DAY_OF_MONTH),
-                calendarioActual.get(Calendar.MONTH) + 1,
-                calendarioActual.get(Calendar.YEAR));
-        tvFecha.setText("Fecha seleccionada: " + fechaActual);
+        // --- NUEVO: CONFIGURAR EL DESPLEGABLE DE MASCOTAS ---
+        android.widget.AutoCompleteTextView spinnerMascotas = dialogView.findViewById(R.id.spinnerMascotas);
 
-        // 5. Configurar Botón Cancelar
+        // Creamos una lista falsa por ahora. La primera opción es la "Por defecto".
+        String[] opcionesMascotas = {"General", "Max (Perro)", "Luna (Gato)"};
+
+        // Creamos un adaptador para que el menú lea este array
+        android.widget.ArrayAdapter<String> adapterMascotas = new android.widget.ArrayAdapter<>(
+                requireContext(),
+                android.R.layout.simple_dropdown_item_1line,
+                opcionesMascotas
+        );
+        spinnerMascotas.setAdapter(adapterMascotas);
+
+        // Seleccionamos la primera por defecto para que no salga vacío
+        spinnerMascotas.setText(opcionesMascotas[0], false);
+        // ----------------------------------------------------
+
+        // Calendario temporal para este diálogo
+        Calendar calendarioDialog = Calendar.getInstance();
+        calendarioDialog.setTimeInMillis(calendarioActual.getTimeInMillis());
+
+        // HACER QUE EL BOTÓN DE FECHA ABRA EL SELECTOR
+        btnFechaDialog.setOnClickListener(v -> {
+            DatePickerDialog picker = new DatePickerDialog(
+                    requireContext(),
+                    (view, year, month, dayOfMonth) -> {
+                        calendarioDialog.set(year, month, dayOfMonth);
+                        String fechaFormat = String.format(java.util.Locale.getDefault(), "%02d/%02d/%d", dayOfMonth, month + 1, year);
+                        btnFechaDialog.setText(fechaFormat);
+                    },
+                    calendarioDialog.get(Calendar.YEAR),
+                    calendarioDialog.get(Calendar.MONTH),
+                    calendarioDialog.get(Calendar.DAY_OF_MONTH)
+            );
+            picker.show();
+        });
+
+        // Configurar Botón Cancelar
         btnCancelar.setOnClickListener(v -> dialog.dismiss());
 
-        // 6. Configurar Botón Guardar
+        // Configurar Botón Guardar
         btnGuardar.setOnClickListener(v -> {
             String titulo = etTitulo.getText().toString().trim();
 
-            // Validar que no esté vacío
             if (titulo.isEmpty()) {
                 etTitulo.setError("Escribe el título del evento");
                 return;
+            }
+
+            // Validar que se haya elegido una fecha
+            String fechaFinal = btnFechaDialog.getText().toString();
+            if (fechaFinal.equals("Seleccione una fecha")) {
+                Toast.makeText(getContext(), "Por favor, elige una fecha", Toast.LENGTH_SHORT).show();
+                return; // Detenemos el guardado si no hay fecha
             }
 
             // Saber qué tipo de evento ha marcado
@@ -163,14 +197,15 @@ public class CalendarioFragment extends Fragment {
                 tipo = "Nota";
             }
 
-            // TODO: Aquí guardaremos el Evento en Firebase
-            // Por ahora, simulamos que se guarda con un Toast
-            Toast.makeText(getContext(), "✅ " + tipo + " guardado: " + titulo, Toast.LENGTH_LONG).show();
+            // --- NUEVO: OBTENER QUÉ MASCOTA SE HA SELECCIONADO ---
+            String mascotaSeleccionada = spinnerMascotas.getText().toString();
 
-            dialog.dismiss(); // Cerramos el diálogo
+            // TODO: Guardar en Firebase
+            Toast.makeText(getContext(), "Guardando: " + titulo + " para " + mascotaSeleccionada + " (" + tipo + ") el " + fechaFinal, Toast.LENGTH_LONG).show();
+
+            dialog.dismiss();
         });
 
-        // 7. Mostrar el diálogo
         dialog.show();
     }
 }

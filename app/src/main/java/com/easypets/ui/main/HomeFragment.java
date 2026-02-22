@@ -129,7 +129,7 @@ public class HomeFragment extends Fragment {
         cardVeterinarios.setOnClickListener(v -> Toast.makeText(getContext(), "Próximamente: Veterinarios", Toast.LENGTH_SHORT).show());
         cardEducacion.setOnClickListener(v -> Toast.makeText(getContext(), "Próximamente: Educación", Toast.LENGTH_SHORT).show());
         cardTiendas.setOnClickListener(v -> Toast.makeText(getContext(), "Próximamente: Tiendas", Toast.LENGTH_SHORT).show());
-
+        cardCalendario.setOnClickListener(v -> Toast.makeText(getContext(), "Calendario", Toast.LENGTH_SHORT).show());
         // Consejo aleatorio de prueba
         tvConsejoDia.setText("El chocolate y la cebolla son muy tóxicos para perros y gatos. ¡Mantenlos fuera de su alcance!");
     }
