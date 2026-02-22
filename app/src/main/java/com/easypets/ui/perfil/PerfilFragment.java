@@ -45,7 +45,7 @@ public class PerfilFragment extends Fragment {
 
     private ImageView ivFotoPerfil;
     private TextView tvNombre, tvCorreo;
-    private MaterialButton btnCerrarSesion, btnEditarPerfil, btnAjustes, btnEliminarCuenta;
+    private MaterialButton btnCerrarSesion, btnEditarPerfil, btnAjustes;
 
     private FirebaseAuth mAuth;
     private DatabaseReference userRef;
@@ -82,7 +82,6 @@ public class PerfilFragment extends Fragment {
         btnCerrarSesion = view.findViewById(R.id.btnCerrarSesion);
         btnEditarPerfil = view.findViewById(R.id.btnEditarPerfil);
         btnAjustes = view.findViewById(R.id.btnAjustes);
-        btnEliminarCuenta = view.findViewById(R.id.btnEliminarCuenta);
 
         mAuth = FirebaseAuth.getInstance();
         FirebaseUser currentUser = mAuth.getCurrentUser();
@@ -129,7 +128,6 @@ public class PerfilFragment extends Fragment {
             Intent intent = new Intent(getActivity(), AjustesActivity.class);
             startActivity(intent);
         });
-        btnEliminarCuenta.setOnClickListener(v -> mostrarDialogoEliminarCuenta());
     }
 
     // Configura la pantalla para un invitado (sin cuenta)
@@ -146,7 +144,6 @@ public class PerfilFragment extends Fragment {
         btnEditarPerfil.setAlpha(0.5f);
         btnAjustes.setEnabled(false);
         btnAjustes.setAlpha(0.5f);
-        btnEliminarCuenta.setVisibility(View.GONE);
     }
 
     // Muestra la ventana flotante para editar nombre, apellidos y foto
@@ -286,42 +283,6 @@ public class PerfilFragment extends Fragment {
             getActivity().finish();
         }
     }
-
-    // Borra todo el rastro del usuario en la nube
-    private void ejecutarBorradoEnCascada() {
-        FirebaseUser currentUser = mAuth.getCurrentUser();
-        if (currentUser == null) return;
-
-        String uid = currentUser.getUid();
-        Toast.makeText(getContext(), "Eliminando datos...", Toast.LENGTH_LONG).show();
-
-        DatabaseReference mascotasRef = FirebaseDatabase.getInstance().getReference().child("mascotas").child(uid);
-        mascotasRef.removeValue().addOnCompleteListener(taskMascotas -> {
-            userRef.removeValue().addOnCompleteListener(taskPerfil -> {
-                currentUser.delete().addOnCompleteListener(taskAuth -> {
-                    if (taskAuth.isSuccessful()) {
-                        mAuth.signOut();
-                        limpiarCredencialesYSalir();
-                    } else {
-                        // Error común: requiere re-login reciente para borrar cuenta
-                        Toast.makeText(getContext(), "Acción sensible: vuelve a iniciar sesión para borrar la cuenta.", Toast.LENGTH_LONG).show();
-                    }
-                });
-            });
-        });
-    }
-
-    // Muestra aviso antes de borrar la cuenta
-    private void mostrarDialogoEliminarCuenta() {
-        if (getContext() == null) return;
-        new AlertDialog.Builder(getContext())
-                .setTitle("⚠️ Eliminar definitivamente")
-                .setMessage("¿Estás seguro? Se borrarán todos tus datos y mascotas.")
-                .setPositiveButton("Eliminar todo", (dialog, which) -> ejecutarBorradoEnCascada())
-                .setNegativeButton("Cancelar", null)
-                .show();
-    }
-
     // Limpia el rastro de Google/Credenciales en el teléfono
     private void limpiarCredencialesYSalir() {
         if (getContext() != null) {

@@ -94,16 +94,5 @@
             app:icon="@android:drawable/ic_lock_power_off"
             app:iconTint="@color/white"
             android:layout_marginBottom="12dp"/>
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnEliminarCuenta"
-            style="@style/Widget.MaterialComponents.Button.TextButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Eliminar Cuenta"
-            android:textColor="#F44336"
-            app:icon="@android:drawable/ic_menu_delete"
-            app:iconTint="#F44336"/>
-
     </LinearLayout>
 </ScrollView>
