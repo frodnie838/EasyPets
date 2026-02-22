@@ -1,44 +1,109 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:gravity="center_horizontal"
-    android:padding="24dp"
     android:background="@color/fondo_base">
 
-    <ImageView
-
-        android:layout_width="150dp"
-        android:layout_height="150dp"
-        android:src="@drawable/logo_sin_fondo"
-        android:layout_marginBottom="24dp" />
-
-    <TextView
-        android:id="@+id/tvNombrePerfil"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Cargando nombre..."
-        android:textSize="24sp"
-        android:textStyle="bold"
-        android:textColor="@color/black"
-        android:layout_marginBottom="8dp" />
-
-    <TextView
-        android:id="@+id/tvCorreoPerfil"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Cargando correo..."
-        android:textSize="16sp"
-        android:textColor="@android:color/darker_gray"
-        android:layout_marginBottom="40dp" />
-
-    <Button
-        android:id="@+id/btnLogout"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Cerrar Sesión"
-        android:backgroundTint="#D32F2F"
-        android:textColor="@android:color/white" />
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:padding="24dp">
 
-</LinearLayout>
+        <androidx.cardview.widget.CardView
+            android:id="@+id/cardFotoPerfilUsuario"
+            android:layout_width="120dp"
+            android:layout_height="120dp"
+            android:layout_marginTop="20dp"
+            app:cardCornerRadius="60dp"
+            app:cardElevation="4dp"
+            app:cardBackgroundColor="@color/white">
+
+            <ImageView
+                android:id="@+id/ivFotoPerfilUsuario"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"
+                android:src="@drawable/profile"
+                android:padding="16dp"
+                app:tint="@color/color_acento_primario"/>
+        </androidx.cardview.widget.CardView>
+
+        <TextView
+            android:id="@+id/tvNombrePerfilUsuario"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Cargando perfil..."
+            android:textColor="@color/black"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tvCorreoPerfilUsuario"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="cargando@correo.com"
+            android:textColor="#757575"
+            android:textSize="14sp" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="30dp"
+            android:layout_marginBottom="20dp"
+            android:background="#E0E0E0" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnEditarPerfil"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="60dp"
+            android:text="Editar Cuenta"
+            android:textColor="@color/black"
+            app:icon="@android:drawable/ic_menu_edit"
+            app:iconTint="@color/color_acento_primario"
+            app:strokeColor="#E0E0E0"
+            app:cornerRadius="12dp"
+            android:layout_marginBottom="12dp"/>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnAjustes"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="60dp"
+            android:text="Configuración de Ajustes"
+            android:textColor="@color/black"
+            app:icon="@android:drawable/ic_menu_preferences"
+            app:iconTint="#757575"
+            app:strokeColor="#E0E0E0"
+            app:cornerRadius="12dp"
+            android:layout_marginBottom="30dp"/>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnCerrarSesion"
+            android:layout_width="match_parent"
+            android:layout_height="55dp"
+            android:text="Cerrar Sesión"
+            android:textColor="@color/white"
+            app:backgroundTint="#F44336"
+            app:cornerRadius="12dp"
+            app:icon="@android:drawable/ic_lock_power_off"
+            app:iconTint="@color/white"
+            android:layout_marginBottom="12dp"/>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnEliminarCuenta"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Eliminar Cuenta"
+            android:textColor="#F44336"
+            app:icon="@android:drawable/ic_menu_delete"
+            app:iconTint="#F44336"/>
+
+    </LinearLayout>
+</ScrollView>

@@ -1,6 +1,5 @@
 package com.easypets.ui.mascotas;
 
-import android.app.Activity;
 import android.app.DatePickerDialog;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -50,33 +49,30 @@ public class AgregarMascotaActivity extends AppCompatActivity {
     private String fotoBase64 = "";
 
     // ✨ EL LANZADOR DE LA GALERÍA Y COMPRESOR DE IMAGEN ✨
-    private final ActivityResultLauncher<Intent> galleryLauncher = registerForActivityResult(
-            new ActivityResultContracts.StartActivityForResult(),
-            result -> {
-                if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
-                    Uri uri = result.getData().getData();
+    // ✨ NUEVO SISTEMA: Photo Picker de Android (No requiere permisos) ✨
+    private final ActivityResultLauncher<androidx.activity.result.PickVisualMediaRequest> photoPickerLauncher = registerForActivityResult(
+            new ActivityResultContracts.PickVisualMedia(), uri -> {
+                if (uri != null) {
                     try {
                         // 1. Leer imagen de la galería
                         InputStream inputStream = getContentResolver().openInputStream(uri);
                         Bitmap bitmapOriginal = BitmapFactory.decodeStream(inputStream);
 
-                        // 2. Reducir tamaño a 400x400 para no saturar Firebase
+                        // 2. Reducir tamaño a 400x400 (MUY IMPORTANTE para Firebase)
                         int maxResolucion = 400;
                         int ancho = bitmapOriginal.getWidth();
                         int alto = bitmapOriginal.getHeight();
                         float ratio = (float) ancho / alto;
-                        if (ancho > alto) {
-                            ancho = maxResolucion;
-                            alto = (int) (ancho / ratio);
-                        } else {
-                            alto = maxResolucion;
-                            ancho = (int) (alto * ratio);
-                        }
+                        if (ancho > alto) { ancho = maxResolucion; alto = (int) (ancho / ratio); }
+                        else { alto = maxResolucion; ancho = (int) (alto * ratio); }
                         Bitmap bitmapReducido = Bitmap.createScaledBitmap(bitmapOriginal, ancho, alto, true);
 
-                        // 3. Mostrar en la pantalla (Quitando el padding de la huella)
+                        // 3. Mostrar en la pantalla
                         ivFotoMascota.setImageBitmap(bitmapReducido);
                         ivFotoMascota.setPadding(0, 0, 0, 0);
+
+                        // ✨ AQUÍ ESTÁ LA LÍNEA MÁGICA PARA QUITAR EL FILTRO VERDE ✨
+                        ivFotoMascota.setImageTintList(null);
 
                         // 4. Convertir a Texto Base64
                         ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -127,8 +123,10 @@ public class AgregarMascotaActivity extends AppCompatActivity {
 
         // Al tocar la foto, abrir la galería
         findViewById(R.id.cardFotoMascota).setOnClickListener(v -> {
-            Intent intent = new Intent(Intent.ACTION_PICK, android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
-            galleryLauncher.launch(intent);
+            // Lanzamos el nuevo Photo Picker filtrando solo por imágenes
+            photoPickerLauncher.launch(new androidx.activity.result.PickVisualMediaRequest.Builder()
+                    .setMediaType(ActivityResultContracts.PickVisualMedia.ImageOnly.INSTANCE)
+                    .build());
         });
 
         // Comprobamos si venimos a Editar
@@ -169,6 +167,9 @@ public class AgregarMascotaActivity extends AppCompatActivity {
                         Bitmap decodedByte = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
                         ivFotoMascota.setImageBitmap(decodedByte);
                         ivFotoMascota.setPadding(0, 0, 0, 0); // Quitar el padding de la huella
+
+                        // ✨ AQUÍ ESTÁ LA LÍNEA PARA QUITAR EL FILTRO AL EDITAR ✨
+                        ivFotoMascota.setImageTintList(null);
                     } catch (Exception e) {
                         e.printStackTrace();
                     }

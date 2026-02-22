@@ -1,18 +1,22 @@
 package com.easypets.ui.mascotas;
 
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Bundle;
+import android.util.Base64;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 
 import com.easypets.R;
 import com.easypets.models.Mascota;
 import com.easypets.repositories.MascotaRepository;
 import com.google.android.material.button.MaterialButton;
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
@@ -25,6 +29,7 @@ public class MascotaDetalleActivity extends AppCompatActivity {
 
     private TextView tvNombre, tvEspecie, tvRaza, tvPeso, tvSexo, tvColor, tvFechaNacimiento;
     private MaterialButton btnEliminar, btnEditar;
+    private ImageView ivDetalleFoto;
 
     private String idMascotaSeleccionada;
     private FirebaseUser user;
@@ -49,6 +54,7 @@ public class MascotaDetalleActivity extends AppCompatActivity {
         tvFechaNacimiento = findViewById(R.id.tvDetalleFechaNacimiento);
         btnEliminar = findViewById(R.id.btnEliminarMascota);
         btnEditar = findViewById(R.id.btnEditarMascota);
+        ivDetalleFoto = findViewById(R.id.ivDetalleFoto);
 
         if (user != null && idMascotaSeleccionada != null) {
             iniciarListenerTiempoReal();
@@ -65,7 +71,6 @@ public class MascotaDetalleActivity extends AppCompatActivity {
         btnEliminar.setOnClickListener(v -> mostrarDialogoConfirmacion());
     }
 
-    // ✨ LA CLAVE: Escuchar cambios en tiempo real ✨
     private void iniciarListenerTiempoReal() {
         mascotaRef = FirebaseDatabase.getInstance().getReference()
                 .child("mascotas")
@@ -77,7 +82,6 @@ public class MascotaDetalleActivity extends AppCompatActivity {
             public void onDataChange(DataSnapshot snapshot) {
                 Mascota mascota = snapshot.getValue(Mascota.class);
                 if (mascota != null) {
-                    // Rellenar/Actualizar la UI automáticamente
                     tvNombre.setText(mascota.getNombre());
                     tvEspecie.setText(mascota.getEspecie() != null ? mascota.getEspecie() : "Desconocida");
                     tvRaza.setText(mascota.getRaza() != null ? mascota.getRaza() : "Desconocida");
@@ -85,6 +89,24 @@ public class MascotaDetalleActivity extends AppCompatActivity {
                     tvColor.setText(mascota.getColor() != null ? mascota.getColor() : "Desconocido");
                     tvFechaNacimiento.setText(mascota.getFechaNacimiento() != null ? mascota.getFechaNacimiento() : "Desconocida");
                     tvPeso.setText(mascota.getPeso() + " kg");
+
+                    // ✨ LÓGICA DE LA FOTO CORREGIDA PARA EL DETALLE ✨
+                    if (mascota.getFotoPerfilUrl() != null && !mascota.getFotoPerfilUrl().isEmpty()) {
+                        try {
+                            byte[] decodedString = Base64.decode(mascota.getFotoPerfilUrl(), Base64.DEFAULT);
+                            Bitmap decodedByte = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
+                            ivDetalleFoto.setImageBitmap(decodedByte);
+
+                            // Ajustes para foto real
+                            ivDetalleFoto.setPadding(0, 0, 0, 0);
+                            ivDetalleFoto.setImageTintList(null); // Quitar filtro verde
+                            ivDetalleFoto.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                        } catch (Exception e) {
+                            ponerHuellaPorDefectoDetalle();
+                        }
+                    } else {
+                        ponerHuellaPorDefectoDetalle();
+                    }
                 }
             }
 
@@ -97,7 +119,14 @@ public class MascotaDetalleActivity extends AppCompatActivity {
         mascotaRef.addValueEventListener(mascotaListener);
     }
 
-    // Importante: Detener el listener cuando cerramos la pantalla para no gastar batería/datos
+    // ✨ MÉTODO AUXILIAR PARA LA HUELLA ✨
+    private void ponerHuellaPorDefectoDetalle() {
+        ivDetalleFoto.setImageResource(R.drawable.huella);
+        ivDetalleFoto.setPadding(50, 50, 50, 50);
+        ivDetalleFoto.setImageTintList(ContextCompat.getColorStateList(this, R.color.color_acento_primario));
+        ivDetalleFoto.setScaleType(ImageView.ScaleType.FIT_CENTER);
+    }
+
     @Override
     protected void onDestroy() {
         super.onDestroy();

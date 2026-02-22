@@ -35,6 +35,10 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".ui.perfil.AjustesActivity"
+            android:label="Ajustes"
+            android:theme="@style/Theme.EasyPets" />
     </application>
 
 </manifest>

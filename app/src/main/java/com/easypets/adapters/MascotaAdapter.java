@@ -1,11 +1,17 @@
 package com.easypets.adapters;
 
+import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.util.Base64;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.easypets.R;
@@ -16,14 +22,12 @@ import java.util.List;
 public class MascotaAdapter extends RecyclerView.Adapter<MascotaAdapter.MascotaViewHolder> {
 
     private List<Mascota> listaMascotas;
-    private OnItemClickListener listener; // NUEVO: El escuchador de clics
+    private OnItemClickListener listener;
 
-    // NUEVO: Creamos una interfaz para comunicar el clic a la pantalla
     public interface OnItemClickListener {
         void onItemClick(Mascota mascota);
     }
 
-    // Constructor actualizado (ahora pide la lista y el escuchador)
     public MascotaAdapter(List<Mascota> listaMascotas, OnItemClickListener listener) {
         this.listaMascotas = listaMascotas;
         this.listener = listener;
@@ -44,12 +48,29 @@ public class MascotaAdapter extends RecyclerView.Adapter<MascotaAdapter.MascotaV
         holder.tvRaza.setText(mascota.getEspecie() + " • " + mascota.getRaza());
         holder.tvPeso.setText("Peso: " + mascota.getPeso() + " kg");
 
-        // ✨ NUEVO: Le decimos a la fila entera que reaccione al clic ✨
         holder.itemView.setOnClickListener(v -> {
             if (listener != null) {
                 listener.onItemClick(mascota);
             }
         });
+
+        // ✨ LÓGICA DE FOTO CORREGIDA PARA LA LISTA ✨
+        if (mascota.getFotoPerfilUrl() != null && !mascota.getFotoPerfilUrl().isEmpty()) {
+            try {
+                byte[] decodedString = Base64.decode(mascota.getFotoPerfilUrl(), Base64.DEFAULT);
+                Bitmap decodedByte = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
+                holder.ivFotoMascota.setImageBitmap(decodedByte);
+
+                // Quitamos márgenes, quitamos tinte verde y ajustamos
+                holder.ivFotoMascota.setPadding(0, 0, 0, 0);
+                holder.ivFotoMascota.setImageTintList(null);
+                holder.ivFotoMascota.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            } catch (Exception e) {
+                ponerHuellaPorDefecto(holder);
+            }
+        } else {
+            ponerHuellaPorDefecto(holder);
+        }
     }
 
     @Override
@@ -57,7 +78,18 @@ public class MascotaAdapter extends RecyclerView.Adapter<MascotaAdapter.MascotaV
         return listaMascotas.size();
     }
 
+    // ✨ MÉTODO AUXILIAR PARA LA HUELLA ✨
+    private void ponerHuellaPorDefecto(MascotaViewHolder holder) {
+        Context context = holder.itemView.getContext();
+        holder.ivFotoMascota.setImageResource(R.drawable.huella);
+        holder.ivFotoMascota.setPadding(30, 30, 30, 30); // El padding original
+        // Pintamos de nuevo la huella de verde
+        holder.ivFotoMascota.setImageTintList(ContextCompat.getColorStateList(context, R.color.color_acento_primario));
+        holder.ivFotoMascota.setScaleType(ImageView.ScaleType.FIT_CENTER);
+    }
+
     public static class MascotaViewHolder extends RecyclerView.ViewHolder {
+        public ImageView ivFotoMascota;
         TextView tvNombre, tvRaza, tvPeso;
 
         public MascotaViewHolder(@NonNull View itemView) {
@@ -65,6 +97,7 @@ public class MascotaAdapter extends RecyclerView.Adapter<MascotaAdapter.MascotaV
             tvNombre = itemView.findViewById(R.id.tvNombreFila);
             tvRaza = itemView.findViewById(R.id.tvRazaFila);
             tvPeso = itemView.findViewById(R.id.tvPesoFila);
+            ivFotoMascota = itemView.findViewById(R.id.ivFotoMascota);
         }
     }
 }
