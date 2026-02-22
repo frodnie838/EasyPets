@@ -233,14 +233,14 @@ public class CalendarioFragment extends Fragment {
                 return;
             }
             String fechaFinal = btnFechaDialog.getText().toString();
-            if (fechaFinal.equals("Elegir fecha")) {
+            if (fechaFinal.equals("Seleccione una fecha")) {
                 Toast.makeText(getContext(), "Por favor, seleccione una fecha", Toast.LENGTH_SHORT).show();
                 return;
             }
 
             // ✨ NUEVO: COMPROBAR SI HA PUESTO HORA O NO
             String horaFinal = btnHoraDialog.getText().toString();
-            if (horaFinal.equals("Hora (Opc.)")) {
+            if (horaFinal.equals("Hora (Opcional)")) {
                 horaFinal = ""; // Lo dejamos vacío porque es opcional
             }
 

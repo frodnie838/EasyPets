@@ -89,44 +89,35 @@
         android:textColor="@color/black"
         android:layout_marginBottom="8dp"/>
 
-    <LinearLayout
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnFechaDialog"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
+        android:text="Seleccione una fecha"
+        android:textAllCaps="false"
+        app:icon="@drawable/calendar"
+        app:iconPadding="12dp"
+        android:textColor="#757575"
+        app:iconTint="#757575"
+        app:strokeColor="#E0E0E0"
+        android:layout_marginBottom="8dp"
+        android:gravity="start|center_vertical"/>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnHoraDialog"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Hora (Opcional)"
+        android:textAllCaps="false"
+        app:icon="@android:drawable/ic_menu_recent_history"
+        app:iconPadding="12dp"
+        android:textColor="#757575"
+        app:iconTint="#757575"
+        app:strokeColor="#E0E0E0"
         android:layout_marginBottom="24dp"
-        android:baselineAligned="false">
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnFechaDialog"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginEnd="8dp"
-            android:text="Elegir fecha"
-            android:textAllCaps="false"
-            app:icon="@drawable/calendar"
-            app:iconPadding="8dp"
-            android:textColor="#757575"
-            app:iconTint="#757575"
-            app:strokeColor="#E0E0E0"
-            android:gravity="start|center_vertical"/>
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnHoraDialog"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Hora (Opc.)"
-            android:textAllCaps="false"
-            app:icon="@android:drawable/ic_menu_recent_history"
-            app:iconPadding="8dp"
-            android:textColor="#757575"
-            app:iconTint="#757575"
-            app:strokeColor="#E0E0E0"
-            android:gravity="start|center_vertical"/>
-    </LinearLayout>
+        android:gravity="start|center_vertical"/>
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
