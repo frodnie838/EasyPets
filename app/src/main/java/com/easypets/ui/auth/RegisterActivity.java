@@ -11,15 +11,17 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
+import androidx.credentials.CredentialManager;
+import androidx.credentials.CredentialManagerCallback;
+import androidx.credentials.GetCredentialRequest;
+import androidx.credentials.GetCredentialResponse;
+import androidx.credentials.exceptions.GetCredentialException;
 
-import com.easypets.ui.main.MainActivity;
 import com.easypets.R;
-import com.google.android.gms.auth.api.signin.GoogleSignIn;
-import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
-import com.google.android.gms.auth.api.signin.GoogleSignInClient;
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
-import com.google.android.gms.common.api.ApiException;
-import com.google.android.gms.tasks.Task;
+import com.easypets.ui.main.MainActivity;
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption;
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential;
 import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -34,9 +36,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.TimeZone;
 
-import androidx.annotation.Nullable;
-
-
 public class RegisterActivity extends AppCompatActivity {
 
     // Variables de la interfaz
@@ -48,9 +47,9 @@ public class RegisterActivity extends AppCompatActivity {
     // Variables de Firebase
     private FirebaseAuth mAuth;
     private DatabaseReference db;
-    // Variables para Google
-    private GoogleSignInClient mGoogleSignInClient;
-    private static final int RC_SIGN_IN = 9001;
+
+    // ✨ LA NUEVA API DE GOOGLE (Credential Manager) ✨
+    private CredentialManager credentialManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -59,13 +58,11 @@ public class RegisterActivity extends AppCompatActivity {
 
         mAuth = FirebaseAuth.getInstance();
         db = FirebaseDatabase.getInstance().getReference();
-        //Configuracion de Google
-        GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-                .requestIdToken(getString(R.string.default_web_client_id))
-                .requestEmail()
-                .build();
-        mGoogleSignInClient = GoogleSignIn.getClient(this, gso);
-        //Vincular las vistas
+
+        // Inicializar el nuevo Credential Manager
+        credentialManager = CredentialManager.create(this);
+
+        // Vincular las vistas
         nombreEditText = findViewById(R.id.nombreEditText);
         apellidosEditText = findViewById(R.id.apellidosEditText);
         emailEditText = findViewById(R.id.emailEditText);
@@ -92,56 +89,102 @@ public class RegisterActivity extends AppCompatActivity {
         btnRegistrar.setOnClickListener(v -> registrarUsuario());
         btnGoogle.setOnClickListener(v -> signInConGoogle());
 
-        loginTextView.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent i = new Intent(RegisterActivity.this, LoginActivity.class);
-                startActivity(i);
-            }
+        loginTextView.setOnClickListener(v -> {
+            Intent i = new Intent(RegisterActivity.this, LoginActivity.class);
+            startActivity(i);
         });
 
-    }
-    //Metodo de google sign in
-    private void signInConGoogle() {
-        Intent signInIntent = mGoogleSignInClient.getSignInIntent();
-        startActivityForResult(signInIntent, RC_SIGN_IN);
-    }
-    // Recibe el resultado de la seleccion de cuenta
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-
-        if (requestCode == RC_SIGN_IN) {
-            Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
-            try {
-                GoogleSignInAccount account = task.getResult(ApiException.class);
-                firebaseAuthWithGoogle(account);
-            } catch (ApiException e) {
-                Toast.makeText(this, "Fallo Google: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-            }
+        // MAGIA: Si el usuario viene rebotado del Login porque no tenía cuentas,
+        // abrimos el desplegable de Google automáticamente.
+        boolean abrirGoogle = getIntent().getBooleanExtra("abrirGoogleAutomatico", false);
+        if (abrirGoogle) {
+            signInConGoogle();
         }
     }
 
-    // Autentica en Firebase con la credencial de Google
-    private void firebaseAuthWithGoogle(GoogleSignInAccount account) {
-        AuthCredential credential = GoogleAuthProvider.getCredential(account.getIdToken(), null);
-        mAuth.signInWithCredential(credential)
-                .addOnCompleteListener(this, task -> {
+    // ------------------------------------------------------------
+    // ✨ NUEVO SISTEMA DE LOGIN CON GOOGLE ✨
+    // ------------------------------------------------------------
+    private void signInConGoogle() {
+        GetGoogleIdOption googleIdOption = new GetGoogleIdOption.Builder()
+                .setFilterByAuthorizedAccounts(false) // Fundamental: permite ver todas las cuentas y añadir nuevas
+                .setServerClientId(getString(R.string.default_web_client_id))
+                .setAutoSelectEnabled(false)
+                .build();
+
+        GetCredentialRequest request = new GetCredentialRequest.Builder()
+                .addCredentialOption(googleIdOption)
+                .build();
+
+        credentialManager.getCredentialAsync(
+                this,
+                request,
+                new android.os.CancellationSignal(),
+                ContextCompat.getMainExecutor(this),
+                new CredentialManagerCallback<GetCredentialResponse, GetCredentialException>() {
+                    @Override
+                    public void onResult(GetCredentialResponse result) {
+                        manejarRespuestaGoogle(result);
+                    }
+
+                    @Override
+                    public void onError(GetCredentialException e) {
+                        // Si el error es que no hay cuentas en el dispositivo (móvil vacío)
+                        if (e instanceof androidx.credentials.exceptions.NoCredentialException ||
+                                (e.getMessage() != null && e.getMessage().contains("No credentials available"))) {
+
+                            Toast.makeText(RegisterActivity.this, "No hay cuentas de Google. Vamos a añadir una...", Toast.LENGTH_LONG).show();
+
+                            // Le abrimos la pantalla nativa de Android para añadir cuenta de Google
+                            try {
+                                Intent addAccountIntent = new Intent(android.provider.Settings.ACTION_ADD_ACCOUNT);
+                                addAccountIntent.putExtra(android.provider.Settings.EXTRA_ACCOUNT_TYPES, new String[]{"com.google"});
+                                startActivity(addAccountIntent);
+                            } catch (Exception ex) {
+                                // Si falla, lo mandamos a los ajustes generales
+                                startActivity(new Intent(android.provider.Settings.ACTION_SETTINGS));
+                            }
+                        }
+                        // Para cualquier otro error (como si el usuario cierra la pestaña manualmente), lo ignoramos.
+                    }
+                }
+        );
+    }
+
+    private void manejarRespuestaGoogle(GetCredentialResponse result) {
+        try {
+            androidx.credentials.Credential credential = result.getCredential();
+
+            if (credential instanceof androidx.credentials.CustomCredential &&
+                    credential.getType().equals(GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL)) {
+
+                GoogleIdTokenCredential googleCredential = GoogleIdTokenCredential.createFrom(credential.getData());
+                AuthCredential authCredential = GoogleAuthProvider.getCredential(googleCredential.getIdToken(), null);
+
+                mAuth.signInWithCredential(authCredential).addOnCompleteListener(this, task -> {
                     if (task.isSuccessful()) {
                         FirebaseUser user = mAuth.getCurrentUser();
-                        String nombre = account.getGivenName();
-                        String apellidos = account.getFamilyName();
+                        String nombre = googleCredential.getGivenName();
+                        String apellidos = googleCredential.getFamilyName();
                         String correo = user.getEmail();
 
                         if (nombre == null) nombre = "";
                         if (apellidos == null) apellidos = "";
-                        // Guardamos en Base de Datos
+
                         guardarDatosFirestore(user.getUid(), nombre, apellidos, correo);
                     } else {
-                        Toast.makeText(this, "Error Auth Firebase: " + task.getException().getMessage(), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(RegisterActivity.this, "Error Auth: " + task.getException().getMessage(), Toast.LENGTH_SHORT).show();
                     }
                 });
+            }
+        } catch (Exception e) {
+            Toast.makeText(this, "Fallo al procesar credencial", Toast.LENGTH_SHORT).show();
+        }
     }
+
+    // ------------------------------------------------------------
+    // REGISTRO TRADICIONAL EMAIL / CONTRASEÑA
+    // ------------------------------------------------------------
     private void registrarUsuario() {
         String nombre = nombreEditText.getText().toString().trim();
         String apellidos = apellidosEditText.getText().toString().trim();
@@ -149,32 +192,15 @@ public class RegisterActivity extends AppCompatActivity {
         String password = passwordEditText.getText().toString().trim();
         String confirmPassword = confirmPasswordEditText.getText().toString().trim();
 
-        // VALIDACIONES
-        if (TextUtils.isEmpty(nombre)) {
-            nombreEditText.setError("El nombre es obligatorio");
-            return;
-        }
-        if (TextUtils.isEmpty(apellidos)) {
-            nombreEditText.setError("El primer apellido es obligatorio");
-            return;
-        }
-        if (TextUtils.isEmpty(email)) {
-            emailEditText.setError("El correo es obligatorio");
-            return;
-        }
-        if (TextUtils.isEmpty(password) || password.length() < 6) {
-            passwordEditText.setError("La contraseña debe tener al menos 6 caracteres");
-            return;
-        }
-        if (!password.equals(confirmPassword)) {
-            confirmPasswordEditText.setError("Las contraseñas no coinciden");
-            return;
-        }
+        if (TextUtils.isEmpty(nombre)) { nombreEditText.setError("El nombre es obligatorio"); return; }
+        if (TextUtils.isEmpty(apellidos)) { apellidosEditText.setError("El primer apellido es obligatorio"); return; }
+        if (TextUtils.isEmpty(email)) { emailEditText.setError("El correo es obligatorio"); return; }
+        if (TextUtils.isEmpty(password) || password.length() < 6) { passwordEditText.setError("La contraseña debe tener al menos 6 caracteres"); return; }
+        if (!password.equals(confirmPassword)) { confirmPasswordEditText.setError("Las contraseñas no coinciden"); return; }
 
-        // Si pasa las validaciones, crea el usuario en Firebase Auth
         mAuth.createUserWithEmailAndPassword(email, password)
                 .addOnCompleteListener(this, task -> {
-                    if (task.isSuccessful()) {// Si el usuario se creó, se guarda sus datos en Firestore
+                    if (task.isSuccessful()) {
                         FirebaseUser user = mAuth.getCurrentUser();
                         guardarDatosFirestore(user.getUid(), nombre, apellidos, email);
                     } else {
@@ -182,11 +208,15 @@ public class RegisterActivity extends AppCompatActivity {
                     }
                 });
     }
+
+    // ------------------------------------------------------------
+    // GUARDAR EN REALTIME DATABASE
+    // ------------------------------------------------------------
     private void guardarDatosFirestore(String uid, String nombre, String apellidos, String email) {
-        Date date = new Date(); //Fecha actual
-        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()); //Formato dia/mes/año hora:minutos
-        sdf.setTimeZone(TimeZone.getTimeZone("Europe/Madrid")); //Guarda la hora española y no la del movil local/emulador
-        String fecha = sdf.format(date); //Convierte el date en string con el formato dia/mes/año hora:minutos
+        Date date = new Date();
+        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
+        sdf.setTimeZone(TimeZone.getTimeZone("Europe/Madrid"));
+        String fecha = sdf.format(date);
 
         Map<String, Object> usuario = new HashMap<>();
         usuario.put("idUsuario", uid);
@@ -196,11 +226,9 @@ public class RegisterActivity extends AppCompatActivity {
         usuario.put("fechaRegistro", fecha);
         usuario.put("timestamp", System.currentTimeMillis());
 
-        // Guarda en la colección "users"
         db.child("users").child(uid).setValue(usuario)
                 .addOnSuccessListener(aVoid -> {
                     Toast.makeText(RegisterActivity.this, "¡Cuenta creada!", Toast.LENGTH_SHORT).show();
-                    // Redirigir a LoginActivity y borra historial para que no vuelva atrás
                     Intent intent = new Intent(RegisterActivity.this, MainActivity.class);
                     intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK);
                     startActivity(intent);
