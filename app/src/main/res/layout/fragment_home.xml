@@ -26,7 +26,7 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:padding="20dp"
-                android:gravity="center_vertical"
+                android:gravity="center"
                 android:background="@color/white">
 
                 <ImageView
@@ -48,12 +48,6 @@
                         android:textSize="18sp"
                         android:textColor="@color/color_acento_primario"/>
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Gestiona tus animales"
-                        android:textSize="12sp"
-                        android:textColor="#757575"/>
                 </LinearLayout>
             </LinearLayout>
         </androidx.cardview.widget.CardView>
