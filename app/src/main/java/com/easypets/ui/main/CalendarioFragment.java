@@ -13,9 +13,11 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.easypets.R;
+import com.easypets.adapters.EventoAdapter;
 import com.easypets.models.Evento;
 import com.easypets.models.Mascota;
 import com.easypets.repositories.EventoRepository;
@@ -33,6 +35,7 @@ import java.util.Locale;
 public class CalendarioFragment extends Fragment {
 
     private android.widget.CalendarView calendarView;
+    private android.widget.ImageButton btnFiltrarEventos;
     private TextView tvFechaSeleccionada;
     private MaterialButton btnIrAFecha;
     private RecyclerView rvEventos;
@@ -41,14 +44,14 @@ public class CalendarioFragment extends Fragment {
 
     private Calendar calendarioActual;
 
-    // --- FIREBASE Y REPOSITORIOS ---
     private FirebaseAuth mAuth;
     private EventoRepository eventoRepository;
     private MascotaRepository mascotaRepository;
 
-    // Listas para manejar el desplegable y las referencias
     private List<String> nombresMascotas;
     private List<Mascota> listaMascotasUsuario;
+
+    private EventoAdapter eventoAdapter;
 
     @Nullable
     @Override
@@ -66,6 +69,10 @@ public class CalendarioFragment extends Fragment {
         nombresMascotas = new ArrayList<>();
         listaMascotasUsuario = new ArrayList<>();
 
+        eventoAdapter = new EventoAdapter();
+        rvEventos.setLayoutManager(new LinearLayoutManager(getContext()));
+        rvEventos.setAdapter(eventoAdapter);
+
         // Cargar las mascotas del usuario para el desplegable
         cargarMascotasDelUsuario();
 
@@ -77,9 +84,9 @@ public class CalendarioFragment extends Fragment {
 
         configurarListeners();
 
-        // Por ahora, simulamos que no hay eventos para mostrar el diseño vacío
-        rvEventos.setVisibility(View.GONE);
-        layoutSinEventos.setVisibility(View.VISIBLE);
+        cargarEventosDeFecha(calendarioActual.get(Calendar.DAY_OF_MONTH),
+                calendarioActual.get(Calendar.MONTH),
+                calendarioActual.get(Calendar.YEAR));
 
         return view;
     }
@@ -91,6 +98,7 @@ public class CalendarioFragment extends Fragment {
         rvEventos = view.findViewById(R.id.rvEventos);
         layoutSinEventos = view.findViewById(R.id.layoutSinEventos);
         fabAgregarEvento = view.findViewById(R.id.fabAgregarEvento);
+        btnFiltrarEventos = view.findViewById(R.id.btnFiltrarEventos);
     }
 
     private void cargarMascotasDelUsuario() {
@@ -99,13 +107,16 @@ public class CalendarioFragment extends Fragment {
             mascotaRepository.escucharMascotas(user.getUid(), new MascotaRepository.LeerMascotasCallback() {
                 @Override
                 public void onResultado(List<Mascota> listaMascotas) {
-                    // Como escucharMascotas actualiza en tiempo real, limpiamos antes de rellenar
                     nombresMascotas.clear();
                     listaMascotasUsuario.clear();
 
                     nombresMascotas.add("General");
 
-                    listaMascotasUsuario.addAll(listaMascotas); // Guardamos los objetos enteros
+                    listaMascotasUsuario.addAll(listaMascotas);
+
+                    if (eventoAdapter != null) {
+                        eventoAdapter.setMascotas(listaMascotasUsuario);
+                    }
 
                     for (Mascota m : listaMascotas) {
                         nombresMascotas.add(m.getNombre() + " (" + m.getEspecie() + ")");
@@ -124,11 +135,15 @@ public class CalendarioFragment extends Fragment {
 
     private void configurarListeners() {
         calendarView.setOnDateChangeListener((view, year, month, dayOfMonth) -> {
+            // Actualizamos la variable global calendarioActual para saber en qué día estamos
+            calendarioActual.set(year, month, dayOfMonth);
+
             actualizarTextoFecha(dayOfMonth, month, year);
             cargarEventosDeFecha(dayOfMonth, month, year);
         });
 
         btnIrAFecha.setOnClickListener(v -> mostrarBuscadorDeFecha());
+        btnFiltrarEventos.setOnClickListener(v -> mostrarDialogoFiltros());
         fabAgregarEvento.setOnClickListener(v -> mostrarDialogoAgregarEvento());
     }
 
@@ -138,9 +153,31 @@ public class CalendarioFragment extends Fragment {
     }
 
     private void cargarEventosDeFecha(int dia, int mes, int anio) {
-        // En el futuro leeremos de Firebase aquí.
-        rvEventos.setVisibility(View.GONE);
-        layoutSinEventos.setVisibility(View.VISIBLE);
+        String fechaBuscada = String.format(Locale.getDefault(), "%02d/%02d/%d", dia, mes + 1, anio);
+
+        FirebaseUser user = mAuth.getCurrentUser();
+        if (user != null) {
+            eventoRepository.obtenerEventosPorFecha(user.getUid(), fechaBuscada, new EventoRepository.LeerEventosCallback() {
+                @Override
+                public void onResultado(List<Evento> listaEventos) {
+                    if (listaEventos.isEmpty()) {
+                        // Si no hay eventos, ocultamos la lista y mostramos la huella
+                        rvEventos.setVisibility(View.GONE);
+                        layoutSinEventos.setVisibility(View.VISIBLE);
+                    } else {
+                        // Si hay eventos, los pasamos al adaptador y mostramos la lista
+                        eventoAdapter.setEventos(listaEventos);
+                        rvEventos.setVisibility(View.VISIBLE);
+                        layoutSinEventos.setVisibility(View.GONE);
+                    }
+                }
+
+                @Override
+                public void onError(String error) {
+                    Toast.makeText(getContext(), "Error al cargar eventos", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
     }
 
     private void mostrarBuscadorDeFecha() {
@@ -154,6 +191,8 @@ public class CalendarioFragment extends Fragment {
                     calendarioActual.set(year, month, dayOfMonth);
                     calendarView.setDate(calendarioActual.getTimeInMillis(), true, true);
                     actualizarTextoFecha(dayOfMonth, month, year);
+
+                    cargarEventosDeFecha(dayOfMonth, month, year);
                 },
                 anioActual, mesActual, diaActual
         );
@@ -169,14 +208,13 @@ public class CalendarioFragment extends Fragment {
         android.app.AlertDialog dialog = builder.create();
 
         com.google.android.material.textfield.TextInputEditText etTitulo = dialogView.findViewById(R.id.etTituloEvento);
-        android.widget.RadioGroup rgTipo = dialogView.findViewById(R.id.rgTipoEvento);
+        android.widget.AutoCompleteTextView spinnerTipoEvento = dialogView.findViewById(R.id.spinnerTipoEvento);
         MaterialButton btnCancelar = dialogView.findViewById(R.id.btnCancelarDialog);
         MaterialButton btnGuardar = dialogView.findViewById(R.id.btnGuardarDialog);
         MaterialButton btnFechaDialog = dialogView.findViewById(R.id.btnFechaDialog);
         MaterialButton btnHoraDialog = dialogView.findViewById(R.id.btnHoraDialog);
         android.widget.AutoCompleteTextView spinnerMascotas = dialogView.findViewById(R.id.spinnerMascotas);
 
-        // CONFIGURAR EL DESPLEGABLE CON LAS MASCOTAS REALES
         ArrayAdapter<String> adapterMascotas = new ArrayAdapter<>(
                 requireContext(),
                 android.R.layout.simple_dropdown_item_1line,
@@ -187,8 +225,24 @@ public class CalendarioFragment extends Fragment {
             spinnerMascotas.setText(nombresMascotas.get(0), false);
         }
 
+        String[] opcionesTipo = {"Nota", "Veterinario", "Peluquería", "Guardería"};
+        ArrayAdapter<String> adapterTipo = new ArrayAdapter<>(
+                requireContext(),
+                android.R.layout.simple_dropdown_item_1line,
+                opcionesTipo
+        );
+        spinnerTipoEvento.setAdapter(adapterTipo);
+        spinnerTipoEvento.setText(opcionesTipo[0], false); // "Nota" por defecto
+
         Calendar calendarioDialog = Calendar.getInstance();
         calendarioDialog.setTimeInMillis(calendarioActual.getTimeInMillis());
+
+        // Poner la fecha actual en el botón al abrir el diálogo
+        String fechaFormatInit = String.format(Locale.getDefault(), "%02d/%02d/%d",
+                calendarioDialog.get(Calendar.DAY_OF_MONTH),
+                calendarioDialog.get(Calendar.MONTH) + 1,
+                calendarioDialog.get(Calendar.YEAR));
+        btnFechaDialog.setText(fechaFormatInit);
 
         btnFechaDialog.setOnClickListener(v -> {
             DatePickerDialog picker = new DatePickerDialog(
@@ -204,7 +258,7 @@ public class CalendarioFragment extends Fragment {
             );
             picker.show();
         });
-        // ✨ NUEVO: HACER QUE EL BOTÓN DE HORA ABRA EL RELOJ
+
         btnHoraDialog.setOnClickListener(v -> {
             int horaActual = calendarioDialog.get(Calendar.HOUR_OF_DAY);
             int minutoActual = calendarioDialog.get(Calendar.MINUTE);
@@ -219,7 +273,7 @@ public class CalendarioFragment extends Fragment {
                     },
                     horaActual,
                     minutoActual,
-                    true // true para formato 24h
+                    true
             );
             timePicker.show();
         });
@@ -232,28 +286,18 @@ public class CalendarioFragment extends Fragment {
                 etTitulo.setError("Escribe el título del evento");
                 return;
             }
+
             String fechaFinal = btnFechaDialog.getText().toString();
             if (fechaFinal.equals("Seleccione una fecha")) {
-                Toast.makeText(getContext(), "Por favor, seleccione una fecha", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getContext(), "Por favor, elige una fecha", Toast.LENGTH_SHORT).show();
                 return;
             }
 
-            // ✨ NUEVO: COMPROBAR SI HA PUESTO HORA O NO
             String horaFinal = btnHoraDialog.getText().toString();
             if (horaFinal.equals("Hora (Opcional)")) {
-                horaFinal = ""; // Lo dejamos vacío porque es opcional
+                horaFinal = "";
             }
 
-            // (Aquí está la lógica que ya tienes de los RadioButtons para el tipo...)
-            int selectedId = rgTipo.getCheckedRadioButtonId();
-            String tipo = "Veterinario";
-            if (selectedId == R.id.rbPeluqueria) {
-                tipo = "Peluquería";
-            } else if (selectedId == R.id.rbNota) {
-                tipo = "Nota";
-            }
-
-            // (Aquí está la lógica que ya tienes para sacar el ID de la mascota...)
             String mascotaSeleccionadaTexto = spinnerMascotas.getText().toString();
             String idMascotaSeleccionada = "";
 
@@ -267,10 +311,10 @@ public class CalendarioFragment extends Fragment {
                 }
             }
 
-            // --- GUARDAR EN FIREBASE ---
+            String tipo = spinnerTipoEvento.getText().toString();
+
             FirebaseUser user = mAuth.getCurrentUser();
             if (user != null) {
-                // ✨ NUEVO: Añadimos 'horaFinal' al constructor
                 Evento nuevoEvento = new Evento(null, titulo, fechaFinal, horaFinal, tipo, idMascotaSeleccionada);
 
                 eventoRepository.guardarEvento(user.getUid(), nuevoEvento, new EventoRepository.AccionCallback() {
@@ -278,6 +322,17 @@ public class CalendarioFragment extends Fragment {
                     public void onExito() {
                         Toast.makeText(getContext(), "¡Evento guardado correctamente!", Toast.LENGTH_SHORT).show();
                         dialog.dismiss();
+
+                        String fechaActualViendo = String.format(Locale.getDefault(), "%02d/%02d/%d",
+                                calendarioActual.get(Calendar.DAY_OF_MONTH),
+                                calendarioActual.get(Calendar.MONTH) + 1,
+                                calendarioActual.get(Calendar.YEAR));
+
+                        if (fechaFinal.equals(fechaActualViendo)) {
+                            cargarEventosDeFecha(calendarioActual.get(Calendar.DAY_OF_MONTH),
+                                    calendarioActual.get(Calendar.MONTH),
+                                    calendarioActual.get(Calendar.YEAR));
+                        }
                     }
 
                     @Override
@@ -291,5 +346,118 @@ public class CalendarioFragment extends Fragment {
         });
 
         dialog.show();
+    }
+    private void mostrarDialogoFiltros() {
+        // Usamos BottomSheetDialog para que salga desde abajo de la pantalla
+        com.google.android.material.bottomsheet.BottomSheetDialog bottomSheet = new com.google.android.material.bottomsheet.BottomSheetDialog(requireContext());
+        View dialogView = getLayoutInflater().inflate(R.layout.dialog_filtros, null);
+        bottomSheet.setContentView(dialogView);
+
+        com.google.android.material.switchmaterial.SwitchMaterial switchVerTodos = dialogView.findViewById(R.id.switchVerTodos);
+        android.widget.AutoCompleteTextView spinnerTipo = dialogView.findViewById(R.id.spinnerFiltroTipo);
+        android.widget.AutoCompleteTextView spinnerMascota = dialogView.findViewById(R.id.spinnerFiltroMascota);
+        MaterialButton btnLimpiar = dialogView.findViewById(R.id.btnLimpiarFiltros);
+        MaterialButton btnAplicar = dialogView.findViewById(R.id.btnAplicarFiltros);
+
+        // Opciones del Spinner de Tipo
+        String[] opcionesTipo = {"Todos", "Veterinario", "Peluquería", "Guardería", "Nota"};
+        spinnerTipo.setAdapter(new ArrayAdapter<>(requireContext(), android.R.layout.simple_dropdown_item_1line, opcionesTipo));
+        spinnerTipo.setText("Todos", false);
+
+        // Opciones del Spinner de Mascota
+        List<String> opcionesMascota = new ArrayList<>();
+        opcionesMascota.add("Todas");
+        for (Mascota m : listaMascotasUsuario) {
+            opcionesMascota.add(m.getNombre());
+        }
+        spinnerMascota.setAdapter(new ArrayAdapter<>(requireContext(), android.R.layout.simple_dropdown_item_1line, opcionesMascota));
+        spinnerMascota.setText("Todas", false);
+
+        btnLimpiar.setOnClickListener(v -> {
+            switchVerTodos.setChecked(false);
+            spinnerTipo.setText("Todos", false);
+            spinnerMascota.setText("Todas", false);
+        });
+
+        btnAplicar.setOnClickListener(v -> {
+            boolean verTodos = switchVerTodos.isChecked();
+            String tipoFiltro = spinnerTipo.getText().toString();
+            String mascotaFiltro = spinnerMascota.getText().toString();
+
+            // Buscar el ID de la mascota si eligió una específica
+            String idMascotaFiltro = "";
+            if (!mascotaFiltro.equals("Todas")) {
+                for (Mascota m : listaMascotasUsuario) {
+                    if (m.getNombre().equals(mascotaFiltro)) {
+                        idMascotaFiltro = m.getIdMascota();
+                        break;
+                    }
+                }
+            }
+
+            aplicarFiltrosA_Firebase(verTodos, tipoFiltro, idMascotaFiltro);
+            bottomSheet.dismiss();
+        });
+
+        bottomSheet.show();
+    }
+
+    private void aplicarFiltrosA_Firebase(boolean verTodos, String tipoFiltro, String idMascotaFiltro) {
+        FirebaseUser user = mAuth.getCurrentUser();
+        if (user == null) return;
+
+        if (verTodos) {
+            tvFechaSeleccionada.setText("Todos tus eventos");
+            eventoRepository.obtenerTodosLosEventos(user.getUid(), new EventoRepository.LeerEventosCallback() {
+                @Override
+                public void onResultado(List<Evento> listaEventos) {
+                    procesarYMostrarLista(listaEventos, tipoFiltro, idMascotaFiltro);
+                }
+
+                @Override
+                public void onError(String error) { }
+            });
+        } else {
+            String fechaBuscada = String.format(Locale.getDefault(), "%02d/%02d/%d",
+                    calendarioActual.get(Calendar.DAY_OF_MONTH),
+                    calendarioActual.get(Calendar.MONTH) + 1,
+                    calendarioActual.get(Calendar.YEAR));
+            tvFechaSeleccionada.setText("Eventos para el " + fechaBuscada);
+
+            eventoRepository.obtenerEventosPorFecha(user.getUid(), fechaBuscada, new EventoRepository.LeerEventosCallback() {
+                @Override
+                public void onResultado(List<Evento> listaEventos) {
+                    procesarYMostrarLista(listaEventos, tipoFiltro, idMascotaFiltro);
+                }
+
+                @Override
+                public void onError(String error) { }
+            });
+        }
+    }
+
+    private void procesarYMostrarLista(List<Evento> listaOriginal, String tipoFiltro, String idMascotaFiltro) {
+        List<Evento> listaFiltrada = new ArrayList<>();
+
+        for (Evento e : listaOriginal) {
+            boolean pasaFiltroTipo = tipoFiltro.equals("Todos") || tipoFiltro.equals(e.getTipo());
+
+            // Si la mascota del evento es nula (General), hay que manejarlo para que no dé error
+            String idMascotaEvento = e.getIdMascota() == null ? "" : e.getIdMascota();
+            boolean pasaFiltroMascota = idMascotaFiltro.isEmpty() || idMascotaFiltro.equals(idMascotaEvento);
+
+            if (pasaFiltroTipo && pasaFiltroMascota) {
+                listaFiltrada.add(e);
+            }
+        }
+
+        if (listaFiltrada.isEmpty()) {
+            rvEventos.setVisibility(View.GONE);
+            layoutSinEventos.setVisibility(View.VISIBLE);
+        } else {
+            eventoAdapter.setEventos(listaFiltrada);
+            rvEventos.setVisibility(View.VISIBLE);
+            layoutSinEventos.setVisibility(View.GONE);
+        }
     }
 }

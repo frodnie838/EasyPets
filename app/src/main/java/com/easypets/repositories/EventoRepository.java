@@ -71,4 +71,27 @@ public class EventoRepository {
                     }
                 });
     }
+
+    // --- OBTENER TODOS LOS EVENTOS ---
+    public void obtenerTodosLosEventos(String uid, LeerEventosCallback callback) {
+        mDatabase.child("eventos").child(uid)
+                .addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        List<Evento> listaTemporal = new ArrayList<>();
+                        for (DataSnapshot data : snapshot.getChildren()) {
+                            Evento e = data.getValue(Evento.class);
+                            if (e != null) {
+                                listaTemporal.add(e);
+                            }
+                        }
+                        callback.onResultado(listaTemporal);
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
+                        callback.onError(error.getMessage());
+                    }
+                });
+    }
 }
