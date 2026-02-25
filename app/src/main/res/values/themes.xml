@@ -1,10 +1,10 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
-    <style name="Base.Theme.EasyPets" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your light theme here. -->
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+    <style name="Base.Theme.EasyPets" parent="Theme.Material3.Light.NoActionBar">
         <item name="android:windowLightStatusBar">true</item>
     </style>
-
     <style name="Theme.EasyPets" parent="Base.Theme.EasyPets" />
+    <style name="TemaCalendario" parent="Theme.AppCompat.Light">
+        <item name="colorAccent">@color/color_acento_primario</item>
+        <item name="colorPrimary">@color/color_acento_primario</item>
+    </style>
 </resources>

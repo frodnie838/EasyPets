@@ -7,6 +7,7 @@ import android.util.Base64;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -54,14 +55,11 @@ public class MascotaAdapter extends RecyclerView.Adapter<MascotaAdapter.MascotaV
             }
         });
 
-        // ✨ LÓGICA DE FOTO CORREGIDA PARA LA LISTA ✨
         if (mascota.getFotoPerfilUrl() != null && !mascota.getFotoPerfilUrl().isEmpty()) {
             try {
                 byte[] decodedString = Base64.decode(mascota.getFotoPerfilUrl(), Base64.DEFAULT);
                 Bitmap decodedByte = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
                 holder.ivFotoMascota.setImageBitmap(decodedByte);
-
-                // Quitamos márgenes, quitamos tinte verde y ajustamos
                 holder.ivFotoMascota.setPadding(0, 0, 0, 0);
                 holder.ivFotoMascota.setImageTintList(null);
                 holder.ivFotoMascota.setScaleType(ImageView.ScaleType.CENTER_CROP);
@@ -71,6 +69,33 @@ public class MascotaAdapter extends RecyclerView.Adapter<MascotaAdapter.MascotaV
         } else {
             ponerHuellaPorDefecto(holder);
         }
+
+        // ✨ NUEVO: Al hacer clic en la miniatura, se abre el visualizador grande ✨
+        holder.ivFotoMascota.setOnClickListener(v -> {
+            if (holder.ivFotoMascota.getDrawable() != null) {
+                mostrarFotoGrande(v.getContext(), holder.ivFotoMascota.getDrawable());
+            }
+        });
+    }
+
+    // ✨ MÉTODO PARA MOSTRAR LA FOTO EN GRANDE ✨
+    private void mostrarFotoGrande(Context context, android.graphics.drawable.Drawable drawable) {
+        android.app.Dialog dialog = new android.app.Dialog(context, android.R.style.Theme_Black_NoTitleBar_Fullscreen);
+        dialog.setContentView(R.layout.dialog_ver_foto);
+
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
+        }
+
+        ImageView ivGrande = dialog.findViewById(R.id.ivFotoGrande);
+        ImageButton btnCerrar = dialog.findViewById(R.id.btnCerrarFoto);
+
+        ivGrande.setImageDrawable(drawable);
+
+        btnCerrar.setOnClickListener(v -> dialog.dismiss());
+        ivGrande.setOnClickListener(v -> dialog.dismiss());
+
+        dialog.show();
     }
 
     @Override
@@ -78,12 +103,10 @@ public class MascotaAdapter extends RecyclerView.Adapter<MascotaAdapter.MascotaV
         return listaMascotas.size();
     }
 
-    // ✨ MÉTODO AUXILIAR PARA LA HUELLA ✨
     private void ponerHuellaPorDefecto(MascotaViewHolder holder) {
         Context context = holder.itemView.getContext();
         holder.ivFotoMascota.setImageResource(R.drawable.huella);
-        holder.ivFotoMascota.setPadding(30, 30, 30, 30); // El padding original
-        // Pintamos de nuevo la huella de verde
+        holder.ivFotoMascota.setPadding(30, 30, 30, 30);
         holder.ivFotoMascota.setImageTintList(ContextCompat.getColorStateList(context, R.color.color_acento_primario));
         holder.ivFotoMascota.setScaleType(ImageView.ScaleType.FIT_CENTER);
     }

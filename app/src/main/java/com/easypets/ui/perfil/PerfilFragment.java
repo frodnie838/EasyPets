@@ -93,6 +93,11 @@ public class PerfilFragment extends Fragment {
             configurarModoInvitado();
         }
 
+        ivFotoPerfil.setOnClickListener(v -> {
+            if (ivFotoPerfil.getDrawable() != null) {
+                mostrarFotoGrande();
+            }
+        });
         btnCerrarSesion.setOnClickListener(v -> cerrarSesion());
     }
 
@@ -296,5 +301,25 @@ public class PerfilFragment extends Fragment {
                     }
             );
         } else { irALogin(); }
+    }
+    private void mostrarFotoGrande() {
+        if (getContext() == null) return;
+
+        android.app.Dialog dialog = new android.app.Dialog(getContext(), android.R.style.Theme_Black_NoTitleBar_Fullscreen);
+        dialog.setContentView(R.layout.dialog_ver_foto);
+
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
+        }
+
+        ImageView ivGrande = dialog.findViewById(R.id.ivFotoGrande);
+        android.widget.ImageButton btnCerrar = dialog.findViewById(R.id.btnCerrarFoto);
+
+        ivGrande.setImageDrawable(ivFotoPerfil.getDrawable());
+
+        btnCerrar.setOnClickListener(v -> dialog.dismiss());
+        ivGrande.setOnClickListener(v -> dialog.dismiss());
+
+        dialog.show();
     }
 }

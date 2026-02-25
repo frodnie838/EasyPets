@@ -20,7 +20,6 @@ public class EventoRepository {
         mDatabase = FirebaseDatabase.getInstance().getReference();
     }
 
-    // --- INTERFACES (Para comunicarse con CalendarioFragment) ---
     public interface AccionCallback {
         void onExito();
         void onError(String error);
@@ -31,26 +30,26 @@ public class EventoRepository {
         void onError(String error);
     }
 
-    // --- 1. GUARDAR UN EVENTO ---
     public void guardarEvento(String uid, Evento evento, AccionCallback callback) {
-        // Generamos el ID único en el nodo "eventos" -> "uid_del_usuario"
-        String idEvento = mDatabase.child("eventos").child(uid).push().getKey();
+        String idEvento;
+
+        if (evento.getId() != null && !evento.getId().isEmpty()) {
+            idEvento = evento.getId();
+        } else {
+            idEvento = mDatabase.child("eventos").child(uid).push().getKey();
+        }
 
         if (idEvento != null) {
-            evento.setId(idEvento); // Le asignamos el ID generado
-
-            // Guardamos el objeto Evento en la base de datos
+            evento.setId(idEvento);
             mDatabase.child("eventos").child(uid).child(idEvento).setValue(evento)
                     .addOnSuccessListener(aVoid -> callback.onExito())
                     .addOnFailureListener(e -> callback.onError(e.getMessage()));
         } else {
-            callback.onError("No se pudo generar un ID para el evento");
+            callback.onError("Error al generar ID");
         }
     }
 
-    // --- 2. OBTENER EVENTOS POR FECHA ESPECÍFICA ---
     public void obtenerEventosPorFecha(String uid, String fecha, LeerEventosCallback callback) {
-        // Buscamos en los eventos del usuario aquellos cuya "fecha" coincida con la que le pasamos
         mDatabase.child("eventos").child(uid).orderByChild("fecha").equalTo(fecha)
                 .addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
@@ -59,29 +58,7 @@ public class EventoRepository {
                         for (DataSnapshot data : snapshot.getChildren()) {
                             Evento e = data.getValue(Evento.class);
                             if (e != null) {
-                                listaTemporal.add(e);
-                            }
-                        }
-                        callback.onResultado(listaTemporal); // Devolvemos la lista de eventos de ese día
-                    }
-
-                    @Override
-                    public void onCancelled(@NonNull DatabaseError error) {
-                        callback.onError(error.getMessage());
-                    }
-                });
-    }
-
-    // --- OBTENER TODOS LOS EVENTOS ---
-    public void obtenerTodosLosEventos(String uid, LeerEventosCallback callback) {
-        mDatabase.child("eventos").child(uid)
-                .addListenerForSingleValueEvent(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(@NonNull DataSnapshot snapshot) {
-                        List<Evento> listaTemporal = new ArrayList<>();
-                        for (DataSnapshot data : snapshot.getChildren()) {
-                            Evento e = data.getValue(Evento.class);
-                            if (e != null) {
+                                e.setId(data.getKey()); // ✨ VITAL: Asignar el ID de Firebase al objeto
                                 listaTemporal.add(e);
                             }
                         }
@@ -93,5 +70,34 @@ public class EventoRepository {
                         callback.onError(error.getMessage());
                     }
                 });
+    }
+
+    public void obtenerTodosLosEventos(String uid, LeerEventosCallback callback) {
+        mDatabase.child("eventos").child(uid)
+                .addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        List<Evento> listaTemporal = new ArrayList<>();
+                        for (DataSnapshot data : snapshot.getChildren()) {
+                            Evento e = data.getValue(Evento.class);
+                            if (e != null) {
+                                e.setId(data.getKey()); // ✨ VITAL: Asignar el ID de Firebase al objeto
+                                listaTemporal.add(e);
+                            }
+                        }
+                        callback.onResultado(listaTemporal);
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
+                        callback.onError(error.getMessage());
+                    }
+                });
+    }
+
+    public void eliminarEvento(String userId, String eventoId, AccionCallback callback) {
+        mDatabase.child("eventos").child(userId).child(eventoId).removeValue()
+                .addOnSuccessListener(aVoid -> callback.onExito())
+                .addOnFailureListener(e -> callback.onError(e.getMessage()));
     }
 }

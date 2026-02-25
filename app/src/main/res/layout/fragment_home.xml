@@ -161,85 +161,22 @@
             android:textColor="@color/color_acento_primario"
             android:layout_marginBottom="12dp"/>
 
-        <androidx.cardview.widget.CardView
-            android:id="@+id/cardEventoDestacado"
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvProximosEventos"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:cardCornerRadius="16dp"
-            app:cardElevation="2dp"
+            android:nestedScrollingEnabled="false"
+            android:layout_marginBottom="24dp"/>
+
+        <TextView
+            android:id="@+id/tvSinEventosProximos"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Tienes tu agenda libre. ¡Disfruta!"
+            android:textAlignment="center"
+            android:textColor="#757575"
             android:layout_marginBottom="24dp"
-            android:foreground="?attr/selectableItemBackground">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:padding="16dp"
-                android:gravity="center_vertical"
-                android:background="@color/white">
-
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:gravity="center"
-                    android:paddingEnd="16dp">
-                    <TextView
-                        android:id="@+id/tvEventoDia"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="-"
-                        android:textSize="22sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/color_acento_primario"/>
-                    <TextView
-                        android:id="@+id/tvEventoMes"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text=""
-                        android:textSize="12sp"
-                        android:textStyle="bold"
-                        android:textColor="#757575"/>
-                </LinearLayout>
-
-                <View
-                    android:layout_width="1dp"
-                    android:layout_height="35dp"
-                    android:background="#E0E0E0"
-                    android:layout_marginEnd="16dp"/>
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:id="@+id/tvEventoTitulo"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Sin eventos próximos"
-                        android:textSize="16sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/black"/>
-
-                    <TextView
-                        android:id="@+id/tvEventoHora"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="..."
-                        android:textSize="13sp"
-                        android:textColor="#757575"
-                        android:layout_marginTop="2dp"/>
-                </LinearLayout>
-
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:src="@android:drawable/ic_menu_my_calendar"
-                    app:tint="#BDBDBD"/>
-            </LinearLayout>
-        </androidx.cardview.widget.CardView>
+            android:visibility="gone"/>
 
         <TextView
             android:layout_width="wrap_content"
@@ -268,7 +205,7 @@
                     android:id="@+id/etNotaRapida"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Ej. Comprar pienso, vacuna rabia..."
+                    android:hint="Ej. Comprar pienso, pastillas..."
                     android:background="@android:color/transparent"
                     android:padding="8dp"
                     android:textSize="16sp"
@@ -295,9 +232,9 @@
                         android:layout_weight="1"
                         android:layout_marginEnd="12dp"
                         android:text="Hoy"
-                        app:icon="@android:drawable/ic_menu_my_calendar"
+                        app:icon="@drawable/write_note"
                         android:textColor="#757575"
-                        app:iconTint="#757575"
+                        app:iconTint="#C5757575"
                         app:strokeColor="#E0E0E0"/>
 
                     <com.google.android.material.button.MaterialButton

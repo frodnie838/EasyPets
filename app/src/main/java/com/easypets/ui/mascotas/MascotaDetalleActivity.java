@@ -1,10 +1,15 @@
 package com.easypets.ui.mascotas;
 
+import android.app.Dialog;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.util.Base64;
+import android.view.View;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -44,7 +49,6 @@ public class MascotaDetalleActivity extends AppCompatActivity {
         idMascotaSeleccionada = getIntent().getStringExtra("idMascota");
         user = FirebaseAuth.getInstance().getCurrentUser();
 
-        // 1. Vincular vistas
         tvNombre = findViewById(R.id.tvDetalleNombre);
         tvEspecie = findViewById(R.id.tvDetalleEspecie);
         tvRaza = findViewById(R.id.tvDetalleRaza);
@@ -56,19 +60,43 @@ public class MascotaDetalleActivity extends AppCompatActivity {
         btnEditar = findViewById(R.id.btnEditarMascota);
         ivDetalleFoto = findViewById(R.id.ivDetalleFoto);
 
+        // ✨ NUEVO: Click listener para la foto de detalle ✨
+        ivDetalleFoto.setOnClickListener(v -> {
+            if (ivDetalleFoto.getDrawable() != null) {
+                mostrarFotoGrande();
+            }
+        });
+
         if (user != null && idMascotaSeleccionada != null) {
             iniciarListenerTiempoReal();
         }
 
-        // Botón Editar
         btnEditar.setOnClickListener(v -> {
             Intent intent = new Intent(MascotaDetalleActivity.this, AgregarMascotaActivity.class);
             intent.putExtra("idMascota", idMascotaSeleccionada);
             startActivity(intent);
         });
 
-        // Botón Eliminar
         btnEliminar.setOnClickListener(v -> mostrarDialogoConfirmacion());
+    }
+
+    private void mostrarFotoGrande() {
+        Dialog dialog = new Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen);
+        dialog.setContentView(R.layout.dialog_ver_foto);
+
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        }
+
+        ImageView ivGrande = dialog.findViewById(R.id.ivFotoGrande);
+        ImageButton btnCerrar = dialog.findViewById(R.id.btnCerrarFoto);
+
+        ivGrande.setImageDrawable(ivDetalleFoto.getDrawable());
+
+        btnCerrar.setOnClickListener(v -> dialog.dismiss());
+        ivGrande.setOnClickListener(v -> dialog.dismiss());
+
+        dialog.show();
     }
 
     private void iniciarListenerTiempoReal() {
@@ -90,16 +118,13 @@ public class MascotaDetalleActivity extends AppCompatActivity {
                     tvFechaNacimiento.setText(mascota.getFechaNacimiento() != null ? mascota.getFechaNacimiento() : "Desconocida");
                     tvPeso.setText(mascota.getPeso() + " kg");
 
-                    // ✨ LÓGICA DE LA FOTO CORREGIDA PARA EL DETALLE ✨
                     if (mascota.getFotoPerfilUrl() != null && !mascota.getFotoPerfilUrl().isEmpty()) {
                         try {
                             byte[] decodedString = Base64.decode(mascota.getFotoPerfilUrl(), Base64.DEFAULT);
                             Bitmap decodedByte = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
                             ivDetalleFoto.setImageBitmap(decodedByte);
-
-                            // Ajustes para foto real
                             ivDetalleFoto.setPadding(0, 0, 0, 0);
-                            ivDetalleFoto.setImageTintList(null); // Quitar filtro verde
+                            ivDetalleFoto.setImageTintList(null);
                             ivDetalleFoto.setScaleType(ImageView.ScaleType.CENTER_CROP);
                         } catch (Exception e) {
                             ponerHuellaPorDefectoDetalle();
@@ -119,7 +144,6 @@ public class MascotaDetalleActivity extends AppCompatActivity {
         mascotaRef.addValueEventListener(mascotaListener);
     }
 
-    // ✨ MÉTODO AUXILIAR PARA LA HUELLA ✨
     private void ponerHuellaPorDefectoDetalle() {
         ivDetalleFoto.setImageResource(R.drawable.huella);
         ivDetalleFoto.setPadding(50, 50, 50, 50);
