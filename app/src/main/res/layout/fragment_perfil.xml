@@ -99,37 +99,39 @@
             android:visibility="visible">
 
             <ImageView
-                android:layout_width="120dp"
-                android:layout_height="120dp"
-                android:src="@drawable/huella"
-                android:alpha="0.3"
-                android:layout_marginBottom="24dp"
-                app:tint="@color/color_acento_primario"/>
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                android:src="@drawable/profile"
+                android:alpha="0.5"
+                app:tint="@color/color_acento_primario"
+                android:layout_marginBottom="16dp"/>
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="¡Hola, Invitado!"
-                android:textSize="24sp"
                 android:textStyle="bold"
+                android:textSize="16sp"
                 android:textColor="@color/black"/>
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Regístrate para guardar a tus mascotas y programar sus citas."
+                android:text="Regístrate para guardar a tus mascotas y personalizar tu cuenta."
                 android:gravity="center"
-                android:layout_marginTop="12dp"
-                android:layout_marginBottom="32dp"
-                android:textColor="#757575"/>
+                android:textSize="14sp"
+                android:textColor="#757575"
+                android:layout_marginTop="8dp"/>
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnIrALogin"
-                android:layout_width="match_parent"
-                android:layout_height="60dp"
-                android:text="Iniciar Sesión / Registro"
-                app:cornerRadius="12dp"
-                android:backgroundTint="@color/color_acento_primario"/>
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Iniciar Sesión"
+                android:textColor="@color/color_acento_primario" />
+
         </LinearLayout>
 
     </FrameLayout>

@@ -182,18 +182,8 @@ public class HomeFragment extends Fragment {
     }
 
     private void configurarNavegacionBotones() {
-        // Estas siempre funcionan, pero si es invitado mostramos aviso al pulsar en las "privadas"
-        cardMisMascotas.setOnClickListener(v -> {
-            if (currentUser == null) { mostrarAvisoRegistro("Mis Mascotas"); return; }
-            cambiarTab(R.id.nav_pets);
-        });
-
-        cardCalendario.setOnClickListener(v -> {
-            if (currentUser == null) { mostrarAvisoRegistro("Calendario"); return; }
-            cambiarTab(R.id.nav_calendar);
-        });
-
-        // FUNCIONES PÚBLICAS (Funcionan para todos)
+        cardMisMascotas.setOnClickListener(v -> { cambiarTab(R.id.nav_pets); });
+        cardCalendario.setOnClickListener(v -> { cambiarTab(R.id.nav_calendar); });
         cardVeterinarios.setOnClickListener(v -> abrirFragmento(new VeterinariosFragment()));
         cardEducacion.setOnClickListener(v -> Toast.makeText(getContext(), "Blog de educación próximamente", Toast.LENGTH_SHORT).show());
         cardTiendas.setOnClickListener(v -> Toast.makeText(getContext(), "Servicios cercanos próximamente", Toast.LENGTH_SHORT).show());
@@ -291,7 +281,7 @@ public class HomeFragment extends Fragment {
             }
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
-                tvConsejoDia.setText("El chocolate y la cebolla son muy tóxicos para perros y gatos.");
+                tvConsejoDia.setText("Las 'huellas dactilares' de los perros se encuentran en su nariz. ¡No hay dos narices iguales!");
             }
         });
     }
