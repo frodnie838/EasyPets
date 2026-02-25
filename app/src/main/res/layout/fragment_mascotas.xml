@@ -92,10 +92,11 @@
             android:padding="32dp">
 
             <ImageView
-                android:layout_width="150dp"
-                android:layout_height="150dp"
+                android:layout_width="100dp"
+                android:layout_height="100dp"
                 android:src="@drawable/huella"
-                android:tint="@color/black"
+                app:tint="@color/color_acento_primario"
+                android:alpha="0.5"
                 android:layout_marginBottom="24dp"
                 tools:ignore="UseAppTint" />
 

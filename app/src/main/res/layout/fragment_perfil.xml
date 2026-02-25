@@ -3,96 +3,134 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/fondo_base">
+    android:background="@color/fondo_base"
+    android:fillViewport="true">
 
-    <LinearLayout
+    <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:gravity="center_horizontal"
-        android:padding="24dp">
+        android:layout_height="wrap_content">
 
-        <androidx.cardview.widget.CardView
-            android:id="@+id/cardFotoPerfilUsuario"
-            android:layout_width="120dp"
-            android:layout_height="120dp"
-            android:layout_marginTop="20dp"
-            app:cardCornerRadius="60dp"
-            app:cardElevation="4dp"
-            app:cardBackgroundColor="@color/white">
+        <LinearLayout
+            android:id="@+id/layoutUsuarioRegistrado"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            android:padding="24dp"
+            android:visibility="gone">
+
+            <androidx.cardview.widget.CardView
+                android:id="@+id/cardFotoPerfilUsuario"
+                android:layout_width="120dp"
+                android:layout_height="120dp"
+                android:layout_marginTop="20dp"
+                app:cardCornerRadius="60dp"
+                app:cardElevation="4dp">
+
+                <ImageView
+                    android:id="@+id/ivFotoPerfilUsuario"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="centerCrop"
+                    android:src="@drawable/profile" />
+            </androidx.cardview.widget.CardView>
+
+            <TextView
+                android:id="@+id/tvNombrePerfilUsuario"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="Nombre Usuario"
+                android:textColor="@color/black"
+                android:textSize="22sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvCorreoPerfilUsuario"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="correo@ejemplo.com"
+                android:textColor="#757575" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="30dp"
+                android:layout_marginBottom="20dp"
+                android:background="#E0E0E0" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnEditarPerfil"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="60dp"
+                android:text="Editar Cuenta"
+                app:icon="@android:drawable/ic_menu_edit"
+                app:cornerRadius="12dp"
+                android:layout_marginBottom="12dp"/>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnAjustes"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="60dp"
+                android:text="Configuración"
+                app:icon="@android:drawable/ic_menu_preferences"
+                app:cornerRadius="12dp"
+                android:layout_marginBottom="30dp"/>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnCerrarSesion"
+                android:layout_width="match_parent"
+                android:layout_height="55dp"
+                android:text="Cerrar Sesión"
+                app:backgroundTint="#F44336"
+                app:cornerRadius="12dp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/layoutModoInvitado"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="32dp"
+            android:visibility="visible">
 
             <ImageView
-                android:id="@+id/ivFotoPerfilUsuario"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:scaleType="centerCrop"
-                android:src="@drawable/profile"
-                android:padding="16dp"
+                android:layout_width="120dp"
+                android:layout_height="120dp"
+                android:src="@drawable/huella"
+                android:alpha="0.3"
+                android:layout_marginBottom="24dp"
                 app:tint="@color/color_acento_primario"/>
-        </androidx.cardview.widget.CardView>
 
-        <TextView
-            android:id="@+id/tvNombrePerfilUsuario"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="Cargando perfil..."
-            android:textColor="@color/black"
-            android:textSize="22sp"
-            android:textStyle="bold" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="¡Hola, Invitado!"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:textColor="@color/black"/>
 
-        <TextView
-            android:id="@+id/tvCorreoPerfilUsuario"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="cargando@correo.com"
-            android:textColor="#757575"
-            android:textSize="14sp" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Regístrate para guardar a tus mascotas y programar sus citas."
+                android:gravity="center"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="32dp"
+                android:textColor="#757575"/>
 
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginTop="30dp"
-            android:layout_marginBottom="20dp"
-            android:background="#E0E0E0" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnIrALogin"
+                android:layout_width="match_parent"
+                android:layout_height="60dp"
+                android:text="Iniciar Sesión / Registro"
+                app:cornerRadius="12dp"
+                android:backgroundTint="@color/color_acento_primario"/>
+        </LinearLayout>
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnEditarPerfil"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="match_parent"
-            android:layout_height="60dp"
-            android:text="Editar Cuenta"
-            android:textColor="@color/black"
-            app:icon="@android:drawable/ic_menu_edit"
-            app:iconTint="@color/color_acento_primario"
-            app:strokeColor="#E0E0E0"
-            app:cornerRadius="12dp"
-            android:layout_marginBottom="12dp"/>
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnAjustes"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="match_parent"
-            android:layout_height="60dp"
-            android:text="Configuración de Ajustes"
-            android:textColor="@color/black"
-            app:icon="@android:drawable/ic_menu_preferences"
-            app:iconTint="#757575"
-            app:strokeColor="#E0E0E0"
-            app:cornerRadius="12dp"
-            android:layout_marginBottom="30dp"/>
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnCerrarSesion"
-            android:layout_width="match_parent"
-            android:layout_height="55dp"
-            android:text="Cerrar Sesión"
-            android:textColor="@color/white"
-            app:backgroundTint="#F44336"
-            app:cornerRadius="12dp"
-            app:icon="@android:drawable/ic_lock_power_off"
-            app:iconTint="@color/white"
-            android:layout_marginBottom="12dp"/>
-    </LinearLayout>
+    </FrameLayout>
 </ScrollView>

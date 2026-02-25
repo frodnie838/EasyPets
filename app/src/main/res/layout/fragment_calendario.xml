@@ -92,7 +92,8 @@
                 android:layout_height="match_parent"
                 android:paddingHorizontal="16dp"
                 android:clipToPadding="false"
-                android:paddingBottom="80dp"/>
+                android:paddingBottom="80dp"
+                android:visibility="gone"/>
 
             <LinearLayout
                 android:id="@+id/layoutSinEventos"
@@ -101,7 +102,8 @@
                 android:orientation="vertical"
                 android:gravity="center"
                 android:layout_gravity="center"
-                android:padding="32dp">
+                android:padding="32dp"
+                android:visibility="gone">
 
                 <ImageView
                     android:layout_width="64dp"
@@ -117,6 +119,52 @@
                     android:textSize="16sp"
                     android:textColor="#757575"/>
             </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/layoutAvisoInvitadoCalendario"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:layout_gravity="center"
+                android:padding="32dp"
+                android:visibility="gone">
+
+                <ImageView
+                    android:layout_width="64dp"
+                    android:layout_height="64dp"
+                    android:src="@drawable/huella"
+                    app:tint="@color/color_acento_primario"
+                    android:alpha="0.5"
+                    android:layout_marginBottom="16dp"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Agenda personal"
+                    android:textStyle="bold"
+                    android:textSize="16sp"
+                    android:textColor="@color/black"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Regístrate para anotar citas médicas y recordatorios."
+                    android:textSize="14sp"
+                    android:textColor="#757575"
+                    android:gravity="center"
+                    android:layout_marginTop="8dp"/>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnIrALoginCalendario"
+                    style="@style/Widget.MaterialComponents.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="Iniciar Sesión"
+                    android:textColor="@color/color_acento_primario"/>
+            </LinearLayout>
+
         </FrameLayout>
     </LinearLayout>
 

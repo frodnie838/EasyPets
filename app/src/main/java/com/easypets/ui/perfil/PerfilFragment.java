@@ -10,6 +10,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -42,7 +43,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class PerfilFragment extends Fragment {
-
+    private LinearLayout layoutRegistrado, layoutInvitado;
     private ImageView ivFotoPerfil;
     private TextView tvNombre, tvCorreo;
     private MaterialButton btnCerrarSesion, btnEditarPerfil, btnAjustes;
@@ -83,14 +84,22 @@ public class PerfilFragment extends Fragment {
         btnEditarPerfil = view.findViewById(R.id.btnEditarPerfil);
         btnAjustes = view.findViewById(R.id.btnAjustes);
 
+        layoutRegistrado = view.findViewById(R.id.layoutUsuarioRegistrado);
+        layoutInvitado = view.findViewById(R.id.layoutModoInvitado);
+        MaterialButton btnIrALogin = view.findViewById(R.id.btnIrALogin);
+
         mAuth = FirebaseAuth.getInstance();
         FirebaseUser currentUser = mAuth.getCurrentUser();
 
         // Verificamos si es un usuario real o un invitado
         if (currentUser != null) {
+            layoutRegistrado.setVisibility(View.VISIBLE);
+            layoutInvitado.setVisibility(View.GONE);
             configurarPerfilUsuario(currentUser);
         } else {
-            configurarModoInvitado();
+            layoutRegistrado.setVisibility(View.GONE);
+            layoutInvitado.setVisibility(View.VISIBLE);
+            btnIrALogin.setOnClickListener(v -> irALogin());
         }
 
         ivFotoPerfil.setOnClickListener(v -> {
@@ -137,18 +146,14 @@ public class PerfilFragment extends Fragment {
 
     // Configura la pantalla para un invitado (sin cuenta)
     private void configurarModoInvitado() {
-        tvNombre.setText("Modo Invitado");
-        tvCorreo.setText("Inicia sesión para guardar tus datos");
-        ivFotoPerfil.setImageResource(R.drawable.profile);
-        btnCerrarSesion.setText("Iniciar Sesión / Registrarse");
-        btnCerrarSesion.setBackgroundTintList(android.content.res.ColorStateList.valueOf(
-                androidx.core.content.ContextCompat.getColor(getContext(), R.color.color_acento_primario)));
+        View layoutRegistrado = getView().findViewById(R.id.layoutUsuarioRegistrado);
+        View layoutInvitado = getView().findViewById(R.id.layoutModoInvitado);
+        MaterialButton btnIrALogin = getView().findViewById(R.id.btnIrALogin);
 
-        // Deshabilitamos opciones de edición para invitados
-        btnEditarPerfil.setEnabled(false);
-        btnEditarPerfil.setAlpha(0.5f);
-        btnAjustes.setEnabled(false);
-        btnAjustes.setAlpha(0.5f);
+        layoutRegistrado.setVisibility(View.GONE);
+        layoutInvitado.setVisibility(View.VISIBLE);
+
+        btnIrALogin.setOnClickListener(v -> irALogin());
     }
 
     // Muestra la ventana flotante para editar nombre, apellidos y foto

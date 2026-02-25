@@ -8,6 +8,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -15,7 +16,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.cardview.widget.CardView;
 import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentTransaction;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -26,7 +26,6 @@ import com.easypets.models.Mascota;
 import com.easypets.repositories.EventoRepository;
 import com.easypets.repositories.MascotaRepository;
 import com.easypets.ui.auth.LoginActivity;
-import com.easypets.ui.mascotas.MascotasFragment;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.button.MaterialButton;
 import com.google.firebase.auth.FirebaseAuth;
@@ -54,10 +53,14 @@ public class HomeFragment extends Fragment {
 
     private EventoRepository eventoRepository;
     private MascotaRepository mascotaRepository;
-    private CardView cardMisMascotas, cardVeterinarios, cardCalendario, cardEducacion, cardTiendas;
+
+    // Vistas Privadas/Públicas
+    private CardView cardMisMascotas, cardVeterinarios, cardCalendario, cardEducacion, cardTiendas, cardAvisoInvitado;
+    private LinearLayout layoutFuncionesPrivadas;
     private TextView tvConsejoDia, tvSinEventosProximos;
     private EditText etNotaRapida;
-    private MaterialButton btnSeleccionarFecha, btnGuardarNota;
+    private MaterialButton btnSeleccionarFecha, btnGuardarNota, btnIrALoginHome;
+
     private RecyclerView rvProximosEventos;
     private EventoAdapter eventoAdapter;
     private String fechaNotaSeleccionada = "";
@@ -74,9 +77,11 @@ public class HomeFragment extends Fragment {
 
         vincularVistas(view);
 
+        // Fecha por defecto para la nota
         Calendar hoy = Calendar.getInstance();
         fechaNotaSeleccionada = String.format(Locale.getDefault(), "%02d/%02d/%d", hoy.get(Calendar.DAY_OF_MONTH), hoy.get(Calendar.MONTH) + 1, hoy.get(Calendar.YEAR));
 
+        // Lógica de visualización según el tipo de usuario
         if (currentUser == null) {
             configurarModoInvitado();
         } else {
@@ -88,48 +93,50 @@ public class HomeFragment extends Fragment {
 
         return view;
     }
-    @Override
-    public void onResume() {
-        super.onResume();
-        if (getActivity() != null) {
-            BottomNavigationView bottomNav = getActivity().findViewById(R.id.bottom_navigation);
-            if (bottomNav != null) {
-                bottomNav.getMenu().findItem(R.id.nav_home).setChecked(true);
-            }
-        }
-    }
+
     private void vincularVistas(View view) {
+        // Secciones principales
+        layoutFuncionesPrivadas = view.findViewById(R.id.layoutFuncionesPrivadas);
+        cardAvisoInvitado = view.findViewById(R.id.cardAvisoInvitadoHome);
+        btnIrALoginHome = view.findViewById(R.id.btnIrALoginHome);
+
+        // Cards de navegación
         cardMisMascotas = view.findViewById(R.id.cardMisMascotas);
         cardVeterinarios = view.findViewById(R.id.cardVeterinarios);
         cardCalendario = view.findViewById(R.id.cardCalendario);
         cardEducacion = view.findViewById(R.id.cardEducacion);
         cardTiendas = view.findViewById(R.id.cardTiendas);
-        tvConsejoDia = view.findViewById(R.id.tvConsejoDia);
 
+        // Zona de consejos y eventos
+        tvConsejoDia = view.findViewById(R.id.tvConsejoDia);
+        tvSinEventosProximos = view.findViewById(R.id.tvSinEventosProximos);
+        rvProximosEventos = view.findViewById(R.id.rvProximosEventos);
+
+        // Nota rápida
         etNotaRapida = view.findViewById(R.id.etNotaRapida);
         btnSeleccionarFecha = view.findViewById(R.id.btnSeleccionarFecha);
         btnGuardarNota = view.findViewById(R.id.btnGuardarNota);
 
-        rvProximosEventos = view.findViewById(R.id.rvProximosEventos);
-        tvSinEventosProximos = view.findViewById(R.id.tvSinEventosProximos);
-
+        // Configuración inicial RecyclerView
         eventoAdapter = new EventoAdapter();
         rvProximosEventos.setLayoutManager(new LinearLayoutManager(getContext()));
         rvProximosEventos.setAdapter(eventoAdapter);
     }
 
     private void configurarModoInvitado() {
-        etNotaRapida.setEnabled(false);
-        etNotaRapida.setHint("Regístrate para usar notas");
-        btnSeleccionarFecha.setEnabled(false);
-        btnGuardarNota.setEnabled(false);
-        tvSinEventosProximos.setText("Inicia sesión para ver tus eventos");
-        tvSinEventosProximos.setVisibility(View.VISIBLE);
-        rvProximosEventos.setVisibility(View.GONE);
+        // Ocultar sección de eventos y notas personales
+        layoutFuncionesPrivadas.setVisibility(View.GONE);
+        // Mostrar tarjeta informativa de invitación al login
+        cardAvisoInvitado.setVisibility(View.VISIBLE);
+
+        btnIrALoginHome.setOnClickListener(v -> irALogin());
     }
 
     private void configurarModoUsuario() {
-        // Cargar las mascotas para que el adaptador sepa sus nombres
+        layoutFuncionesPrivadas.setVisibility(View.VISIBLE);
+        cardAvisoInvitado.setVisibility(View.GONE);
+
+        // Cargar nombres de mascotas para el adaptador
         mascotaRepository.escucharMascotas(currentUser.getUid(), new MascotaRepository.LeerMascotasCallback() {
             @Override
             public void onResultado(List<Mascota> listaMascotas) {
@@ -138,29 +145,30 @@ public class HomeFragment extends Fragment {
             @Override
             public void onError(String error) {}
         });
+
         cargarProximosEventos();
 
-        // Configurar Guardado de Nota Rápida
+        // Lógica de fecha para nota
         btnSeleccionarFecha.setOnClickListener(v -> {
             Calendar c = Calendar.getInstance();
-            new DatePickerDialog(requireContext(), (view, year, month, dayOfMonth) -> {
-                fechaNotaSeleccionada = String.format(Locale.getDefault(), "%02d/%02d/%d", dayOfMonth, month + 1, year);
-                btnSeleccionarFecha.setText(String.format(Locale.getDefault(), "%02d/%02d", dayOfMonth, month + 1));
+            new DatePickerDialog(requireContext(), (dp, year, month, day) -> {
+                fechaNotaSeleccionada = String.format(Locale.getDefault(), "%02d/%02d/%d", day, month + 1, year);
+                btnSeleccionarFecha.setText(String.format(Locale.getDefault(), "%02d/%02d", day, month + 1));
             }, c.get(Calendar.YEAR), c.get(Calendar.MONTH), c.get(Calendar.DAY_OF_MONTH)).show();
         });
 
+        // Lógica de guardar nota
         btnGuardarNota.setOnClickListener(v -> {
-            String textoNota = etNotaRapida.getText().toString().trim();
-            if (textoNota.isEmpty()) {
+            String texto = etNotaRapida.getText().toString().trim();
+            if (texto.isEmpty()) {
                 etNotaRapida.setError("Escribe algo primero");
                 return;
             }
-
-            Evento notaEvento = new Evento(null, textoNota, fechaNotaSeleccionada, "", "Nota", "");
-            eventoRepository.guardarEvento(currentUser.getUid(), notaEvento, new EventoRepository.AccionCallback() {
+            Evento nota = new Evento(null, texto, fechaNotaSeleccionada, "", "Nota", "");
+            eventoRepository.guardarEvento(currentUser.getUid(), nota, new EventoRepository.AccionCallback() {
                 @Override
                 public void onExito() {
-                    Toast.makeText(getContext(), "Nota guardada con éxito", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getContext(), "Nota guardada", Toast.LENGTH_SHORT).show();
                     etNotaRapida.setText("");
                     btnSeleccionarFecha.setText("Hoy");
                     cargarProximosEventos();
@@ -173,51 +181,83 @@ public class HomeFragment extends Fragment {
         });
     }
 
+    private void configurarNavegacionBotones() {
+        // Estas siempre funcionan, pero si es invitado mostramos aviso al pulsar en las "privadas"
+        cardMisMascotas.setOnClickListener(v -> {
+            if (currentUser == null) { mostrarAvisoRegistro("Mis Mascotas"); return; }
+            cambiarTab(R.id.nav_pets);
+        });
+
+        cardCalendario.setOnClickListener(v -> {
+            if (currentUser == null) { mostrarAvisoRegistro("Calendario"); return; }
+            cambiarTab(R.id.nav_calendar);
+        });
+
+        // FUNCIONES PÚBLICAS (Funcionan para todos)
+        cardVeterinarios.setOnClickListener(v -> abrirFragmento(new VeterinariosFragment()));
+        cardEducacion.setOnClickListener(v -> Toast.makeText(getContext(), "Blog de educación próximamente", Toast.LENGTH_SHORT).show());
+        cardTiendas.setOnClickListener(v -> Toast.makeText(getContext(), "Servicios cercanos próximamente", Toast.LENGTH_SHORT).show());
+    }
+
+    private void cambiarTab(int menuId) {
+        if (getActivity() != null) {
+            BottomNavigationView bottomNav = getActivity().findViewById(R.id.bottom_navigation);
+            if (bottomNav != null) bottomNav.setSelectedItemId(menuId);
+        }
+    }
+
+    private void abrirFragmento(Fragment fragment) {
+        if (getActivity() != null) {
+            getActivity().getSupportFragmentManager().beginTransaction()
+                    .replace(R.id.frame_container, fragment)
+                    .addToBackStack(null)
+                    .commit();
+        }
+    }
+
+    private void irALogin() {
+        Intent intent = new Intent(getActivity(), LoginActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        if (getActivity() != null) getActivity().finish();
+    }
+
+    private void mostrarAvisoRegistro(String funcion) {
+        new AlertDialog.Builder(getContext())
+                .setTitle("¡Unete a EasyPets!")
+                .setMessage("La sección de " + funcion + " es exclusiva para usuarios registrados.")
+                .setPositiveButton("Registrarme", (dialog, which) -> irALogin())
+                .setNegativeButton("Más tarde", null)
+                .show();
+    }
+
+    // --- MÉTODOS DE DATOS (Mismos que ya tenías) ---
     private void cargarProximosEventos() {
         eventoRepository.obtenerTodosLosEventos(currentUser.getUid(), new EventoRepository.LeerEventosCallback() {
             @Override
             public void onResultado(List<Evento> listaEventos) {
-                if (listaEventos.isEmpty()) {
-                    mostrarEventosVacios();
-                    return;
-                }
+                if (listaEventos.isEmpty()) { mostrarEventosVacios(); return; }
 
                 SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
                 Calendar hoyCal = Calendar.getInstance();
-                // Ponemos las horas a 0 para que cuenten los eventos de hoy
-                hoyCal.set(Calendar.HOUR_OF_DAY, 0);
-                hoyCal.set(Calendar.MINUTE, 0);
-                hoyCal.set(Calendar.SECOND, 0);
-                hoyCal.set(Calendar.MILLISECOND, 0);
+                hoyCal.set(Calendar.HOUR_OF_DAY, 0); hoyCal.set(Calendar.MINUTE, 0); hoyCal.set(Calendar.SECOND, 0); hoyCal.set(Calendar.MILLISECOND, 0);
                 long inicioHoyMs = hoyCal.getTimeInMillis();
 
                 List<Evento> eventosFuturos = new ArrayList<>();
-
                 for (Evento e : listaEventos) {
                     try {
-                        Date fechaEvento = sdf.parse(e.getFecha());
-                        if (fechaEvento != null && fechaEvento.getTime() >= inicioHoyMs) {
-                            eventosFuturos.add(e);
-                        }
-                    } catch (ParseException ex) {
-                        ex.printStackTrace();
-                    }
+                        Date fecha = sdf.parse(e.getFecha());
+                        if (fecha != null && fecha.getTime() >= inicioHoyMs) eventosFuturos.add(e);
+                    } catch (ParseException ex) { ex.printStackTrace(); }
                 }
 
                 Collections.sort(eventosFuturos, (e1, e2) -> {
-                    try {
-                        return sdf.parse(e1.getFecha()).compareTo(sdf.parse(e2.getFecha()));
-                    } catch (ParseException ex) {
-                        return 0;
-                    }
+                    try { return sdf.parse(e1.getFecha()).compareTo(sdf.parse(e2.getFecha())); }
+                    catch (ParseException ex) { return 0; }
                 });
 
-                List<Evento> top3 = new ArrayList<>();
-                for (int i = 0; i < Math.min(3, eventosFuturos.size()); i++) {
-                    top3.add(eventosFuturos.get(i));
-                }
+                List<Evento> top3 = eventosFuturos.subList(0, Math.min(3, eventosFuturos.size()));
 
-                // Mostrar en la lista
                 if (top3.isEmpty()) {
                     mostrarEventosVacios();
                 } else {
@@ -226,11 +266,8 @@ public class HomeFragment extends Fragment {
                     tvSinEventosProximos.setVisibility(View.GONE);
                 }
             }
-
             @Override
-            public void onError(String error) {
-                mostrarEventosVacios();
-            }
+            public void onError(String error) { mostrarEventosVacios(); }
         });
     }
 
@@ -239,90 +276,22 @@ public class HomeFragment extends Fragment {
         tvSinEventosProximos.setVisibility(View.VISIBLE);
     }
 
-    private void configurarNavegacionBotones() {
-        // Enlazar Tarjeta de Mascotas
-        cardMisMascotas.setOnClickListener(v -> {
-            if (currentUser == null) {
-                mostrarAvisoRegistro("Mis Mascotas");
-                return;
-            }
-            BottomNavigationView bottomNav = getActivity().findViewById(R.id.bottom_navigation);
-            if (bottomNav != null) {
-                bottomNav.setSelectedItemId(R.id.nav_pets);
-            }
-        });
-
-        cardCalendario.setOnClickListener(v -> {
-            if (currentUser == null) {
-                mostrarAvisoRegistro("Calendario");
-                return;
-            }
-            BottomNavigationView bottomNav = getActivity().findViewById(R.id.bottom_navigation);
-            if (bottomNav != null) {
-                bottomNav.setSelectedItemId(R.id.nav_calendar);
-            }
-        });
-
-        // Abrir el buscador de Veterinarios al pulsar la tarjeta
-        cardVeterinarios.setOnClickListener(v -> {
-            if (getActivity() != null) {
-                VeterinariosFragment veterinariosFragment = new VeterinariosFragment();
-                getActivity().getSupportFragmentManager().beginTransaction()
-                        .replace(R.id.frame_container, veterinariosFragment) // Sustituye la pantalla actual
-                        .addToBackStack(null) // ¡Súper importante! Para que el botón "Atrás" del móvil te devuelva al Home
-                        .commit();
-            }
-        });
-        // Secciones en construcción
-        cardEducacion.setOnClickListener(v -> Toast.makeText(getContext(), "Próximamente: Educación", Toast.LENGTH_SHORT).show());
-        cardTiendas.setOnClickListener(v -> Toast.makeText(getContext(), "Próximamente: Tiendas", Toast.LENGTH_SHORT).show());
-    }
-
-    private void mostrarAvisoRegistro(String funcion) {
-        new AlertDialog.Builder(getContext())
-                .setTitle("¡Crea una cuenta gratuita!")
-                .setMessage("La función '" + funcion + "' requiere que inicies sesión.")
-                .setPositiveButton("Registrarme", (dialog, which) -> {
-                    mAuth.signOut();
-                    Intent intent = new Intent(getActivity(), LoginActivity.class);
-                    intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                    startActivity(intent);
-                    getActivity().finish();
-                })
-                .setNegativeButton("Más tarde", null)
-                .show();
-    }
-
     private void cargarConsejoAleatorio() {
         DatabaseReference curiosidadesRef = FirebaseDatabase.getInstance().getReference("curiosidades");
-
         curiosidadesRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
-                List<String> listaCuriosidades = new ArrayList<>();
-
-                // Recoger todas las curiosidades de la base de datos
+                List<String> lista = new ArrayList<>();
                 for (DataSnapshot data : snapshot.getChildren()) {
-                    String curiosidad = data.getValue(String.class);
-                    if (curiosidad != null) {
-                        listaCuriosidades.add(curiosidad);
-                    }
+                    String s = data.getValue(String.class);
+                    if (s != null) lista.add(s);
                 }
-
-                // Elegir una al azar si hay alguna en la lista
-                if (!listaCuriosidades.isEmpty()) {
-                    int indiceAleatorio = new Random().nextInt(listaCuriosidades.size());
-                    tvConsejoDia.setText(listaCuriosidades.get(indiceAleatorio));
-                } else {
-                    // Texto por defecto si la base de datos está vacía
-                    tvConsejoDia.setText("¡Bienvenido a EasyPets! Mantén a tu mascota siempre feliz y sana.");
-                }
+                if (!lista.isEmpty()) tvConsejoDia.setText(lista.get(new Random().nextInt(lista.size())));
+                else tvConsejoDia.setText("¡Bienvenido a EasyPets! Mantén a tu mascota siempre feliz.");
             }
-
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
-                // Texto por defecto si falla la conexión
-                tvConsejoDia.setText("El chocolate y la cebolla son muy tóxicos para perros y gatos. ¡Mantenlos fuera de su alcance!");
+                tvConsejoDia.setText("El chocolate y la cebolla son muy tóxicos para perros y gatos.");
             }
         });
     }
