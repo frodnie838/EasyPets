@@ -47,7 +47,6 @@ public class VeterinarioAdapter extends RecyclerView.Adapter<VeterinarioAdapter.
 
         // "Ver en Mapa"
         holder.btnMapa.setOnClickListener(v -> {
-            // Abre Google Maps (o la app de mapas por defecto) con las coordenadas
             String uri = "geo:" + vet.getLatitud() + "," + vet.getLongitud() + "?q=" + vet.getLatitud() + "," + vet.getLongitud() + "(" + vet.getNombre() + ")";
             Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(uri));
             context.startActivity(intent);

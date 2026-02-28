@@ -93,7 +93,17 @@ public class HomeFragment extends Fragment {
 
         return view;
     }
-
+    @Override
+    public void onResume() {
+        super.onResume();
+        // Forzamos al menú a marcar el icono de Home al volver a esta pantalla
+        if (getActivity() != null) {
+            BottomNavigationView bottomNav = getActivity().findViewById(R.id.bottom_navigation);
+            if (bottomNav != null) {
+                bottomNav.getMenu().findItem(R.id.nav_home).setChecked(true);
+            }
+        }
+    }
     private void vincularVistas(View view) {
         // Secciones principales
         layoutFuncionesPrivadas = view.findViewById(R.id.layoutFuncionesPrivadas);
@@ -211,17 +221,6 @@ public class HomeFragment extends Fragment {
         startActivity(intent);
         if (getActivity() != null) getActivity().finish();
     }
-
-    private void mostrarAvisoRegistro(String funcion) {
-        new AlertDialog.Builder(getContext())
-                .setTitle("¡Unete a EasyPets!")
-                .setMessage("La sección de " + funcion + " es exclusiva para usuarios registrados.")
-                .setPositiveButton("Registrarme", (dialog, which) -> irALogin())
-                .setNegativeButton("Más tarde", null)
-                .show();
-    }
-
-    // --- MÉTODOS DE DATOS (Mismos que ya tenías) ---
     private void cargarProximosEventos() {
         eventoRepository.obtenerTodosLosEventos(currentUser.getUid(), new EventoRepository.LeerEventosCallback() {
             @Override

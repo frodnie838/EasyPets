@@ -56,7 +56,6 @@ public class VeterinariosFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_veterinarios, container, false);
 
-        // 1. Vincular Vistas
         etCiudadBuscador = view.findViewById(R.id.etCiudadBuscador);
         btnBuscarVeterinarios = view.findViewById(R.id.btnBuscarVeterinarios);
         progressBarVeterinarios = view.findViewById(R.id.progressBarVeterinarios);
@@ -64,12 +63,10 @@ public class VeterinariosFragment extends Fragment {
         layoutSinVeterinarios = view.findViewById(R.id.layoutSinVeterinarios);
         tvMensajeVeterinarios = view.findViewById(R.id.tvMensajeVeterinarios);
 
-        // 2. Configurar la Lista (RecyclerView)
         adapter = new VeterinarioAdapter();
         rvVeterinarios.setLayoutManager(new LinearLayoutManager(getContext()));
         rvVeterinarios.setAdapter(adapter);
 
-        // 3. Programar el Botón de Búsqueda
         btnBuscarVeterinarios.setOnClickListener(v -> {
             String ciudad = etCiudadBuscador.getText().toString().trim();
             if (ciudad.isEmpty()) {
