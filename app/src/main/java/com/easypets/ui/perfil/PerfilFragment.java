@@ -111,9 +111,12 @@ public class PerfilFragment extends Fragment {
     }
 
     // Configura la pantalla para un usuario con cuenta
+    // Configura la pantalla para un usuario con cuenta
     private void configurarPerfilUsuario(FirebaseUser currentUser) {
         tvCorreo.setText(currentUser.getEmail());
-        userRef = FirebaseDatabase.getInstance().getReference().child("users").child(currentUser.getUid());
+
+        // ✨ Apuntamos a la carpeta correcta
+        userRef = FirebaseDatabase.getInstance().getReference().child("usuarios").child(currentUser.getUid());
 
         userRef.addValueEventListener(new ValueEventListener() {
             @Override
@@ -125,12 +128,18 @@ public class PerfilFragment extends Fragment {
                     String nombreCompleto = (nombreActual != null ? nombreActual : "") + " " + (apellidosActuales != null ? apellidosActuales : "");
                     tvNombre.setText(nombreCompleto.trim().isEmpty() ? "Usuario EasyPets" : nombreCompleto.trim());
 
+                    // ✨ LÓGICA DE FOTO OPTIMIZADA (Prioridad: Local > Google > Defecto)
                     fotoBase64Actual = snapshot.child("fotoPerfil").getValue(String.class);
+
+                    // 1. ¿El usuario ha subido una foto personalizada a la Base de Datos?
                     if (fotoBase64Actual != null && !fotoBase64Actual.isEmpty()) {
                         cargarFotoDesdeBase64(fotoBase64Actual, ivFotoPerfil);
-                    } else if (currentUser.getPhotoUrl() != null) {
+                    }
+                    // 2. Si no hay foto en la DB, ¿tiene foto en su cuenta de Google (Auth)?
+                    else if (currentUser.getPhotoUrl() != null) {
                         cargarFotoGoogle(currentUser.getPhotoUrl().toString(), ivFotoPerfil);
                     }
+                    // 3. Si no hay nada, el XML mostrará el icono por defecto automáticamente
                 }
             }
             @Override
@@ -139,7 +148,7 @@ public class PerfilFragment extends Fragment {
 
         btnEditarPerfil.setOnClickListener(v -> mostrarDialogoEditar());
         btnAjustes.setOnClickListener(v -> {
-            Intent intent = new Intent(getActivity(), AjustesActivity.class);
+            Intent intent = new Intent(getActivity(), com.easypets.ui.perfil.AjustesActivity.class);
             startActivity(intent);
         });
     }

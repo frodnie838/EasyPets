@@ -83,18 +83,35 @@ public class AjustesActivity extends AppCompatActivity {
         String uid = user.getUid();
         DatabaseReference db = FirebaseDatabase.getInstance().getReference();
 
-        db.child("mascotas").child(uid).removeValue().addOnCompleteListener(t1 -> {
-            db.child("users").child(uid).removeValue().addOnCompleteListener(t2 -> {
-                user.delete().addOnCompleteListener(t3 -> {
-                    if (t3.isSuccessful()) {
-                        mAuth.signOut();
-                        limpiarYSalir();
-                    } else {
-                        Toast.makeText(this, "Error de seguridad. Re-autentícate para borrar.", Toast.LENGTH_LONG).show();
+        db.child("articulos_comunidad").orderByChild("idAutor").equalTo(uid)
+                .addListenerForSingleValueEvent(new com.google.firebase.database.ValueEventListener() {
+                    @Override
+                    public void onDataChange(@androidx.annotation.NonNull com.google.firebase.database.DataSnapshot snapshot) {
+                        for (com.google.firebase.database.DataSnapshot articuloSnapshot : snapshot.getChildren()) {
+                            articuloSnapshot.getRef().removeValue();
+                        }
+                        db.child("eventos").child(uid).removeValue().addOnCompleteListener(tEventos -> {
+                            db.child("mascotas").child(uid).removeValue().addOnCompleteListener(tMascotas -> {
+                                db.child("usuarios").child(uid).removeValue().addOnCompleteListener(tUser -> {
+                                    user.delete().addOnCompleteListener(tAuth -> {
+                                        if (tAuth.isSuccessful()) {
+                                            Toast.makeText(AjustesActivity.this, "Cuenta y todos los datos eliminados", Toast.LENGTH_SHORT).show();
+                                            mAuth.signOut();
+                                            limpiarYSalir();
+                                        } else {
+                                            Toast.makeText(AjustesActivity.this, "Por seguridad, cierra sesión, vuelve a entrar y repite este paso.", Toast.LENGTH_LONG).show();
+                                        }
+                                    });
+                                });
+                            });
+                        });
+                    }
+
+                    @Override
+                    public void onCancelled(@androidx.annotation.NonNull com.google.firebase.database.DatabaseError error) {
+                        Toast.makeText(AjustesActivity.this, "Error de base de datos al intentar borrar", Toast.LENGTH_SHORT).show();
                     }
                 });
-            });
-        });
     }
 
     private void limpiarYSalir() {

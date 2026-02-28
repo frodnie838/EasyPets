@@ -118,7 +118,26 @@ public class LoginActivity extends AppCompatActivity {
                     if (task.isSuccessful()) {
                         irAMainActivity();
                     } else {
-                        Toast.makeText(LoginActivity.this, "Error: " + task.getException().getMessage(), Toast.LENGTH_LONG).show();
+                        String mensajeError;
+                        Exception e = task.getException();
+
+                        if (e instanceof com.google.firebase.auth.FirebaseAuthInvalidUserException) {
+                            // El usuario no existe o está deshabilitado
+                            mensajeError = "Esta cuenta no existe o ha sido deshabilitada.";
+                        } else if (e instanceof com.google.firebase.auth.FirebaseAuthInvalidCredentialsException) {
+                            // La contraseña no coincide o el email está mal formado
+                            mensajeError = "El correo o la contraseña son incorrectos.";
+                        } else if (e instanceof com.google.firebase.FirebaseNetworkException) {
+                            // Error de conexión (modo avión, sin datos...)
+                            mensajeError = "No hay conexión a internet.";
+                        } else if (e instanceof com.google.firebase.auth.FirebaseAuthUserCollisionException) {
+                            mensajeError = "Este correo ya está en uso con otro método de acceso.";
+                        } else {
+                            // Si es un error raro (como demasiados intentos), lo capturamos aquí
+                            mensajeError = "Error al iniciar sesión. Inténtalo de nuevo más tarde.";
+                        }
+
+                        Toast.makeText(LoginActivity.this, mensajeError, Toast.LENGTH_LONG).show();
                     }
                 });
     }
@@ -196,9 +215,14 @@ public class LoginActivity extends AppCompatActivity {
 
                         userRef.get().addOnCompleteListener(dbTask -> {
                             if (dbTask.isSuccessful() && !dbTask.getResult().exists()) {
-                                String nombreCompleto = googleCredential.getDisplayName();
-                                if (nombreCompleto == null) nombreCompleto = "Usuario";
-                                guardarDatosEnBaseDeDatos(user.getUid(), nombreCompleto, "", user.getEmail());
+                                String nombre = googleCredential.getGivenName();
+                                String apellidos = googleCredential.getFamilyName();
+
+                                if (nombre == null) nombre = user.getDisplayName();
+                                if (nombre == null) nombre = "Usuario";
+                                if (apellidos == null) apellidos = "";
+
+                                guardarDatosEnBaseDeDatos(user.getUid(), nombre, apellidos, user.getEmail());
                             } else {
                                 irAMainActivity();
                             }
@@ -227,8 +251,9 @@ public class LoginActivity extends AppCompatActivity {
         usuario.put("correo", email);
         usuario.put("fechaRegistro", fechaBonita);
         usuario.put("timestamp", timestamp);
-
         usuario.put("rol", "usuario");
+
+        // Ya no guardamos "fotoPerfilUrl" aquí. El PerfilFragment la leerá de FirebaseUser.
 
         FirebaseDatabase.getInstance().getReference().child("usuarios").child(uid).setValue(usuario)
                 .addOnSuccessListener(aVoid -> {

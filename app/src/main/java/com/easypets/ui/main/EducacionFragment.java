@@ -27,6 +27,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.easypets.R;
 import com.easypets.models.Articulo;
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
@@ -115,7 +116,19 @@ public class EducacionFragment extends Fragment {
                     }
                 }
         );
-
+        if (getActivity() != null) {
+            BottomNavigationView bottomNav = getActivity().findViewById(R.id.bottom_navigation);
+            if (bottomNav != null) {
+                android.view.Menu menu = bottomNav.getMenu();
+                // Le quitamos la obligación de tener uno seleccionado
+                menu.setGroupCheckable(0, true, false);
+                for (int i = 0; i < menu.size(); i++) {
+                    menu.getItem(i).setChecked(false); // Apagamos todos
+                }
+                // Le volvemos a poner la protección
+                menu.setGroupCheckable(0, true, true);
+            }
+        }
         return view;
     }
 
@@ -274,7 +287,7 @@ public class EducacionFragment extends Fragment {
         builder.setTitle(esOficial ? "Crear Artículo Oficial" : "Publicar en Comunidad");
         builder.setPositiveButton("Publicar", (dialog, which) -> {
             String titulo = etTitulo.getText().toString().trim();
-            String descripcion = etDescripcion.getText().toString().trim(); // Recogemos la descripción
+            String descripcion = etDescripcion.getText().toString().trim();
             String contenido = etContenido.getText().toString().trim();
             String url = etUrl.getText().toString().trim();
 
@@ -285,12 +298,12 @@ public class EducacionFragment extends Fragment {
             }
 
             String autor = esOficial ? "EasyPets Oficial" : (currentUser.getDisplayName() != null ? currentUser.getDisplayName() : "Usuario");
+            String idAutor = currentUser != null ? currentUser.getUid() : "";
             DatabaseReference targetRef = esOficial ? oficialesRef : comunidadRef;
-
             String id = targetRef.push().getKey();
 
             Articulo nuevoArticulo = new Articulo(
-                    id, titulo, descripcion, contenido, autor,
+                    id, idAutor, titulo, descripcion, contenido, autor,
                     System.currentTimeMillis(), imagenSeleccionadaBase64, url, esOficial
             );
 
@@ -305,16 +318,13 @@ public class EducacionFragment extends Fragment {
     private void mostrarArticuloCompleto(Articulo articulo) {
         BottomSheetDialog bottomSheet = new BottomSheetDialog(requireContext());
 
-        // ✨ NUEVO: Creamos el ScrollView para que se pueda bajar a leer
         androidx.core.widget.NestedScrollView scrollView = new androidx.core.widget.NestedScrollView(requireContext());
         scrollView.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
-        // La caja donde va todo el contenido
         LinearLayout layout = new LinearLayout(requireContext());
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setPadding(60, 60, 60, 80);
 
-        // Si hay imagen, la ponemos arriba en grande
         if (articulo.getImagenPortadaBase64() != null && !articulo.getImagenPortadaBase64().isEmpty()) {
             ImageView ivPortada = new ImageView(requireContext());
             ivPortada.setAdjustViewBounds(true);

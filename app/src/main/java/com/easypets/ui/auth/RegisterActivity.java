@@ -145,18 +145,20 @@ public class RegisterActivity extends AppCompatActivity {
                         FirebaseUser user = mAuth.getCurrentUser();
                         String uid = user.getUid();
 
-                        // ✨ CORRECCIÓN: Buscamos en "usuarios", no en "users"
                         db.child("usuarios").child(uid).get().addOnCompleteListener(taskDb -> {
                             if (taskDb.isSuccessful() && taskDb.getResult().exists()) {
                                 irAMain();
                             } else {
+                                // ✨ SOLO RECUPERAMOS NOMBRE Y APELLIDOS
                                 String nombre = googleCredential.getGivenName();
                                 String apellidos = googleCredential.getFamilyName();
                                 String correo = user.getEmail();
 
-                                if (nombre == null) nombre = "";
+                                if (nombre == null) nombre = user.getDisplayName();
+                                if (nombre == null) nombre = "Usuario";
                                 if (apellidos == null) apellidos = "";
 
+                                // ✨ YA NO PASAMOS FOTOURL
                                 guardarDatosFirestore(uid, nombre, apellidos, correo);
                             }
                         });
@@ -178,9 +180,9 @@ public class RegisterActivity extends AppCompatActivity {
         String password = passwordEditText.getText().toString().trim();
         String confirmPassword = confirmPasswordEditText.getText().toString().trim();
 
-        if (TextUtils.isEmpty(nombre)) { nombreEditText.setError("Pon tu nombre"); return; }
-        if (TextUtils.isEmpty(email)) { emailEditText.setError("Pon un correo"); return; }
-        if (TextUtils.isEmpty(password) || password.length() < 6) { passwordEditText.setError("Mínimo 6 letras o números"); return; }
+        if (TextUtils.isEmpty(nombre)) { nombreEditText.setError("Introduce un nombre"); return; }
+        if (TextUtils.isEmpty(email)) { emailEditText.setError("Introduce un correo"); return; }
+        if (TextUtils.isEmpty(password) || password.length() < 6) { passwordEditText.setError("Mínimo 6 carácteres"); return; }
         if (!password.equals(confirmPassword)) { confirmPasswordEditText.setError("Las contraseñas no son iguales"); return; }
 
         mAuth.createUserWithEmailAndPassword(email, password).addOnCompleteListener(task -> {
@@ -212,11 +214,11 @@ public class RegisterActivity extends AppCompatActivity {
         usuario.put("correo", email);
         usuario.put("fechaRegistro", fecha);
         usuario.put("timestamp", System.currentTimeMillis());
-        usuario.put("rol", "usuario"); // ✨ NUEVO: El rol por defecto
+        usuario.put("rol", "usuario");
 
         db.child("usuarios").child(uid).setValue(usuario)
                 .addOnSuccessListener(aVoid -> {
-                    Toast.makeText(RegisterActivity.this, "¡Registro completado!", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(RegisterActivity.this, "¡Bienvenido " + nombre + "!", Toast.LENGTH_SHORT).show();
                     irAMain();
                 })
                 .addOnFailureListener(e -> {

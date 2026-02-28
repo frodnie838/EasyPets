@@ -2,24 +2,26 @@ package com.easypets.models;
 
 public class Articulo {
     private String id;
+    private String idAutor;
     private String titulo;
     private String descripcionCorta;
     private String contenidoCompleto;
     private String autor;
-    private long timestampCreacion; // Usamos 'long' (milisegundos) porque es perfecto para ordenar listas cronológicamente
-    private String imagenPortadaBase64; // Para que los usuarios puedan subir fotos (igual que en las mascotas)
-    private String urlEnlace; // Para enlaces a YouTube o webs externas (opcional)
-    private boolean esOficial; // true = creado por ti (EasyPets) | false = creado por la comunidad
+    private long timestampCreacion;
+    private String imagenPortadaBase64;
+    private String urlEnlace;
+    private boolean esOficial;
 
     // 1. Constructor vacío (Obligatorio para que Firebase no dé error al leer)
     public Articulo() {}
 
     // 2. Constructor Completo
-    public Articulo(String id, String titulo, String descripcionCorta, String contenidoCompleto,
+    public Articulo(String id, String idAutor, String titulo, String descripcionCorta, String contenidoCompleto,
                     String autor, long timestampCreacion, String imagenPortadaBase64,
                     String urlEnlace, boolean esOficial) {
         this.id = id;
         this.titulo = titulo;
+        this.idAutor = idAutor;
         this.descripcionCorta = descripcionCorta;
         this.contenidoCompleto = contenidoCompleto;
         this.autor = autor;
@@ -31,6 +33,7 @@ public class Articulo {
 
     // Getters
     public String getId() { return id; }
+    public String getIdAutor() { return idAutor; }
     public String getTitulo() { return titulo; }
     public String getDescripcionCorta() { return descripcionCorta; }
     public String getContenidoCompleto() { return contenidoCompleto; }
@@ -41,6 +44,8 @@ public class Articulo {
     public boolean isEsOficial() { return esOficial; }
 
     public void setId(String id) { this.id = id; }
+
+    public void setIdAutor(String idAutor) { this.idAutor = idAutor; }
     public void setTitulo(String titulo) { this.titulo = titulo; }
     public void setDescripcionCorta(String descripcionCorta) { this.descripcionCorta = descripcionCorta; }
     public void setContenidoCompleto(String contenidoCompleto) { this.contenidoCompleto = contenidoCompleto; }
