@@ -1,13 +1,23 @@
 package com.easypets.ui.main;
 
+import android.app.Activity;
+import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.net.Uri;
 import android.os.Bundle;
+import android.provider.MediaStore;
+import android.util.Base64;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
@@ -17,8 +27,8 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.easypets.R;
 import com.easypets.models.Articulo;
-import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
+import com.google.android.material.button.MaterialButton;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.textfield.TextInputEditText;
@@ -30,9 +40,13 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
+import java.io.ByteArrayOutputStream;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 public class EducacionFragment extends Fragment {
 
@@ -42,8 +56,16 @@ public class EducacionFragment extends Fragment {
     private ArticuloAdapter adapter;
     private List<Articulo> listaArticulos;
 
-    private DatabaseReference comunidadRef;
+    private DatabaseReference comunidadRef, oficialesRef, usuariosRef;
     private FirebaseUser currentUser;
+    private ValueEventListener articulosListener;
+
+    private String rolUsuario = "usuario";
+
+    // ✨ Variables para la imagen
+    private String imagenSeleccionadaBase64 = "";
+    private ImageView ivVistaPreviaDialogo;
+    private ActivityResultLauncher<Intent> galeriaLauncher;
 
     @Nullable
     @Override
@@ -56,126 +78,224 @@ public class EducacionFragment extends Fragment {
 
         currentUser = FirebaseAuth.getInstance().getCurrentUser();
         comunidadRef = FirebaseDatabase.getInstance().getReference("articulos_comunidad");
+        oficialesRef = FirebaseDatabase.getInstance().getReference("articulos_oficiales");
+        usuariosRef = FirebaseDatabase.getInstance().getReference("usuarios");
 
         listaArticulos = new ArrayList<>();
         adapter = new ArticuloAdapter(listaArticulos, this::mostrarArticuloCompleto);
         rvArticulos.setLayoutManager(new LinearLayoutManager(getContext()));
         rvArticulos.setAdapter(adapter);
 
+        obtenerRolUsuario();
         configurarPestanas();
-        cargarArticulosOficiales(); // Carga por defecto
 
         fabAgregarArticulo.setOnClickListener(v -> mostrarDialogoCrearArticulo());
 
-        if (getActivity() != null) {
-            BottomNavigationView bottomNav = getActivity().findViewById(R.id.bottom_navigation);
-            if (bottomNav != null) {
-                android.view.Menu menu = bottomNav.getMenu();
-                // Le quitamos la obligación de tener uno seleccionado
-                menu.setGroupCheckable(0, true, false);
-                for (int i = 0; i < menu.size(); i++) {
-                    menu.getItem(i).setChecked(false); // Apagamos todos
+        // ✨ Configuramos el launcher para abrir la galería
+        galeriaLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
+                        Uri imageUri = result.getData().getData();
+                        try {
+                            Bitmap bitmap = MediaStore.Images.Media.getBitmap(requireActivity().getContentResolver(), imageUri);
+                            Bitmap resized = redimensionarImagen(bitmap, 800); // Reducimos tamaño para Firebase
+
+                            if (ivVistaPreviaDialogo != null) {
+                                ivVistaPreviaDialogo.setImageBitmap(resized);
+                                ivVistaPreviaDialogo.setVisibility(View.VISIBLE);
+                            }
+
+                            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                            resized.compress(Bitmap.CompressFormat.JPEG, 70, baos);
+                            imagenSeleccionadaBase64 = Base64.encodeToString(baos.toByteArray(), Base64.DEFAULT);
+                        } catch (Exception e) {
+                            Toast.makeText(getContext(), "Error al cargar la imagen", Toast.LENGTH_SHORT).show();
+                        }
+                    }
                 }
-                // Le volvemos a poner la protección
-                menu.setGroupCheckable(0, true, true);
-            }
-        }
+        );
+
         return view;
+    }
+
+    // ✨ Método para que la imagen no pese demasiado
+    private Bitmap redimensionarImagen(Bitmap image, int maxSize) {
+        int width = image.getWidth();
+        int height = image.getHeight();
+        float bitmapRatio = (float) width / (float) height;
+        if (bitmapRatio > 1) {
+            width = maxSize;
+            height = (int) (width / bitmapRatio);
+        } else {
+            height = maxSize;
+            width = (int) (height * bitmapRatio);
+        }
+        return Bitmap.createScaledBitmap(image, width, height, true);
+    }
+
+    private void obtenerRolUsuario() {
+        if (currentUser != null) {
+            usuariosRef.child(currentUser.getUid()).child("rol").addListenerForSingleValueEvent(new ValueEventListener() {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot snapshot) {
+                    if (snapshot.exists()) {
+                        rolUsuario = snapshot.getValue(String.class);
+                    }
+                    actualizarVisibilidadFab();
+                }
+                @Override public void onCancelled(@NonNull DatabaseError error) {}
+            });
+        }
     }
 
     private void configurarPestanas() {
         tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
             @Override
             public void onTabSelected(TabLayout.Tab tab) {
+                listaArticulos.clear();
+                adapter.notifyDataSetChanged();
+                actualizarVisibilidadFab();
+
                 if (tab.getPosition() == 0) {
-                    fabAgregarArticulo.setVisibility(View.GONE);
-                    cargarArticulosOficiales();
+                    cargarArticulos(oficialesRef);
                 } else {
-                    if (currentUser != null) {
-                        fabAgregarArticulo.setVisibility(View.VISIBLE);
-                    }
-                    cargarArticulosComunidad();
+                    cargarArticulos(comunidadRef);
                 }
             }
             @Override public void onTabUnselected(TabLayout.Tab tab) {}
             @Override public void onTabReselected(TabLayout.Tab tab) {}
         });
+        cargarArticulos(oficialesRef);
     }
 
-    private void cargarArticulosOficiales() {
-        listaArticulos.clear();
-        listaArticulos.add(new Articulo("Enseña a tu perro a sentarse", "El comando más básico y útil.", "1. Ponte frente a tu perro...\n2. Mueve el premio hacia atrás...", R.drawable.consejos));
-        listaArticulos.add(new Articulo("La importancia de la socialización", "Evita miedos exponiendo a tu mascota.", "La ventana principal es entre 3 y 14 semanas...", R.drawable.huella));
-        listaArticulos.add(new Articulo("Alimentos peligrosos", "Lo que nunca debes darle a tu mascota.", "- Chocolate\n- Cebolla\n- Uvas...", R.drawable.veterinario));
-        adapter.notifyDataSetChanged();
+    private void actualizarVisibilidadFab() {
+        if (tabLayout.getSelectedTabPosition() == 0) {
+            if ("admin".equals(rolUsuario)) {
+                fabAgregarArticulo.setVisibility(View.VISIBLE);
+            } else {
+                fabAgregarArticulo.setVisibility(View.GONE);
+            }
+        } else {
+            if (currentUser != null) {
+                fabAgregarArticulo.setVisibility(View.VISIBLE);
+            } else {
+                fabAgregarArticulo.setVisibility(View.GONE);
+            }
+        }
     }
 
-    private void cargarArticulosComunidad() {
-        comunidadRef.addValueEventListener(new ValueEventListener() {
+    private void cargarArticulos(DatabaseReference ref) {
+        detenerListenerArticulos();
+        articulosListener = new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
-                // Solo recargamos si seguimos en la pestaña de comunidad
-                if (tabLayout.getSelectedTabPosition() == 1) {
-                    listaArticulos.clear();
-                    for (DataSnapshot data : snapshot.getChildren()) {
-                        Articulo articulo = data.getValue(Articulo.class);
-                        if (articulo != null) {
-                            listaArticulos.add(articulo);
-                        }
+                listaArticulos.clear();
+                for (DataSnapshot data : snapshot.getChildren()) {
+                    Articulo articulo = data.getValue(Articulo.class);
+                    if (articulo != null) {
+                        listaArticulos.add(articulo);
                     }
-                    Collections.reverse(listaArticulos); // Los más nuevos arriba
-                    adapter.notifyDataSetChanged();
                 }
+                Collections.sort(listaArticulos, (a1, a2) -> Long.compare(a2.getTimestampCreacion(), a1.getTimestampCreacion()));
+                if (listaArticulos.isEmpty() && getContext() != null) {
+                    String msg = tabLayout.getSelectedTabPosition() == 0 ? "Aún no hay artículos oficiales." : "Aún no hay artículos en la comunidad.";
+                    Toast.makeText(getContext(), msg, Toast.LENGTH_SHORT).show();
+                }
+                adapter.notifyDataSetChanged();
             }
             @Override
-            public void onCancelled(@NonNull DatabaseError error) {
-                Toast.makeText(getContext(), "Error al cargar la comunidad", Toast.LENGTH_SHORT).show();
-            }
-        });
+            public void onCancelled(@NonNull DatabaseError error) { }
+        };
+        ref.addValueEventListener(articulosListener);
+    }
+
+    private void detenerListenerArticulos() {
+        if (articulosListener != null) {
+            comunidadRef.removeEventListener(articulosListener);
+            oficialesRef.removeEventListener(articulosListener);
+            articulosListener = null;
+        }
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        detenerListenerArticulos();
     }
 
     private void mostrarDialogoCrearArticulo() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+        boolean esOficial = (tabLayout.getSelectedTabPosition() == 0);
+        imagenSeleccionadaBase64 = ""; // Reseteamos la imagen al abrir el diálogo
 
-        // Creamos un diseño básico por código para el diálogo
-        android.widget.LinearLayout layout = new android.widget.LinearLayout(requireContext());
-        layout.setOrientation(android.widget.LinearLayout.VERTICAL);
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+        LinearLayout layout = new LinearLayout(requireContext());
+        layout.setOrientation(LinearLayout.VERTICAL);
         layout.setPadding(50, 40, 50, 10);
 
         final TextInputEditText etTitulo = new TextInputEditText(requireContext());
         etTitulo.setHint("Título del artículo");
 
+        // ✨ NUEVO: Campo específico para la descripción corta
+        final TextInputEditText etDescripcion = new TextInputEditText(requireContext());
+        etDescripcion.setHint("Breve descripción (para la lista)");
+        etDescripcion.setLines(2);
+
         final TextInputEditText etContenido = new TextInputEditText(requireContext());
-        etContenido.setHint("Escribe tu consejo aquí...");
+        etContenido.setHint("Escribe el contenido completo aquí...");
         etContenido.setLines(5);
         etContenido.setGravity(android.view.Gravity.TOP);
 
+        final TextInputEditText etUrl = new TextInputEditText(requireContext());
+        etUrl.setHint("Enlace a YouTube / Web (Opcional)");
+
+        MaterialButton btnImagen = new MaterialButton(requireContext());
+        btnImagen.setText("Añadir Imagen de Portada");
+        btnImagen.setOnClickListener(v -> {
+            Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+            galeriaLauncher.launch(intent);
+        });
+
+        ivVistaPreviaDialogo = new ImageView(requireContext());
+        ivVistaPreviaDialogo.setVisibility(View.GONE);
+        ivVistaPreviaDialogo.setAdjustViewBounds(true);
+        ivVistaPreviaDialogo.setMaxHeight(400);
+        ivVistaPreviaDialogo.setPadding(0, 20, 0, 20);
+
+        // Añadimos los campos en orden
         layout.addView(etTitulo);
+        layout.addView(etDescripcion); // Añadimos la descripción a la vista
         layout.addView(etContenido);
+        layout.addView(etUrl);
+        layout.addView(btnImagen);
+        layout.addView(ivVistaPreviaDialogo);
         builder.setView(layout);
 
-        builder.setTitle("Publicar en la Comunidad");
+        builder.setTitle(esOficial ? "Crear Artículo Oficial" : "Publicar en Comunidad");
         builder.setPositiveButton("Publicar", (dialog, which) -> {
             String titulo = etTitulo.getText().toString().trim();
+            String descripcion = etDescripcion.getText().toString().trim(); // Recogemos la descripción
             String contenido = etContenido.getText().toString().trim();
+            String url = etUrl.getText().toString().trim();
 
-            if (titulo.isEmpty() || contenido.isEmpty()) {
-                Toast.makeText(getContext(), "Rellena todos los campos", Toast.LENGTH_SHORT).show();
+            // Validamos que los 3 campos de texto obligatorios estén llenos
+            if (titulo.isEmpty() || descripcion.isEmpty() || contenido.isEmpty()) {
+                Toast.makeText(getContext(), "Rellena título, descripción y contenido", Toast.LENGTH_SHORT).show();
                 return;
             }
 
-            // Obtener el nombre del autor (usamos el email antes de la @ si no hay nombre)
-            String autor = currentUser.getDisplayName();
-            if (autor == null || autor.isEmpty()) {
-                autor = currentUser.getEmail().split("@")[0];
-            }
+            String autor = esOficial ? "EasyPets Oficial" : (currentUser.getDisplayName() != null ? currentUser.getDisplayName() : "Usuario");
+            DatabaseReference targetRef = esOficial ? oficialesRef : comunidadRef;
 
-            String id = comunidadRef.push().getKey();
-            String descripcionCorta = contenido.length() > 50 ? contenido.substring(0, 50) + "..." : contenido;
+            String id = targetRef.push().getKey();
 
-            Articulo nuevoArticulo = new Articulo(id, titulo, descripcionCorta, contenido, autor);
-            comunidadRef.child(id).setValue(nuevoArticulo).addOnSuccessListener(aVoid ->
-                    Toast.makeText(getContext(), "¡Artículo publicado!", Toast.LENGTH_SHORT).show()
+            Articulo nuevoArticulo = new Articulo(
+                    id, titulo, descripcion, contenido, autor,
+                    System.currentTimeMillis(), imagenSeleccionadaBase64, url, esOficial
+            );
+
+            targetRef.child(id).setValue(nuevoArticulo).addOnSuccessListener(aVoid ->
+                    Toast.makeText(getContext(), "¡Publicado correctamente!", Toast.LENGTH_SHORT).show()
             );
         });
         builder.setNegativeButton("Cancelar", null);
@@ -184,9 +304,31 @@ public class EducacionFragment extends Fragment {
 
     private void mostrarArticuloCompleto(Articulo articulo) {
         BottomSheetDialog bottomSheet = new BottomSheetDialog(requireContext());
-        android.widget.LinearLayout layout = new android.widget.LinearLayout(requireContext());
-        layout.setOrientation(android.widget.LinearLayout.VERTICAL);
+
+        // ✨ NUEVO: Creamos el ScrollView para que se pueda bajar a leer
+        androidx.core.widget.NestedScrollView scrollView = new androidx.core.widget.NestedScrollView(requireContext());
+        scrollView.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
+        // La caja donde va todo el contenido
+        LinearLayout layout = new LinearLayout(requireContext());
+        layout.setOrientation(LinearLayout.VERTICAL);
         layout.setPadding(60, 60, 60, 80);
+
+        // Si hay imagen, la ponemos arriba en grande
+        if (articulo.getImagenPortadaBase64() != null && !articulo.getImagenPortadaBase64().isEmpty()) {
+            ImageView ivPortada = new ImageView(requireContext());
+            ivPortada.setAdjustViewBounds(true);
+            ivPortada.setMaxHeight(600);
+            ivPortada.setPadding(0, 0, 0, 40);
+            try {
+                byte[] decodedString = Base64.decode(articulo.getImagenPortadaBase64(), Base64.DEFAULT);
+                Bitmap decodedByte = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
+                ivPortada.setImageBitmap(decodedByte);
+                layout.addView(ivPortada);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
 
         TextView tvTitulo = new TextView(requireContext());
         tvTitulo.setText(articulo.getTitulo());
@@ -194,11 +336,14 @@ public class EducacionFragment extends Fragment {
         tvTitulo.setTypeface(null, android.graphics.Typeface.BOLD);
         tvTitulo.setTextColor(getResources().getColor(R.color.black, null));
 
-        TextView tvAutor = new TextView(requireContext());
-        tvAutor.setText("Por: " + articulo.getAutor());
-        tvAutor.setTextSize(14f);
-        tvAutor.setTextColor(getResources().getColor(R.color.color_acento_primario, null));
-        tvAutor.setPadding(0, 10, 0, 40);
+        TextView tvAutorInfo = new TextView(requireContext());
+        SimpleDateFormat sdf = new SimpleDateFormat("dd MMM yyyy", Locale.getDefault());
+        String fecha = sdf.format(new Date(articulo.getTimestampCreacion()));
+
+        tvAutorInfo.setText(articulo.isEsOficial() ? "✓ Oficial • " + fecha : "Por: " + articulo.getAutor() + " • " + fecha);
+        tvAutorInfo.setTextSize(14f);
+        tvAutorInfo.setTextColor(getResources().getColor(R.color.color_acento_primario, null));
+        tvAutorInfo.setPadding(0, 10, 0, 40);
 
         TextView tvContenido = new TextView(requireContext());
         tvContenido.setText(articulo.getContenidoCompleto());
@@ -207,10 +352,34 @@ public class EducacionFragment extends Fragment {
         tvContenido.setLineSpacing(10f, 1.2f);
 
         layout.addView(tvTitulo);
-        layout.addView(tvAutor);
+        layout.addView(tvAutorInfo);
         layout.addView(tvContenido);
 
-        bottomSheet.setContentView(layout);
+        // Si hay URL, ponemos un botón debajo del todo
+        if (articulo.getUrlEnlace() != null && !articulo.getUrlEnlace().isEmpty()) {
+            MaterialButton btnLink = new MaterialButton(requireContext());
+            btnLink.setText("Ver Vídeo / Más Info");
+            btnLink.setOnClickListener(v -> {
+                String link = articulo.getUrlEnlace();
+                if (!link.startsWith("http://") && !link.startsWith("https://")) {
+                    link = "https://" + link;
+                }
+                Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(link));
+                startActivity(browserIntent);
+            });
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            params.setMargins(0, 40, 0, 0);
+            btnLink.setLayoutParams(params);
+            layout.addView(btnLink);
+        }
+
+        // ✨ NUEVO: Metemos el layout dentro del ScrollView, y el ScrollView al BottomSheet
+        scrollView.addView(layout);
+        bottomSheet.setContentView(scrollView);
+
+        // ✨ Extra: Forzamos a que el BottomSheet se abra bastante para leer cómodamente
+        bottomSheet.getBehavior().setState(com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_EXPANDED);
+
         bottomSheet.show();
     }
 
@@ -236,13 +405,22 @@ public class EducacionFragment extends Fragment {
             Articulo articulo = articulos.get(position);
             holder.tvTitulo.setText(articulo.getTitulo());
             holder.tvDescripcion.setText(articulo.getDescripcionCorta());
-            holder.tvAutor.setText("Por: " + articulo.getAutor());
 
-            // Si es de la comunidad, le ponemos un icono genérico distinto
-            if (articulo.getImagenResId() == 0) {
-                holder.ivIcono.setImageResource(R.drawable.profile); // Icono por defecto para usuarios
+            String fecha = new SimpleDateFormat("dd MMM", Locale.getDefault()).format(new Date(articulo.getTimestampCreacion()));
+            holder.tvAutor.setText(articulo.isEsOficial() ? "✓ Oficial • " + fecha : "Por: " + articulo.getAutor());
+
+            if (articulo.getImagenPortadaBase64() != null && !articulo.getImagenPortadaBase64().isEmpty()) {
+                try {
+                    byte[] decodedString = Base64.decode(articulo.getImagenPortadaBase64(), Base64.DEFAULT);
+                    Bitmap decodedByte = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
+                    holder.ivIcono.setImageBitmap(decodedByte);
+                    holder.ivIcono.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                    holder.ivIcono.setImageTintList(null); // Quita el tinte verde si hay foto real
+                } catch (Exception e) {
+                    holder.ivIcono.setImageResource(articulo.isEsOficial() ? R.drawable.consejos : R.drawable.profile);
+                }
             } else {
-                holder.ivIcono.setImageResource(articulo.getImagenResId());
+                holder.ivIcono.setImageResource(articulo.isEsOficial() ? R.drawable.consejos : R.drawable.profile);
             }
 
             holder.itemView.setOnClickListener(v -> listener.onArticuloClick(articulo));

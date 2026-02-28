@@ -3,7 +3,6 @@ package com.easypets.ui.auth;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
-import android.view.View;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
@@ -131,7 +130,6 @@ public class RegisterActivity extends AppCompatActivity {
         );
     }
 
-    // ✨ LA MAGIA ESTÁ AQUÍ AHORA ✨
     private void manejarRespuestaGoogle(GetCredentialResponse result) {
         try {
             androidx.credentials.Credential credential = result.getCredential();
@@ -142,20 +140,16 @@ public class RegisterActivity extends AppCompatActivity {
                 GoogleIdTokenCredential googleCredential = GoogleIdTokenCredential.createFrom(credential.getData());
                 AuthCredential authCredential = GoogleAuthProvider.getCredential(googleCredential.getIdToken(), null);
 
-                // Firebase Auth nos deja pasar
                 mAuth.signInWithCredential(authCredential).addOnCompleteListener(this, task -> {
                     if (task.isSuccessful()) {
                         FirebaseUser user = mAuth.getCurrentUser();
                         String uid = user.getUid();
 
-                        // 🔍 PREGUNTAMOS A LA BASE DE DATOS SI ESTE USUARIO YA EXISTE
-                        db.child("users").child(uid).get().addOnCompleteListener(taskDb -> {
+                        // ✨ CORRECCIÓN: Buscamos en "usuarios", no en "users"
+                        db.child("usuarios").child(uid).get().addOnCompleteListener(taskDb -> {
                             if (taskDb.isSuccessful() && taskDb.getResult().exists()) {
-                                // ✅ YA EXISTÍA: No sobrescribimos nada (no borramos su foto ni su nombre editado).
-                                // Solo le decimos "Iniciando sesión" y le mandamos p'adentro.
                                 irAMain();
                             } else {
-                                // 🆕 ES NUEVO: Le creamos su ficha en la base de datos por primera vez.
                                 String nombre = googleCredential.getGivenName();
                                 String apellidos = googleCredential.getFamilyName();
                                 String correo = user.getEmail();
@@ -189,21 +183,20 @@ public class RegisterActivity extends AppCompatActivity {
         if (TextUtils.isEmpty(password) || password.length() < 6) { passwordEditText.setError("Mínimo 6 letras o números"); return; }
         if (!password.equals(confirmPassword)) { confirmPasswordEditText.setError("Las contraseñas no son iguales"); return; }
 
-        mAuth.createUserWithEmailAndPassword(email, password)
-                .addOnCompleteListener(this, task -> {
-                    if (task.isSuccessful()) {
-                        FirebaseUser user = mAuth.getCurrentUser();
-                        guardarDatosFirestore(user.getUid(), nombre, apellidos, email);
-                    } else {
-                        if (task.getException() instanceof FirebaseAuthUserCollisionException) {
-                            Toast.makeText(RegisterActivity.this, "Este correo ya está registrado", Toast.LENGTH_LONG).show();
-                            emailEditText.setError("Correo en uso. Inicia sesión.");
-                            emailEditText.requestFocus();
-                        } else {
-                            Toast.makeText(RegisterActivity.this, "Error: " + task.getException().getMessage(), Toast.LENGTH_LONG).show();
-                        }
-                    }
-                });
+        mAuth.createUserWithEmailAndPassword(email, password).addOnCompleteListener(task -> {
+            if (task.isSuccessful()) {
+                FirebaseUser user = mAuth.getCurrentUser();
+                if (user != null) {
+                    guardarDatosFirestore(user.getUid(), nombre, apellidos, email);
+                }
+            } else {
+                if (task.getException() instanceof FirebaseAuthUserCollisionException) {
+                    Toast.makeText(RegisterActivity.this, "Este correo ya está registrado", Toast.LENGTH_LONG).show();
+                } else {
+                    Toast.makeText(RegisterActivity.this, "Error al registrarse", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
     }
 
     private void guardarDatosFirestore(String uid, String nombre, String apellidos, String email) {
@@ -219,17 +212,18 @@ public class RegisterActivity extends AppCompatActivity {
         usuario.put("correo", email);
         usuario.put("fechaRegistro", fecha);
         usuario.put("timestamp", System.currentTimeMillis());
+        usuario.put("rol", "usuario"); // ✨ NUEVO: El rol por defecto
 
-        db.child("users").child(uid).setValue(usuario)
+        db.child("usuarios").child(uid).setValue(usuario)
                 .addOnSuccessListener(aVoid -> {
-                    irAMain(); // Usamos nuestro nuevo método acortado
+                    Toast.makeText(RegisterActivity.this, "¡Registro completado!", Toast.LENGTH_SHORT).show();
+                    irAMain();
                 })
                 .addOnFailureListener(e -> {
                     Toast.makeText(RegisterActivity.this, "Fallo al guardar: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
     }
 
-    // Método de ayuda para ir a la pantalla principal sin repetir código
     private void irAMain() {
         Intent intent = new Intent(RegisterActivity.this, MainActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK);

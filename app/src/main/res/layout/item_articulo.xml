@@ -25,8 +25,8 @@
             app:cardBackgroundColor="#F0F0F0">
             <ImageView
                 android:id="@+id/ivIconoArticulo"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
                 android:layout_gravity="center"
                 android:src="@drawable/consejos"
                 app:tint="@color/color_acento_primario"/>

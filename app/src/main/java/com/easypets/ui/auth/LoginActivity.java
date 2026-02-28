@@ -186,23 +186,20 @@ public class LoginActivity extends AppCompatActivity {
                     credential.getType().equals(GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL)) {
 
                 GoogleIdTokenCredential googleCredential = GoogleIdTokenCredential.createFrom(credential.getData());
-
-                // Autenticamos en Firebase con el Token obtenido
                 AuthCredential authCredential = GoogleAuthProvider.getCredential(googleCredential.getIdToken(), null);
 
                 mAuth.signInWithCredential(authCredential).addOnCompleteListener(this, task -> {
                     if (task.isSuccessful()) {
                         FirebaseUser user = mAuth.getCurrentUser();
-                        DatabaseReference userRef = FirebaseDatabase.getInstance().getReference().child("users").child(user.getUid());
+
+                        DatabaseReference userRef = FirebaseDatabase.getInstance().getReference().child("usuarios").child(user.getUid());
 
                         userRef.get().addOnCompleteListener(dbTask -> {
                             if (dbTask.isSuccessful() && !dbTask.getResult().exists()) {
-                                // Es la primera vez: Guardamos sus datos
                                 String nombreCompleto = googleCredential.getDisplayName();
                                 if (nombreCompleto == null) nombreCompleto = "Usuario";
                                 guardarDatosEnBaseDeDatos(user.getUid(), nombreCompleto, "", user.getEmail());
                             } else {
-                                // Ya existía, simplemente lo dejamos entrar
                                 irAMainActivity();
                             }
                         });
@@ -231,13 +228,15 @@ public class LoginActivity extends AppCompatActivity {
         usuario.put("fechaRegistro", fechaBonita);
         usuario.put("timestamp", timestamp);
 
-        FirebaseDatabase.getInstance().getReference().child("users").child(uid).setValue(usuario)
+        usuario.put("rol", "usuario");
+
+        FirebaseDatabase.getInstance().getReference().child("usuarios").child(uid).setValue(usuario)
                 .addOnSuccessListener(aVoid -> {
                     Toast.makeText(LoginActivity.this, "¡Bienvenido " + nombre + "!", Toast.LENGTH_SHORT).show();
                     irAMainActivity();
                 })
                 .addOnFailureListener(e -> {
-                    irAMainActivity(); // Si falla al guardar, lo dejamos entrar igual
+                    irAMainActivity();
                 });
     }
 
