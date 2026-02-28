@@ -70,7 +70,6 @@ public class MascotaAdapter extends RecyclerView.Adapter<MascotaAdapter.MascotaV
             ponerHuellaPorDefecto(holder);
         }
 
-        // ✨ NUEVO: Al hacer clic en la miniatura, se abre el visualizador grande ✨
         holder.ivFotoMascota.setOnClickListener(v -> {
             if (holder.ivFotoMascota.getDrawable() != null) {
                 mostrarFotoGrande(v.getContext(), holder.ivFotoMascota.getDrawable());
@@ -78,7 +77,6 @@ public class MascotaAdapter extends RecyclerView.Adapter<MascotaAdapter.MascotaV
         });
     }
 
-    // ✨ MÉTODO PARA MOSTRAR LA FOTO EN GRANDE ✨
     private void mostrarFotoGrande(Context context, android.graphics.drawable.Drawable drawable) {
         android.app.Dialog dialog = new android.app.Dialog(context, android.R.style.Theme_Black_NoTitleBar_Fullscreen);
         dialog.setContentView(R.layout.dialog_ver_foto);

@@ -194,6 +194,7 @@ public class AgregarMascotaActivity extends AppCompatActivity {
                     String fechaSeleccionada = dayOfMonth + "/" + (month + 1) + "/" + year;
                     etFechaNacimiento.setText(fechaSeleccionada);
                 }, anio, mes, dia);
+        datePickerDialog.getDatePicker().setMaxDate(System.currentTimeMillis());
         datePickerDialog.show();
     }
 
@@ -219,7 +220,6 @@ public class AgregarMascotaActivity extends AppCompatActivity {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user == null) return;
 
-        // ✨ CREAMOS LA MASCOTA CON EL TEXTO DE LA FOTO ✨
         Mascota mascotaListaParaSubir = new Mascota(
                 idMascotaAEditar,
                 nombre,
