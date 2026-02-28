@@ -1,6 +1,8 @@
 package com.easypets.ui.main;
 
 import android.os.Bundle;
+import android.widget.Toast;
+
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 
@@ -12,12 +14,11 @@ import com.google.android.material.bottomnavigation.BottomNavigationView;
 public class MainActivity extends AppCompatActivity {
 
     private BottomNavigationView bottomNav;
+    private long tiempoUltimoClicAtras = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-
         setContentView(R.layout.activity_main);
 
         bottomNav = findViewById(R.id.bottom_navigation);
@@ -47,11 +48,31 @@ public class MainActivity extends AppCompatActivity {
             return true;
         });
 
-        // 2. Cargar el fragmento por defecto al iniciar (Home)
+        // Cargar el fragmento por defecto al iniciar (Home)
         if (savedInstanceState == null) {
             getSupportFragmentManager().beginTransaction()
                     .replace(R.id.frame_container, new HomeFragment())
                     .commit();
         }
+        getOnBackPressedDispatcher().addCallback(this, new androidx.activity.OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                BottomNavigationView bottomNav = findViewById(R.id.bottom_navigation);
+
+                if (bottomNav.getSelectedItemId() != R.id.nav_home) {
+                    bottomNav.setSelectedItemId(R.id.nav_home);
+                }
+                else {
+                    // Diferencia entre clics menor a 2 segundos
+                    if (System.currentTimeMillis() - tiempoUltimoClicAtras < 2000) {
+                        finish();
+                    } else {
+                        // Primer clic muestra el aviso y guardamos el momento exacto
+                        Toast.makeText(MainActivity.this, "Vuelve a presionar atrás para salir", Toast.LENGTH_SHORT).show();
+                        tiempoUltimoClicAtras = System.currentTimeMillis();
+                    }
+                }
+            }
+        });
     }
 }

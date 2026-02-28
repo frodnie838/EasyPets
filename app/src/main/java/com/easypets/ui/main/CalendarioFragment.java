@@ -283,21 +283,115 @@ public class CalendarioFragment extends Fragment {
         View dialogView = getLayoutInflater().inflate(R.layout.dialog_agregar_evento, null);
         builder.setView(dialogView);
         AlertDialog dialog = builder.create();
-        if (dialog.getWindow() != null) dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        }
 
+        // 1. Vinculamos las vistas
         TextInputEditText etTitulo = dialogView.findViewById(R.id.etTituloEvento);
         AutoCompleteTextView spinnerTipo = dialogView.findViewById(R.id.spinnerTipoEvento);
         AutoCompleteTextView spinnerMascotas = dialogView.findViewById(R.id.spinnerMascotas);
         MaterialButton btnFecha = dialogView.findViewById(R.id.btnFechaDialog);
         MaterialButton btnHora = dialogView.findViewById(R.id.btnHoraDialog);
         MaterialButton btnGuardar = dialogView.findViewById(R.id.btnGuardarDialog);
+        MaterialButton btnCancelar = dialogView.findViewById(R.id.btnCancelarDialog); // Nos faltaba vincular este
 
+        // 2. Configuramos los desplegables
         spinnerMascotas.setAdapter(new ArrayAdapter<>(requireContext(), android.R.layout.simple_dropdown_item_1line, nombresMascotas));
         String[] opcionesTipo = {"Nota", "Veterinario", "Peluquería", "Guardería"};
         spinnerTipo.setAdapter(new ArrayAdapter<>(requireContext(), android.R.layout.simple_dropdown_item_1line, opcionesTipo));
 
-        // Lógica de llenado y botones (Fecha/Hora/Guardar) igual que tenías...
-        // [Omitido por brevedad, pero manteniendo la estructura de tu código previo]
+        // 3. ✨ LÓGICA DE RELLENADO DE DATOS (Lo que faltaba)
+        if (eventoExistente != null) {
+            // Es una edición: rellenamos con la info de la base de datos
+            etTitulo.setText(eventoExistente.getTitulo());
+            spinnerTipo.setText(eventoExistente.getTipo(), false);
+            btnFecha.setText(eventoExistente.getFecha());
+            btnHora.setText(eventoExistente.getHora().isEmpty() ? "Hora (Opcional)" : eventoExistente.getHora());
+            btnGuardar.setText("Actualizar");
+
+            // Rellenar la mascota correcta
+            if (eventoExistente.getIdMascota() == null || eventoExistente.getIdMascota().isEmpty()) {
+                spinnerMascotas.setText("General", false);
+            } else {
+                for (Mascota m : listaMascotasUsuario) {
+                    if (m.getIdMascota().equals(eventoExistente.getIdMascota())) {
+                        spinnerMascotas.setText(m.getNombre(), false);
+                        break;
+                    }
+                }
+            }
+        } else {
+            // Es un evento nuevo: ponemos valores por defecto
+            spinnerTipo.setText(opcionesTipo[0], false);
+            if (!nombresMascotas.isEmpty()) {
+                spinnerMascotas.setText(nombresMascotas.get(0), false);
+            }
+            btnFecha.setText(String.format(Locale.getDefault(), "%02d/%02d/%d",
+                    calendarioActual.get(Calendar.DAY_OF_MONTH),
+                    calendarioActual.get(Calendar.MONTH) + 1,
+                    calendarioActual.get(Calendar.YEAR)));
+        }
+
+        // 4. ✨ LÓGICA DE BOTONES (Lo que faltaba)
+        btnFecha.setOnClickListener(v -> {
+            new DatePickerDialog(requireContext(), (view, year, month, dayOfMonth) -> {
+                btnFecha.setText(String.format(Locale.getDefault(), "%02d/%02d/%d", dayOfMonth, month + 1, year));
+            }, calendarioActual.get(Calendar.YEAR), calendarioActual.get(Calendar.MONTH), calendarioActual.get(Calendar.DAY_OF_MONTH)).show();
+        });
+
+        btnHora.setOnClickListener(v -> {
+            new TimePickerDialog(requireContext(), (view, hour, minute) -> {
+                btnHora.setText(String.format(Locale.getDefault(), "%02d:%02d", hour, minute));
+            }, 12, 0, true).show();
+        });
+
+        btnCancelar.setOnClickListener(v -> dialog.dismiss()); // Ahora sí funciona el botón Cancelar
+
+        btnGuardar.setOnClickListener(v -> {
+            String titulo = etTitulo.getText() != null ? etTitulo.getText().toString().trim() : "";
+            if (titulo.isEmpty()) {
+                etTitulo.setError("Requerido");
+                return;
+            }
+
+            // Conseguir el ID de la mascota seleccionada
+            String mascotaTxt = spinnerMascotas.getText().toString();
+            String idMascota = "";
+            if (!mascotaTxt.equals("General")) {
+                for (Mascota m : listaMascotasUsuario) {
+                    if (m.getNombre().equals(mascotaTxt)) {
+                        idMascota = m.getIdMascota();
+                        break;
+                    }
+                }
+            }
+
+            // Crear el evento y guardarlo en Firebase
+            Evento e = new Evento(
+                    eventoExistente != null ? eventoExistente.getId() : null,
+                    titulo,
+                    btnFecha.getText().toString(),
+                    btnHora.getText().toString().equals("Hora (Opcional)") ? "" : btnHora.getText().toString(),
+                    spinnerTipo.getText().toString(),
+                    idMascota
+            );
+
+            FirebaseUser user = mAuth.getCurrentUser();
+            if (user != null) {
+                eventoRepository.guardarEvento(user.getUid(), e, new EventoRepository.AccionCallback() {
+                    @Override
+                    public void onExito() {
+                        dialog.dismiss();
+                        cargarEventosDeFecha(user.getUid(), calendarioActual.get(Calendar.DAY_OF_MONTH), calendarioActual.get(Calendar.MONTH), calendarioActual.get(Calendar.YEAR));
+                    }
+                    @Override
+                    public void onError(String error) {
+                        Toast.makeText(getContext(), "Error al guardar: " + error, Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
+        });
 
         dialog.show();
     }

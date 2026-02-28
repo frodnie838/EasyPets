@@ -195,7 +195,7 @@ public class HomeFragment extends Fragment {
         cardMisMascotas.setOnClickListener(v -> { cambiarTab(R.id.nav_pets); });
         cardCalendario.setOnClickListener(v -> { cambiarTab(R.id.nav_calendar); });
         cardVeterinarios.setOnClickListener(v -> abrirFragmento(new VeterinariosFragment()));
-        cardEducacion.setOnClickListener(v -> Toast.makeText(getContext(), "Blog de educación próximamente", Toast.LENGTH_SHORT).show());
+        cardEducacion.setOnClickListener(v -> abrirFragmento(new EducacionFragment()));
         cardTiendas.setOnClickListener(v -> Toast.makeText(getContext(), "Servicios cercanos próximamente", Toast.LENGTH_SHORT).show());
     }
 
