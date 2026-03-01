@@ -13,7 +13,7 @@
         android:text="Añadir Nuevo Evento"
         android:textSize="20sp"
         android:textStyle="bold"
-        android:textColor="@color/black"
+        android:textColor="@color/color_acento_primario"
         android:layout_marginBottom="16dp"/>
 
     <com.google.android.material.textfield.TextInputLayout

@@ -27,7 +27,6 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.easypets.R;
 import com.easypets.models.Articulo;
-import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
@@ -39,6 +38,7 @@ import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.Query;
 import com.google.firebase.database.ValueEventListener;
 
 import java.io.ByteArrayOutputStream;
@@ -46,8 +46,10 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 public class EducacionFragment extends Fragment {
 
@@ -60,10 +62,10 @@ public class EducacionFragment extends Fragment {
     private DatabaseReference comunidadRef, oficialesRef, usuariosRef;
     private FirebaseUser currentUser;
     private ValueEventListener articulosListener;
+    private Query activeQuery;
 
     private String rolUsuario = "usuario";
 
-    // ✨ Variables para la imagen
     private String imagenSeleccionadaBase64 = "";
     private ImageView ivVistaPreviaDialogo;
     private ActivityResultLauncher<Intent> galeriaLauncher;
@@ -83,7 +85,15 @@ public class EducacionFragment extends Fragment {
         usuariosRef = FirebaseDatabase.getInstance().getReference("usuarios");
 
         listaArticulos = new ArrayList<>();
-        adapter = new ArticuloAdapter(listaArticulos, this::mostrarArticuloCompleto);
+
+        adapter = new ArticuloAdapter(listaArticulos, articulo -> {
+            if (tabLayout.getSelectedTabPosition() == 2) {
+                mostrarOpcionesMisArticulos(articulo);
+            } else {
+                mostrarArticuloCompleto(articulo);
+            }
+        });
+
         rvArticulos.setLayoutManager(new LinearLayoutManager(getContext()));
         rvArticulos.setAdapter(adapter);
 
@@ -92,7 +102,6 @@ public class EducacionFragment extends Fragment {
 
         fabAgregarArticulo.setOnClickListener(v -> mostrarDialogoCrearArticulo());
 
-        // ✨ Configuramos el launcher para abrir la galería
         galeriaLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> {
@@ -100,7 +109,7 @@ public class EducacionFragment extends Fragment {
                         Uri imageUri = result.getData().getData();
                         try {
                             Bitmap bitmap = MediaStore.Images.Media.getBitmap(requireActivity().getContentResolver(), imageUri);
-                            Bitmap resized = redimensionarImagen(bitmap, 800); // Reducimos tamaño para Firebase
+                            Bitmap resized = redimensionarImagen(bitmap, 800);
 
                             if (ivVistaPreviaDialogo != null) {
                                 ivVistaPreviaDialogo.setImageBitmap(resized);
@@ -116,23 +125,10 @@ public class EducacionFragment extends Fragment {
                     }
                 }
         );
-        if (getActivity() != null) {
-            BottomNavigationView bottomNav = getActivity().findViewById(R.id.bottom_navigation);
-            if (bottomNav != null) {
-                android.view.Menu menu = bottomNav.getMenu();
-                // Le quitamos la obligación de tener uno seleccionado
-                menu.setGroupCheckable(0, true, false);
-                for (int i = 0; i < menu.size(); i++) {
-                    menu.getItem(i).setChecked(false); // Apagamos todos
-                }
-                // Le volvemos a poner la protección
-                menu.setGroupCheckable(0, true, true);
-            }
-        }
+
         return view;
     }
 
-    // ✨ Método para que la imagen no pese demasiado
     private Bitmap redimensionarImagen(Bitmap image, int maxSize) {
         int width = image.getWidth();
         int height = image.getHeight();
@@ -163,6 +159,10 @@ public class EducacionFragment extends Fragment {
     }
 
     private void configurarPestanas() {
+        if (tabLayout.getTabCount() < 3) {
+            tabLayout.addTab(tabLayout.newTab().setText("Mis Artículos"));
+        }
+
         tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
             @Override
             public void onTabSelected(TabLayout.Tab tab) {
@@ -171,35 +171,38 @@ public class EducacionFragment extends Fragment {
                 actualizarVisibilidadFab();
 
                 if (tab.getPosition() == 0) {
-                    cargarArticulos(oficialesRef);
-                } else {
-                    cargarArticulos(comunidadRef);
+                    cargarArticulos(oficialesRef, "Aún no hay artículos oficiales.");
+                } else if (tab.getPosition() == 1) {
+                    cargarArticulos(comunidadRef, "Aún no hay artículos en la comunidad.");
+                } else if (tab.getPosition() == 2) {
+                    if (currentUser != null) {
+                        Query misArticulosQuery = comunidadRef.orderByChild("idAutor").equalTo(currentUser.getUid());
+                        cargarArticulos(misArticulosQuery, "Aún no has escrito ningún artículo.");
+                    } else {
+                        Toast.makeText(getContext(), "Debes iniciar sesión para ver tus artículos.", Toast.LENGTH_SHORT).show();
+                    }
                 }
             }
             @Override public void onTabUnselected(TabLayout.Tab tab) {}
             @Override public void onTabReselected(TabLayout.Tab tab) {}
         });
-        cargarArticulos(oficialesRef);
+
+        cargarArticulos(oficialesRef, "Aún no hay artículos oficiales.");
     }
 
     private void actualizarVisibilidadFab() {
         if (tabLayout.getSelectedTabPosition() == 0) {
-            if ("admin".equals(rolUsuario)) {
-                fabAgregarArticulo.setVisibility(View.VISIBLE);
-            } else {
-                fabAgregarArticulo.setVisibility(View.GONE);
-            }
+            fabAgregarArticulo.setVisibility("admin".equals(rolUsuario) ? View.VISIBLE : View.GONE);
+        } else if (tabLayout.getSelectedTabPosition() == 1) {
+            fabAgregarArticulo.setVisibility(View.GONE);
         } else {
-            if (currentUser != null) {
-                fabAgregarArticulo.setVisibility(View.VISIBLE);
-            } else {
-                fabAgregarArticulo.setVisibility(View.GONE);
-            }
+            fabAgregarArticulo.setVisibility(currentUser != null ? View.VISIBLE : View.GONE);
         }
     }
 
-    private void cargarArticulos(DatabaseReference ref) {
+    private void cargarArticulos(Query query, String mensajeVacio) {
         detenerListenerArticulos();
+        activeQuery = query;
         articulosListener = new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
@@ -212,21 +215,19 @@ public class EducacionFragment extends Fragment {
                 }
                 Collections.sort(listaArticulos, (a1, a2) -> Long.compare(a2.getTimestampCreacion(), a1.getTimestampCreacion()));
                 if (listaArticulos.isEmpty() && getContext() != null) {
-                    String msg = tabLayout.getSelectedTabPosition() == 0 ? "Aún no hay artículos oficiales." : "Aún no hay artículos en la comunidad.";
-                    Toast.makeText(getContext(), msg, Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getContext(), mensajeVacio, Toast.LENGTH_SHORT).show();
                 }
                 adapter.notifyDataSetChanged();
             }
             @Override
             public void onCancelled(@NonNull DatabaseError error) { }
         };
-        ref.addValueEventListener(articulosListener);
+        activeQuery.addValueEventListener(articulosListener);
     }
 
     private void detenerListenerArticulos() {
-        if (articulosListener != null) {
-            comunidadRef.removeEventListener(articulosListener);
-            oficialesRef.removeEventListener(articulosListener);
+        if (articulosListener != null && activeQuery != null) {
+            activeQuery.removeEventListener(articulosListener);
             articulosListener = null;
         }
     }
@@ -236,62 +237,86 @@ public class EducacionFragment extends Fragment {
         super.onDestroyView();
         detenerListenerArticulos();
     }
+    private void mostrarOpcionesMisArticulos(Articulo articulo) {
+        // Creamos el menú deslizable desde abajo
+        BottomSheetDialog bottomSheet = new BottomSheetDialog(requireContext());
+        View view = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_opciones_articulo, null);
+        bottomSheet.setContentView(view);
+
+        // Vinculamos los botones
+        MaterialButton btnVer = view.findViewById(R.id.btnOpcionVer);
+        MaterialButton btnEditar = view.findViewById(R.id.btnOpcionEditar);
+        MaterialButton btnEliminar = view.findViewById(R.id.btnOpcionEliminar);
+
+        // Damos función a cada botón
+        btnVer.setOnClickListener(v -> {
+            bottomSheet.dismiss();
+            mostrarArticuloCompleto(articulo);
+        });
+
+        btnEditar.setOnClickListener(v -> {
+            bottomSheet.dismiss();
+            mostrarDialogoEditarArticulo(articulo);
+        });
+
+        btnEliminar.setOnClickListener(v -> {
+            bottomSheet.dismiss();
+            eliminarArticulo(articulo); // Esto abre la confirmación normal de borrado
+        });
+
+        // Mostramos el menú
+        bottomSheet.show();
+    }
+
+    private void eliminarArticulo(Articulo articulo) {
+        new AlertDialog.Builder(requireContext())
+                .setTitle("¿Eliminar artículo?")
+                .setMessage("Esta acción no se puede deshacer.")
+                .setPositiveButton("Eliminar", (dialog, which) -> {
+                    comunidadRef.child(articulo.getId()).removeValue()
+                            .addOnSuccessListener(aVoid -> Toast.makeText(getContext(), "Artículo eliminado", Toast.LENGTH_SHORT).show());
+                })
+                .setNegativeButton("Cancelar", null)
+                .show();
+    }
 
     private void mostrarDialogoCrearArticulo() {
         boolean esOficial = (tabLayout.getSelectedTabPosition() == 0);
-        imagenSeleccionadaBase64 = ""; // Reseteamos la imagen al abrir el diálogo
+        imagenSeleccionadaBase64 = "";
 
-        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
-        LinearLayout layout = new LinearLayout(requireContext());
-        layout.setOrientation(LinearLayout.VERTICAL);
-        layout.setPadding(50, 40, 50, 10);
+        View view = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_agregar_articulo, null);
 
-        final TextInputEditText etTitulo = new TextInputEditText(requireContext());
-        etTitulo.setHint("Título del artículo");
+        // Creamos el diálogo transparente (para que se vean los bordes redondeados si los pones)
+        AlertDialog dialog = new AlertDialog.Builder(requireContext())
+                .setView(view)
+                .create();
 
-        // ✨ NUEVO: Campo específico para la descripción corta
-        final TextInputEditText etDescripcion = new TextInputEditText(requireContext());
-        etDescripcion.setHint("Breve descripción (para la lista)");
-        etDescripcion.setLines(2);
+        TextView tvTitle = view.findViewById(R.id.tvDialogTitle);
+        TextInputEditText etTitulo = view.findViewById(R.id.etDialogTitulo);
+        TextInputEditText etDescripcion = view.findViewById(R.id.etDialogDescripcion);
+        TextInputEditText etContenido = view.findViewById(R.id.etDialogContenido);
+        TextInputEditText etUrl = view.findViewById(R.id.etDialogUrl);
+        MaterialButton btnImagen = view.findViewById(R.id.btnDialogImagen);
+        ivVistaPreviaDialogo = view.findViewById(R.id.ivDialogVistaPrevia);
 
-        final TextInputEditText etContenido = new TextInputEditText(requireContext());
-        etContenido.setHint("Escribe el contenido completo aquí...");
-        etContenido.setLines(5);
-        etContenido.setGravity(android.view.Gravity.TOP);
+        MaterialButton btnCancelar = view.findViewById(R.id.btnCancelarDialog);
+        MaterialButton btnGuardar = view.findViewById(R.id.btnGuardarDialog);
 
-        final TextInputEditText etUrl = new TextInputEditText(requireContext());
-        etUrl.setHint("Enlace a YouTube / Web (Opcional)");
+        tvTitle.setText(esOficial ? "Crear Artículo Oficial" : "Publicar en Comunidad");
 
-        MaterialButton btnImagen = new MaterialButton(requireContext());
-        btnImagen.setText("Añadir Imagen de Portada");
         btnImagen.setOnClickListener(v -> {
             Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
             galeriaLauncher.launch(intent);
         });
 
-        ivVistaPreviaDialogo = new ImageView(requireContext());
-        ivVistaPreviaDialogo.setVisibility(View.GONE);
-        ivVistaPreviaDialogo.setAdjustViewBounds(true);
-        ivVistaPreviaDialogo.setMaxHeight(400);
-        ivVistaPreviaDialogo.setPadding(0, 20, 0, 20);
+        btnCancelar.setOnClickListener(v -> dialog.dismiss());
 
-        // Añadimos los campos en orden
-        layout.addView(etTitulo);
-        layout.addView(etDescripcion); // Añadimos la descripción a la vista
-        layout.addView(etContenido);
-        layout.addView(etUrl);
-        layout.addView(btnImagen);
-        layout.addView(ivVistaPreviaDialogo);
-        builder.setView(layout);
-
-        builder.setTitle(esOficial ? "Crear Artículo Oficial" : "Publicar en Comunidad");
-        builder.setPositiveButton("Publicar", (dialog, which) -> {
+        btnGuardar.setOnClickListener(v -> {
             String titulo = etTitulo.getText().toString().trim();
             String descripcion = etDescripcion.getText().toString().trim();
             String contenido = etContenido.getText().toString().trim();
             String url = etUrl.getText().toString().trim();
 
-            // Validamos que los 3 campos de texto obligatorios estén llenos
             if (titulo.isEmpty() || descripcion.isEmpty() || contenido.isEmpty()) {
                 Toast.makeText(getContext(), "Rellena título, descripción y contenido", Toast.LENGTH_SHORT).show();
                 return;
@@ -307,12 +332,87 @@ public class EducacionFragment extends Fragment {
                     System.currentTimeMillis(), imagenSeleccionadaBase64, url, esOficial
             );
 
-            targetRef.child(id).setValue(nuevoArticulo).addOnSuccessListener(aVoid ->
-                    Toast.makeText(getContext(), "¡Publicado correctamente!", Toast.LENGTH_SHORT).show()
-            );
+            targetRef.child(id).setValue(nuevoArticulo).addOnSuccessListener(aVoid -> {
+                Toast.makeText(getContext(), "¡Publicado correctamente!", Toast.LENGTH_SHORT).show();
+                dialog.dismiss();
+            });
         });
-        builder.setNegativeButton("Cancelar", null);
-        builder.show();
+
+        if (dialog.getWindow() != null) dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        dialog.show();
+    }
+
+    private void mostrarDialogoEditarArticulo(Articulo articulo) {
+        imagenSeleccionadaBase64 = articulo.getImagenPortadaBase64();
+
+        View view = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_agregar_articulo, null);
+        AlertDialog dialog = new AlertDialog.Builder(requireContext())
+                .setView(view)
+                .create();
+
+        TextView tvTitle = view.findViewById(R.id.tvDialogTitle);
+        TextInputEditText etTitulo = view.findViewById(R.id.etDialogTitulo);
+        TextInputEditText etDescripcion = view.findViewById(R.id.etDialogDescripcion);
+        TextInputEditText etContenido = view.findViewById(R.id.etDialogContenido);
+        TextInputEditText etUrl = view.findViewById(R.id.etDialogUrl);
+        MaterialButton btnImagen = view.findViewById(R.id.btnDialogImagen);
+        ivVistaPreviaDialogo = view.findViewById(R.id.ivDialogVistaPrevia);
+
+        MaterialButton btnCancelar = view.findViewById(R.id.btnCancelarDialog);
+        MaterialButton btnGuardar = view.findViewById(R.id.btnGuardarDialog);
+
+        tvTitle.setText("Editar Mi Artículo");
+        btnImagen.setText("Cambiar Imagen");
+        btnGuardar.setText("Guardar cambios"); // Le cambiamos el texto al botón desde código
+
+        etTitulo.setText(articulo.getTitulo());
+        etDescripcion.setText(articulo.getDescripcionCorta());
+        etContenido.setText(articulo.getContenidoCompleto());
+        etUrl.setText(articulo.getUrlEnlace());
+
+        if (imagenSeleccionadaBase64 != null && !imagenSeleccionadaBase64.isEmpty()) {
+            try {
+                byte[] decodedString = Base64.decode(imagenSeleccionadaBase64, Base64.DEFAULT);
+                Bitmap decodedByte = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
+                ivVistaPreviaDialogo.setImageBitmap(decodedByte);
+                ivVistaPreviaDialogo.setVisibility(View.VISIBLE);
+            } catch (Exception e) { e.printStackTrace(); }
+        }
+
+        btnImagen.setOnClickListener(v -> {
+            Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+            galeriaLauncher.launch(intent);
+        });
+
+        btnCancelar.setOnClickListener(v -> dialog.dismiss());
+
+        btnGuardar.setOnClickListener(v -> {
+            String nuevoTitulo = etTitulo.getText().toString().trim();
+            String nuevaDesc = etDescripcion.getText().toString().trim();
+            String nuevoContenido = etContenido.getText().toString().trim();
+            String nuevaUrl = etUrl.getText().toString().trim();
+
+            if (nuevoTitulo.isEmpty() || nuevaDesc.isEmpty() || nuevoContenido.isEmpty()) {
+                Toast.makeText(getContext(), "Rellena los campos obligatorios", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            Map<String, Object> updates = new HashMap<>();
+            updates.put("titulo", nuevoTitulo);
+            updates.put("descripcionCorta", nuevaDesc);
+            updates.put("contenidoCompleto", nuevoContenido);
+            updates.put("urlEnlace", nuevaUrl);
+            updates.put("imagenPortadaBase64", imagenSeleccionadaBase64);
+
+            comunidadRef.child(articulo.getId()).updateChildren(updates)
+                    .addOnSuccessListener(aVoid -> {
+                        Toast.makeText(getContext(), "¡Artículo actualizado!", Toast.LENGTH_SHORT).show();
+                        dialog.dismiss();
+                    });
+        });
+
+        if (dialog.getWindow() != null) dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        dialog.show();
     }
 
     private void mostrarArticuloCompleto(Articulo articulo) {
@@ -365,7 +465,6 @@ public class EducacionFragment extends Fragment {
         layout.addView(tvAutorInfo);
         layout.addView(tvContenido);
 
-        // Si hay URL, ponemos un botón debajo del todo
         if (articulo.getUrlEnlace() != null && !articulo.getUrlEnlace().isEmpty()) {
             MaterialButton btnLink = new MaterialButton(requireContext());
             btnLink.setText("Ver Vídeo / Más Info");
@@ -383,16 +482,15 @@ public class EducacionFragment extends Fragment {
             layout.addView(btnLink);
         }
 
-        // ✨ NUEVO: Metemos el layout dentro del ScrollView, y el ScrollView al BottomSheet
         scrollView.addView(layout);
         bottomSheet.setContentView(scrollView);
-
-        // ✨ Extra: Forzamos a que el BottomSheet se abra bastante para leer cómodamente
         bottomSheet.getBehavior().setState(com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_EXPANDED);
-
         bottomSheet.show();
     }
 
+    // --------------------------------------------------------
+    // ADAPTER
+    // --------------------------------------------------------
     static class ArticuloAdapter extends RecyclerView.Adapter<ArticuloAdapter.ArticuloViewHolder> {
         private List<Articulo> articulos;
         private OnArticuloClickListener listener;
@@ -425,12 +523,12 @@ public class EducacionFragment extends Fragment {
                     Bitmap decodedByte = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
                     holder.ivIcono.setImageBitmap(decodedByte);
                     holder.ivIcono.setScaleType(ImageView.ScaleType.CENTER_CROP);
-                    holder.ivIcono.setImageTintList(null); // Quita el tinte verde si hay foto real
+                    holder.ivIcono.setImageTintList(null);
                 } catch (Exception e) {
-                    holder.ivIcono.setImageResource(articulo.isEsOficial() ? R.drawable.consejos : R.drawable.profile);
+                    holder.ivIcono.setImageResource(articulo.isEsOficial() ? R.drawable.consejos : R.drawable.huella);
                 }
             } else {
-                holder.ivIcono.setImageResource(articulo.isEsOficial() ? R.drawable.consejos : R.drawable.profile);
+                holder.ivIcono.setImageResource(articulo.isEsOficial() ? R.drawable.consejos : R.drawable.huella);
             }
 
             holder.itemView.setOnClickListener(v -> listener.onArticuloClick(articulo));

@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:background="@color/fondo_base">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Opciones del Artículo"
+        android:textColor="@color/color_acento_primario"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="16dp"/>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnOpcionVer"
+        style="@style/Widget.MaterialComponents.Button.TextButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Ver artículo completo"
+        android:textColor="@color/black"
+        android:gravity="start|center_vertical"
+        app:icon="@android:drawable/ic_menu_view"
+        app:iconTint="@color/grey"
+        android:padding="16dp"
+        android:textAllCaps="false"
+        android:textSize="16sp"/>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnOpcionEditar"
+        style="@style/Widget.MaterialComponents.Button.TextButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Editar artículo"
+        android:textColor="@color/black"
+        android:gravity="start|center_vertical"
+        app:icon="@android:drawable/ic_menu_edit"
+        app:iconTint="#FF9800"
+        android:padding="16dp"
+        android:textAllCaps="false"
+        android:textSize="16sp"/>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnOpcionEliminar"
+        style="@style/Widget.MaterialComponents.Button.TextButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Eliminar artículo"
+        android:textColor="#F44336"
+        android:gravity="start|center_vertical"
+        app:icon="@android:drawable/ic_menu_delete"
+        app:iconTint="#F44336"
+        android:padding="16dp"
+        android:textAllCaps="false"
+        android:textSize="16sp"/>
+
+</LinearLayout>
