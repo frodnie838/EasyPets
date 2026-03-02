@@ -47,6 +47,16 @@
                 android:textStyle="bold" />
 
             <TextView
+                android:id="@+id/tvNickPerfilUsuario"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="Usuario"
+                android:textColor="@color/color_acento_primario"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <TextView
                 android:id="@+id/tvCorreoPerfilUsuario"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"

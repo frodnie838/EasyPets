@@ -59,19 +59,21 @@ public class MainActivity extends AppCompatActivity {
         getOnBackPressedDispatcher().addCallback(this, new androidx.activity.OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
-                BottomNavigationView bottomNav = findViewById(R.id.bottom_navigation);
+                if (getSupportFragmentManager().getBackStackEntryCount() > 0) {
+                    getSupportFragmentManager().popBackStack();
+                } else {
+                    Fragment currentFragment = getSupportFragmentManager().findFragmentById(R.id.frame_container);
+                    BottomNavigationView bottomNav = findViewById(R.id.bottom_navigation);
 
-                if (bottomNav.getSelectedItemId() != R.id.nav_home) {
-                    bottomNav.setSelectedItemId(R.id.nav_home);
-                }
-                else {
-                    // Diferencia entre clics menor a 2 segundos
-                    if (System.currentTimeMillis() - tiempoUltimoClicAtras < 2000) {
-                        finish();
+                    if (!(currentFragment instanceof HomeFragment)) {
+                        bottomNav.setSelectedItemId(R.id.nav_home);
                     } else {
-                        // Primer clic muestra el aviso y guardamos el momento exacto
-                        Toast.makeText(MainActivity.this, "Vuelve a presionar atrás para salir", Toast.LENGTH_SHORT).show();
-                        tiempoUltimoClicAtras = System.currentTimeMillis();
+                        if (System.currentTimeMillis() - tiempoUltimoClicAtras < 2000) {
+                            finish();
+                        } else {
+                            Toast.makeText(MainActivity.this, "Vuelve a presionar atrás para salir", Toast.LENGTH_SHORT).show();
+                            tiempoUltimoClicAtras = System.currentTimeMillis();
+                        }
                     }
                 }
             }

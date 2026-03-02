@@ -45,7 +45,7 @@ import java.util.Map;
 public class PerfilFragment extends Fragment {
     private LinearLayout layoutRegistrado, layoutInvitado;
     private ImageView ivFotoPerfil;
-    private TextView tvNombre, tvCorreo;
+    private TextView tvNombre, tvCorreo, tvNick;
     private MaterialButton btnCerrarSesion, btnEditarPerfil, btnAjustes;
 
     private FirebaseAuth mAuth;
@@ -53,11 +53,11 @@ public class PerfilFragment extends Fragment {
 
     private String nombreActual = "";
     private String apellidosActuales = "";
+    private String nickActual = "";
     private String fotoBase64Actual = "";
     private String fotoBase64Temporal = "";
     private ImageView ivFotoDialogoTemporal;
 
-    // Lanzador para abrir la galería de fotos
     private final ActivityResultLauncher<androidx.activity.result.PickVisualMediaRequest> photoPickerLauncher = registerForActivityResult(
             new ActivityResultContracts.PickVisualMedia(), uri -> {
                 if (uri != null) {
@@ -79,6 +79,7 @@ public class PerfilFragment extends Fragment {
 
         ivFotoPerfil = view.findViewById(R.id.ivFotoPerfilUsuario);
         tvNombre = view.findViewById(R.id.tvNombrePerfilUsuario);
+        tvNick = view.findViewById(R.id.tvNickPerfilUsuario);
         tvCorreo = view.findViewById(R.id.tvCorreoPerfilUsuario);
         btnCerrarSesion = view.findViewById(R.id.btnCerrarSesion);
         btnEditarPerfil = view.findViewById(R.id.btnEditarPerfil);
@@ -91,7 +92,6 @@ public class PerfilFragment extends Fragment {
         mAuth = FirebaseAuth.getInstance();
         FirebaseUser currentUser = mAuth.getCurrentUser();
 
-        // Verificamos si es un usuario real o un invitado
         if (currentUser != null) {
             layoutRegistrado.setVisibility(View.VISIBLE);
             layoutInvitado.setVisibility(View.GONE);
@@ -110,12 +110,9 @@ public class PerfilFragment extends Fragment {
         btnCerrarSesion.setOnClickListener(v -> cerrarSesion());
     }
 
-    // Configura la pantalla para un usuario con cuenta
-    // Configura la pantalla para un usuario con cuenta
     private void configurarPerfilUsuario(FirebaseUser currentUser) {
         tvCorreo.setText(currentUser.getEmail());
 
-        // ✨ Apuntamos a la carpeta correcta
         userRef = FirebaseDatabase.getInstance().getReference().child("usuarios").child(currentUser.getUid());
 
         userRef.addValueEventListener(new ValueEventListener() {
@@ -124,22 +121,27 @@ public class PerfilFragment extends Fragment {
                 if (snapshot.exists()) {
                     nombreActual = snapshot.child("nombre").getValue(String.class);
                     apellidosActuales = snapshot.child("apellidos").getValue(String.class);
+                    nickActual = snapshot.child("nick").getValue(String.class); // ✨ Leemos el Nick
 
                     String nombreCompleto = (nombreActual != null ? nombreActual : "") + " " + (apellidosActuales != null ? apellidosActuales : "");
                     tvNombre.setText(nombreCompleto.trim().isEmpty() ? "Usuario EasyPets" : nombreCompleto.trim());
 
-                    // ✨ LÓGICA DE FOTO OPTIMIZADA (Prioridad: Local > Google > Defecto)
+                    // ✨ Mostramos el Nick
+                    if (nickActual != null && !nickActual.trim().isEmpty()) {
+                        tvNick.setText("@" + nickActual);
+                        tvNick.setVisibility(View.VISIBLE);
+                    } else {
+                        tvNick.setText("@usuario_sin_nick");
+                        tvNick.setVisibility(View.VISIBLE);
+                    }
+
                     fotoBase64Actual = snapshot.child("fotoPerfil").getValue(String.class);
 
-                    // 1. ¿El usuario ha subido una foto personalizada a la Base de Datos?
                     if (fotoBase64Actual != null && !fotoBase64Actual.isEmpty()) {
                         cargarFotoDesdeBase64(fotoBase64Actual, ivFotoPerfil);
-                    }
-                    // 2. Si no hay foto en la DB, ¿tiene foto en su cuenta de Google (Auth)?
-                    else if (currentUser.getPhotoUrl() != null) {
+                    } else if (currentUser.getPhotoUrl() != null) {
                         cargarFotoGoogle(currentUser.getPhotoUrl().toString(), ivFotoPerfil);
                     }
-                    // 3. Si no hay nada, el XML mostrará el icono por defecto automáticamente
                 }
             }
             @Override
@@ -153,19 +155,6 @@ public class PerfilFragment extends Fragment {
         });
     }
 
-    // Configura la pantalla para un invitado (sin cuenta)
-    private void configurarModoInvitado() {
-        View layoutRegistrado = getView().findViewById(R.id.layoutUsuarioRegistrado);
-        View layoutInvitado = getView().findViewById(R.id.layoutModoInvitado);
-        MaterialButton btnIrALogin = getView().findViewById(R.id.btnIrALogin);
-
-        layoutRegistrado.setVisibility(View.GONE);
-        layoutInvitado.setVisibility(View.VISIBLE);
-
-        btnIrALogin.setOnClickListener(v -> irALogin());
-    }
-
-    // Muestra la ventana flotante para editar nombre, apellidos y foto
     private void mostrarDialogoEditar() {
         if (getContext() == null) return;
 
@@ -176,9 +165,12 @@ public class PerfilFragment extends Fragment {
         ivFotoDialogoTemporal = dialogView.findViewById(R.id.ivDialogFoto);
         EditText etNombre = dialogView.findViewById(R.id.etDialogNombre);
         EditText etApellidos = dialogView.findViewById(R.id.etDialogApellidos);
+        EditText etNick = dialogView.findViewById(R.id.etDialogNick);
 
         etNombre.setText(nombreActual != null ? nombreActual : "");
         etApellidos.setText(apellidosActuales != null ? apellidosActuales : "");
+        etNick.setText(nickActual != null ? nickActual : "");
+
         fotoBase64Temporal = (fotoBase64Actual != null) ? fotoBase64Actual : "";
 
         if (!fotoBase64Temporal.isEmpty()) {
@@ -199,39 +191,67 @@ public class PerfilFragment extends Fragment {
         AlertDialog dialog = builder.create();
         dialog.show();
 
-        // Control manual del botón Guardar para validar antes de cerrar
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
             String nuevoNombre = etNombre.getText().toString().trim();
             String nuevosApellidos = etApellidos.getText().toString().trim();
 
+            // Limpiamos el nick: quitamos espacios y arrobas accidentales
+            String nuevoNick = etNick.getText().toString().trim()
+                    .replace("@", "")
+                    .replace(" ", "_");
+
             if (nuevoNombre.isEmpty()) {
                 etNombre.setError("El nombre es obligatorio");
                 etNombre.requestFocus();
+                return;
+            }
+
+            if (nuevoNick.isEmpty()) {
+                etNick.setError("El nick es obligatorio");
+                etNick.requestFocus();
+                return;
+            }
+
+            // Bloqueamos el botón mientras Firebase comprueba para evitar doble clic
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(false);
+
+            // Si el nick es el mismo que ya tenía, guardamos directamente
+            if (nuevoNick.equals(nickActual)) {
+                guardarCambiosPerfil(nuevoNombre, nuevosApellidos, nuevoNick, dialog);
             } else {
-                Map<String, Object> actualizaciones = new HashMap<>();
-                actualizaciones.put("nombre", nuevoNombre);
-                actualizaciones.put("apellidos", nuevosApellidos);
+                // Comprobamos si el nick ya está pillado por OTRO usuario
+                DatabaseReference usuariosRef = FirebaseDatabase.getInstance().getReference("usuarios");
+                usuariosRef.orderByChild("nick").equalTo(nuevoNick).addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        if (snapshot.exists()) {
+                            // ¡Vaya! El nick ya existe
+                            etNick.setError("Este nick ya está en uso. Elige otro.");
+                            etNick.requestFocus();
+                            // Volvemos a activar el botón para que pruebe otro
+                            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(true);
+                        } else {
+                            // El nick está libre, ¡guardamos!
+                            guardarCambiosPerfil(nuevoNombre, nuevosApellidos, nuevoNick, dialog);
+                        }
+                    }
 
-                if (fotoBase64Temporal != null && !fotoBase64Temporal.isEmpty()) {
-                    actualizaciones.put("fotoPerfil", fotoBase64Temporal);
-                }
-
-                userRef.updateChildren(actualizaciones).addOnSuccessListener(aVoid -> {
-                    Toast.makeText(getContext(), "Cuenta actualizada", Toast.LENGTH_SHORT).show();
-                    dialog.dismiss();
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
+                        Toast.makeText(getContext(), "Error al comprobar el nick", Toast.LENGTH_SHORT).show();
+                        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(true);
+                    }
                 });
             }
         });
     }
 
-    // Comprime la imagen seleccionada y la convierte en texto Base64
     private void procesarFotoTemporal(android.net.Uri uri) {
         if (getContext() == null) return;
         try {
             InputStream inputStream = getContext().getContentResolver().openInputStream(uri);
             Bitmap bitmapOriginal = BitmapFactory.decodeStream(inputStream);
 
-            // Redimensionado básico para no saturar la base de datos
             int maxResolucion = 400;
             int ancho = bitmapOriginal.getWidth();
             int alto = bitmapOriginal.getHeight();
@@ -254,7 +274,6 @@ public class PerfilFragment extends Fragment {
         }
     }
 
-    // Decodifica Base64 y lo pone en un ImageView
     private void cargarFotoDesdeBase64(String base64, ImageView imageView) {
         try {
             byte[] decodedString = Base64.decode(base64, Base64.DEFAULT);
@@ -265,7 +284,6 @@ public class PerfilFragment extends Fragment {
         } catch (Exception e) { e.printStackTrace(); }
     }
 
-    // Descarga la foto de perfil de Google en un hilo secundario
     private void cargarFotoGoogle(String urlImagen, ImageView targetImageView) {
         new Thread(() -> {
             try {
@@ -282,7 +300,6 @@ public class PerfilFragment extends Fragment {
         }).start();
     }
 
-    // Gestiona el cierre de sesión de Firebase e Invitados
     private void cerrarSesion() {
         if (mAuth.getCurrentUser() != null) {
             Toast.makeText(getContext(), "Cerrando sesión...", Toast.LENGTH_SHORT).show();
@@ -293,7 +310,6 @@ public class PerfilFragment extends Fragment {
         }
     }
 
-    // Finaliza la actividad y vuelve a la pantalla de Login
     private void irALogin() {
         if (getActivity() != null) {
             Intent intent = new Intent(getActivity(), LoginActivity.class);
@@ -302,7 +318,7 @@ public class PerfilFragment extends Fragment {
             getActivity().finish();
         }
     }
-    // Limpia el rastro de Google/Credenciales en el teléfono
+
     private void limpiarCredencialesYSalir() {
         if (getContext() != null) {
             CredentialManager credentialManager = CredentialManager.create(getContext());
@@ -316,6 +332,7 @@ public class PerfilFragment extends Fragment {
             );
         } else { irALogin(); }
     }
+
     private void mostrarFotoGrande() {
         if (getContext() == null) return;
 
@@ -335,5 +352,23 @@ public class PerfilFragment extends Fragment {
         ivGrande.setOnClickListener(v -> dialog.dismiss());
 
         dialog.show();
+    }
+    private void guardarCambiosPerfil(String nombre, String apellidos, String nick, AlertDialog dialog) {
+        Map<String, Object> actualizaciones = new HashMap<>();
+        actualizaciones.put("nombre", nombre);
+        actualizaciones.put("apellidos", apellidos);
+        actualizaciones.put("nick", nick);
+
+        if (fotoBase64Temporal != null && !fotoBase64Temporal.isEmpty()) {
+            actualizaciones.put("fotoPerfil", fotoBase64Temporal);
+        }
+
+        userRef.updateChildren(actualizaciones).addOnSuccessListener(aVoid -> {
+            Toast.makeText(getContext(), "Cuenta actualizada", Toast.LENGTH_SHORT).show();
+            dialog.dismiss();
+        }).addOnFailureListener(e -> {
+            Toast.makeText(getContext(), "Error al guardar", Toast.LENGTH_SHORT).show();
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(true);
+        });
     }
 }

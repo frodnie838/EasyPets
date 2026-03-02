@@ -61,6 +61,34 @@
         android:layout_height="50dp"
         android:hint="Apellidos"
         android:background="@android:drawable/editbox_background"
-        android:paddingHorizontal="12dp"/>
+        android:paddingHorizontal="12dp"
+        android:layout_marginBottom="12dp"/>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:orientation="horizontal"
+        android:background="@android:drawable/editbox_background"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="12dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="\@"
+            android:textColor="@color/black"
+            android:textSize="18sp"
+            android:alpha="0.5"
+            android:textStyle="bold" />
+
+        <EditText
+            android:id="@+id/etDialogNick"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@null"
+            android:hint="usuario"
+            android:paddingStart="2dp"
+            android:inputType="textNoSuggestions" />
+    </LinearLayout>
 
 </LinearLayout>
