@@ -6,12 +6,15 @@ import android.util.Base64;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import com.easypets.R;
 import com.easypets.models.HiloForo;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.FirebaseDatabase;
@@ -20,13 +23,23 @@ import java.util.List;
 
 public class ForoAdapter extends RecyclerView.Adapter<ForoAdapter.ForoViewHolder> {
     private List<HiloForo> hilos;
-    private OnHiloClickListener listener;
+    private OnHiloAccionListener listener;
+    private boolean mostrarOpciones = false; // ✨ Interruptor apagado por defecto
 
-    public interface OnHiloClickListener { void onHiloClick(HiloForo hilo); }
+    public interface OnHiloAccionListener {
+        void onHiloClick(HiloForo hilo);
+        void onEditarClick(HiloForo hilo);
+        void onBorrarClick(HiloForo hilo);
+    }
 
-    public ForoAdapter(List<HiloForo> hilos, OnHiloClickListener listener) {
+    public ForoAdapter(List<HiloForo> hilos, OnHiloAccionListener listener) {
         this.hilos = hilos;
         this.listener = listener;
+    }
+
+    // ✨ MÉTODO para encender/apagar los puntos desde el Fragmento
+    public void setMostrarOpciones(boolean mostrarOpciones) {
+        this.mostrarOpciones = mostrarOpciones;
     }
 
     @NonNull @Override
@@ -51,6 +64,30 @@ public class ForoAdapter extends RecyclerView.Adapter<ForoAdapter.ForoViewHolder
                 hilo.getTimestampCreacion(), System.currentTimeMillis(), android.text.format.DateUtils.MINUTE_IN_MILLIS);
         holder.tvFecha.setText(" • " + tiempoTranscurrido);
 
+        // ✨ AQUÍ ESTÁ EL CAMBIO: Comprobamos 'mostrarOpciones' primero
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (mostrarOpciones && currentUser != null && hilo.getIdAutor().equals(currentUser.getUid())) {
+            holder.btnMenu.setVisibility(View.VISIBLE);
+            holder.btnMenu.setOnClickListener(v -> {
+                android.widget.PopupMenu popup = new android.widget.PopupMenu(v.getContext(), v);
+                popup.getMenu().add("Editar");
+                popup.getMenu().add("Eliminar");
+
+                popup.setOnMenuItemClickListener(item -> {
+                    if (item.getTitle().equals("Editar")) {
+                        listener.onEditarClick(hilo);
+                    } else if (item.getTitle().equals("Eliminar")) {
+                        listener.onBorrarClick(hilo);
+                    }
+                    return true;
+                });
+                popup.show();
+            });
+        } else {
+            holder.btnMenu.setVisibility(View.GONE);
+        }
+
+        // Carga visual del autor (Foto y nombre)
         holder.tvAutor.setText("Cargando...");
         holder.ivAvatar.setImageResource(R.drawable.profile);
         holder.ivAvatar.setImageTintList(android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#9E9E9E")));
@@ -112,6 +149,8 @@ public class ForoAdapter extends RecyclerView.Adapter<ForoAdapter.ForoViewHolder
     public static class ForoViewHolder extends RecyclerView.ViewHolder {
         TextView tvTitulo, tvDescripcion, tvAutor, tvFecha;
         ImageView ivAvatar;
+        ImageButton btnMenu; // ✨ Nuevo botón
+
         public ForoViewHolder(@NonNull View itemView) {
             super(itemView);
             tvTitulo = itemView.findViewById(R.id.tvTituloHilo);
@@ -119,6 +158,7 @@ public class ForoAdapter extends RecyclerView.Adapter<ForoAdapter.ForoViewHolder
             tvAutor = itemView.findViewById(R.id.tvAutorHilo);
             tvFecha = itemView.findViewById(R.id.tvFechaHilo);
             ivAvatar = itemView.findViewById(R.id.ivAvatarHilo);
+            btnMenu = itemView.findViewById(R.id.btnMenuHilo); // ✨ Lo vinculamos
         }
     }
 }

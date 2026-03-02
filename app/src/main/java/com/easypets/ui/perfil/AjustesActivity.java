@@ -8,6 +8,7 @@ import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
@@ -21,8 +22,11 @@ import com.easypets.ui.auth.LoginActivity;
 import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 public class AjustesActivity extends AppCompatActivity {
 
@@ -35,7 +39,7 @@ public class AjustesActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_ajustes); // Igual que en el main, cargamos el diseño y ya.
+        setContentView(R.layout.activity_ajustes);
 
         mAuth = FirebaseAuth.getInstance();
         prefs = getSharedPreferences("AjustesEasyPets", MODE_PRIVATE);
@@ -70,7 +74,7 @@ public class AjustesActivity extends AppCompatActivity {
     private void mostrarConfirmacionBorrado() {
         new AlertDialog.Builder(this)
                 .setTitle("⚠️ Acción Crítica")
-                .setMessage("¿Deseas eliminar tu cuenta para siempre? Se borrarán todos tus datos.")
+                .setMessage("¿Deseas eliminar tu cuenta para siempre? Se borrarán todos tus datos (mascotas, eventos, hilos y artículos).")
                 .setPositiveButton("Eliminar", (dialog, which) -> procesoBorradoCascada())
                 .setNegativeButton("Cancelar", null)
                 .show();
@@ -83,35 +87,66 @@ public class AjustesActivity extends AppCompatActivity {
         String uid = user.getUid();
         DatabaseReference db = FirebaseDatabase.getInstance().getReference();
 
+        // 1. Borrar artículos del usuario
         db.child("articulos_comunidad").orderByChild("idAutor").equalTo(uid)
-                .addListenerForSingleValueEvent(new com.google.firebase.database.ValueEventListener() {
+                .addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
-                    public void onDataChange(@androidx.annotation.NonNull com.google.firebase.database.DataSnapshot snapshot) {
-                        for (com.google.firebase.database.DataSnapshot articuloSnapshot : snapshot.getChildren()) {
-                            articuloSnapshot.getRef().removeValue();
-                        }
-                        db.child("eventos").child(uid).removeValue().addOnCompleteListener(tEventos -> {
-                            db.child("mascotas").child(uid).removeValue().addOnCompleteListener(tMascotas -> {
-                                db.child("usuarios").child(uid).removeValue().addOnCompleteListener(tUser -> {
-                                    user.delete().addOnCompleteListener(tAuth -> {
-                                        if (tAuth.isSuccessful()) {
-                                            Toast.makeText(AjustesActivity.this, "Cuenta y todos los datos eliminados", Toast.LENGTH_SHORT).show();
-                                            mAuth.signOut();
-                                            limpiarYSalir();
-                                        } else {
-                                            Toast.makeText(AjustesActivity.this, "Por seguridad, cierra sesión, vuelve a entrar y repite este paso.", Toast.LENGTH_LONG).show();
-                                        }
-                                    });
-                                });
-                            });
-                        });
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        for (DataSnapshot ds : snapshot.getChildren()) ds.getRef().removeValue();
                     }
-
-                    @Override
-                    public void onCancelled(@androidx.annotation.NonNull com.google.firebase.database.DatabaseError error) {
-                        Toast.makeText(AjustesActivity.this, "Error de base de datos al intentar borrar", Toast.LENGTH_SHORT).show();
-                    }
+                    @Override public void onCancelled(@NonNull DatabaseError error) {}
                 });
+
+        // 2. Borrar hilos del usuario (y las respuestas asociadas a esos hilos)
+        db.child("foro_hilos").orderByChild("idAutor").equalTo(uid)
+                .addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        for (DataSnapshot ds : snapshot.getChildren()) {
+                            // Borramos las respuestas de ese hilo concreto
+                            db.child("foro_respuestas").child(ds.getKey()).removeValue();
+                            // Borramos el hilo
+                            ds.getRef().removeValue();
+                        }
+                    }
+                    @Override public void onCancelled(@NonNull DatabaseError error) {}
+                });
+
+        // 3. Borrado Lógico de las respuestas en hilos de OTRAS personas
+        db.child("foro_respuestas").addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                for (DataSnapshot hiloSnapshot : snapshot.getChildren()) {
+                    for (DataSnapshot respuestaSnapshot : hiloSnapshot.getChildren()) {
+                        String autorId = respuestaSnapshot.child("idAutor").getValue(String.class);
+                        if (uid.equals(autorId)) {
+                            respuestaSnapshot.getRef().child("eliminado").setValue(true);
+                            respuestaSnapshot.getRef().child("texto").setValue("🚫 Este mensaje ha sido eliminado porque el usuario borró su cuenta.");
+                            respuestaSnapshot.getRef().child("idAutor").setValue("deleted");
+                            respuestaSnapshot.getRef().child("editado").setValue(false);
+                        }
+                    }
+                }
+            }
+            @Override public void onCancelled(@NonNull DatabaseError error) {}
+        });
+
+        // 4. Borrado final en cascada: Eventos -> Mascotas -> Perfil -> Cuenta Firebase
+        db.child("eventos").child(uid).removeValue().addOnCompleteListener(tEventos -> {
+            db.child("mascotas").child(uid).removeValue().addOnCompleteListener(tMascotas -> {
+                db.child("usuarios").child(uid).removeValue().addOnCompleteListener(tUser -> {
+                    user.delete().addOnCompleteListener(tAuth -> {
+                        if (tAuth.isSuccessful()) {
+                            Toast.makeText(AjustesActivity.this, "Cuenta y datos eliminados correctamente", Toast.LENGTH_SHORT).show();
+                            mAuth.signOut();
+                            limpiarYSalir();
+                        } else {
+                            Toast.makeText(AjustesActivity.this, "Por seguridad, cierra sesión, vuelve a entrar y repite este paso.", Toast.LENGTH_LONG).show();
+                        }
+                    });
+                });
+            });
+        });
     }
 
     private void limpiarYSalir() {

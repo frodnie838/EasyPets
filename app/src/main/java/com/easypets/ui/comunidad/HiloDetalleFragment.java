@@ -92,7 +92,14 @@ public class HiloDetalleFragment extends Fragment {
 
         currentUser = FirebaseAuth.getInstance().getCurrentUser();
         respuestasRef = FirebaseDatabase.getInstance().getReference("foro_respuestas").child(hiloId);
-
+        if (currentUser == null) {
+            etNuevaRespuesta.setEnabled(false); // Bloqueamos escritura
+            etNuevaRespuesta.setHint("Inicia sesión para participar"); // Cambiamos el mensaje
+            btnEnviarRespuesta.setEnabled(false); // Apagamos el botón
+        } else {
+            etNuevaRespuesta.setEnabled(true);
+            etNuevaRespuesta.setHint("Escribe una respuesta...");
+        }
         listaRespuestas = new ArrayList<>();
         adapter = new RespuestaAdapter(listaRespuestas, new RespuestaAdapter.OnRespuestaAccionListener() {
             @Override

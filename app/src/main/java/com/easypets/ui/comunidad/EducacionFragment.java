@@ -33,6 +33,7 @@ import com.easypets.models.HiloForo;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.textfield.TextInputEditText;
@@ -60,8 +61,8 @@ public class EducacionFragment extends Fragment {
     private RecyclerView rvContenido;
     private TabLayout tabLayout;
     private FloatingActionButton fabAgregar;
+    private ChipGroup chipGroupMisPublicaciones;
 
-    // Adaptadores y Listas
     private ArticuloAdapter articuloAdapter;
     private ForoAdapter foroAdapter;
     private List<Articulo> listaArticulos;
@@ -87,6 +88,7 @@ public class EducacionFragment extends Fragment {
         rvContenido = view.findViewById(R.id.rvArticulos);
         tabLayout = view.findViewById(R.id.tabLayoutEducacion);
         fabAgregar = view.findViewById(R.id.fabAgregarArticulo);
+        chipGroupMisPublicaciones = view.findViewById(R.id.chipGroupMisPublicaciones);
 
         currentUser = FirebaseAuth.getInstance().getCurrentUser();
         FirebaseDatabase db = FirebaseDatabase.getInstance();
@@ -98,66 +100,75 @@ public class EducacionFragment extends Fragment {
         listaArticulos = new ArrayList<>();
         listaHilos = new ArrayList<>();
 
-        // 1. Inicializar ArticuloAdapter
-        articuloAdapter = new ArticuloAdapter(listaArticulos, articulo -> {
-            if (tabLayout.getSelectedTabPosition() == 3) {
-                mostrarOpcionesMisArticulos(articulo);
-            } else {
+        // 1. Inicializar ArticuloAdapter con la nueva interfaz de 3 métodos
+        articuloAdapter = new ArticuloAdapter(listaArticulos, new ArticuloAdapter.OnArticuloClickListener() {
+            @Override
+            public void onArticuloClick(Articulo articulo) {
                 mostrarArticuloCompleto(articulo);
+            }
+
+            @Override
+            public void onEditarClick(Articulo articulo) {
+                mostrarDialogoEditarArticulo(articulo);
+            }
+
+            @Override
+            public void onBorrarClick(Articulo articulo) {
+                confirmarBorradoArticulo(articulo);
             }
         });
 
-        // Apaño visual del BottomNav
-        if (getActivity() != null) {
-            BottomNavigationView bottomNav = getActivity().findViewById(R.id.bottom_navigation);
-            if (bottomNav != null) {
-                android.view.Menu menu = bottomNav.getMenu();
-                menu.setGroupCheckable(0, true, false);
-                for (int i = 0; i < menu.size(); i++) {
-                    menu.getItem(i).setChecked(false);
+        // 2. Inicializar ForoAdapter
+        foroAdapter = new ForoAdapter(listaHilos, new ForoAdapter.OnHiloAccionListener() {
+            @Override
+            public void onHiloClick(HiloForo hilo) {
+                HiloDetalleFragment detalleFragment = new HiloDetalleFragment();
+                Bundle argsDetalle = new Bundle();
+                argsDetalle.putString("hiloId", hilo.getId());
+                argsDetalle.putString("titulo", hilo.getTitulo());
+                argsDetalle.putString("descripcion", hilo.getDescripcion());
+                argsDetalle.putString("idAutor", hilo.getIdAutor());
+                argsDetalle.putLong("timestamp", hilo.getTimestampCreacion());
+                detalleFragment.setArguments(argsDetalle);
+
+                Bundle misArgs = getArguments();
+                if (misArgs == null) misArgs = new Bundle();
+                misArgs.putInt("selected_tab", tabLayout.getSelectedTabPosition());
+                EducacionFragment.this.setArguments(misArgs);
+
+                if (getActivity() != null) {
+                    getActivity().getSupportFragmentManager().beginTransaction()
+                            .replace(R.id.frame_container, detalleFragment)
+                            .addToBackStack(null)
+                            .commit();
                 }
-                menu.setGroupCheckable(0, true, true);
             }
-        }
-
-        // 2. Inicializar ForoAdapter con navegación correcta
-        foroAdapter = new ForoAdapter(listaHilos, hilo -> {
-            HiloDetalleFragment detalleFragment = new HiloDetalleFragment();
-
-            // Le pasamos los datos al detalle
-            Bundle argsDetalle = new Bundle();
-            argsDetalle.putString("hiloId", hilo.getId());
-            argsDetalle.putString("titulo", hilo.getTitulo());
-            argsDetalle.putString("descripcion", hilo.getDescripcion());
-            argsDetalle.putString("idAutor", hilo.getIdAutor());
-            argsDetalle.putLong("timestamp", hilo.getTimestampCreacion());
-            detalleFragment.setArguments(argsDetalle);
-
-            // ✨ ESTO ES LO NUEVO: Nos guardamos a nosotros mismos en qué pestaña estamos
-            Bundle misArgs = getArguments();
-            if (misArgs == null) misArgs = new Bundle();
-            misArgs.putInt("selected_tab", 2); // 2 = Foro
-            this.setArguments(misArgs);
-
-            // Navegamos (solo UNA vez, usando frame_container)
-            if (getActivity() != null) {
-                getActivity().getSupportFragmentManager().beginTransaction()
-                        .replace(R.id.frame_container, detalleFragment)
-                        .addToBackStack(null) // Para que el botón 'atrás' funcione
-                        .commit();
-            }
+            @Override public void onEditarClick(HiloForo hilo) { mostrarDialogoEditarHilo(hilo); }
+            @Override public void onBorrarClick(HiloForo hilo) { confirmarBorradoHilo(hilo); }
         });
 
         rvContenido.setLayoutManager(new LinearLayoutManager(getContext()));
-
         obtenerDatosUsuario();
         configurarPestanas();
 
         fabAgregar.setOnClickListener(v -> {
-            if (tabLayout.getSelectedTabPosition() == 2) {
-                mostrarDialogoCrearHilo();
-            } else {
-                mostrarDialogoCrearArticulo();
+            TabLayout.Tab tab = tabLayout.getTabAt(tabLayout.getSelectedTabPosition());
+            if (tab != null && tab.getText() != null) {
+                String titulo = tab.getText().toString();
+                if (titulo.equals("Foro")) {
+                    mostrarDialogoCrearHilo();
+                } else if (titulo.equals("Mis Publicaciones")) {
+                    CharSequence[] opciones = {"Escribir un Artículo", "Abrir un Hilo en el Foro"};
+                    new AlertDialog.Builder(requireContext())
+                            .setTitle("¿Qué deseas publicar?")
+                            .setItems(opciones, (dialog, which) -> {
+                                if (which == 0) mostrarDialogoCrearArticulo();
+                                else mostrarDialogoCrearHilo();
+                            })
+                            .show();
+                } else {
+                    mostrarDialogoCrearArticulo();
+                }
             }
         });
 
@@ -186,34 +197,81 @@ public class EducacionFragment extends Fragment {
         return view;
     }
 
-    // ✨ NUEVO MÉTODO PARA LEER LA PESTAÑA AL VOLVER ATRÁS
-    @Override
-    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
-        super.onViewCreated(view, savedInstanceState);
+    private void configurarPestanas() {
+        tabLayout.removeAllTabs();
+        tabLayout.addTab(tabLayout.newTab().setText("Oficiales"));
+        tabLayout.addTab(tabLayout.newTab().setText("Comunidad"));
+        tabLayout.addTab(tabLayout.newTab().setText("Foro"));
+        if (currentUser != null) tabLayout.addTab(tabLayout.newTab().setText("Mis Publicaciones"));
 
-        // Si tenemos un argumento guardado, movemos la pestaña visualmente
-        if (getArguments() != null && getArguments().containsKey("selected_tab")) {
-            int tabToSelect = getArguments().getInt("selected_tab");
+        tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
+            @Override
+            public void onTabSelected(TabLayout.Tab tab) {
+                detenerListener();
+                actualizarVisibilidadFab();
+                String titulo = tab.getText().toString();
 
-            // Seleccionamos la pestaña
-            TabLayout.Tab tab = tabLayout.getTabAt(tabToSelect);
-            if (tab != null) {
-                tab.select();
+                if (titulo.equals("Mis Publicaciones")) {
+                    chipGroupMisPublicaciones.setVisibility(View.VISIBLE);
+                    actualizarListaMisPublicaciones();
+                } else {
+                    chipGroupMisPublicaciones.setVisibility(View.GONE);
+                    articuloAdapter.setMostrarOpciones(false); // Desactivar puntos en pestañas generales
+                    foroAdapter.setMostrarOpciones(false);
+
+                    if (titulo.equals("Oficiales")) {
+                        rvContenido.setAdapter(articuloAdapter);
+                        cargarArticulos(oficialesRef, "");
+                    } else if (titulo.equals("Comunidad")) {
+                        rvContenido.setAdapter(articuloAdapter);
+                        cargarArticulos(comunidadRef, "");
+                    } else if (titulo.equals("Foro")) {
+                        rvContenido.setAdapter(foroAdapter);
+                        cargarHilos(foroRef);
+                    }
+                }
             }
+            @Override public void onTabUnselected(TabLayout.Tab tab) {}
+            @Override public void onTabReselected(TabLayout.Tab tab) {}
+        });
 
-            // Limpiamos el argumento para que no se quede atascado
-            getArguments().remove("selected_tab");
+        chipGroupMisPublicaciones.setOnCheckedStateChangeListener((group, checkedIds) -> {
+            if (!checkedIds.isEmpty()) actualizarListaMisPublicaciones();
+        });
+
+        rvContenido.setAdapter(articuloAdapter);
+        cargarArticulos(oficialesRef, "");
+    }
+
+    private void actualizarListaMisPublicaciones() {
+        detenerListener();
+        if (currentUser == null) return;
+        int selectedChipId = chipGroupMisPublicaciones.getCheckedChipId();
+
+        if (selectedChipId == R.id.chipMisArticulos) {
+            articuloAdapter.setMostrarOpciones(true); // Activar puntos para mis artículos
+            rvContenido.setAdapter(articuloAdapter);
+            cargarArticulos(comunidadRef.orderByChild("idAutor").equalTo(currentUser.getUid()), "");
+        } else if (selectedChipId == R.id.chipMisHilos) {
+            foroAdapter.setMostrarOpciones(true); // Activar puntos para mis hilos
+            rvContenido.setAdapter(foroAdapter);
+            cargarHilos(foroRef.orderByChild("idAutor").equalTo(currentUser.getUid()));
         }
     }
 
-    private Bitmap redimensionarImagen(Bitmap image, int maxSize) {
-        int width = image.getWidth();
-        int height = image.getHeight();
-        float bitmapRatio = (float) width / (float) height;
-        if (bitmapRatio > 1) { width = maxSize; height = (int) (width / bitmapRatio);
-        } else { height = maxSize; width = (int) (height * bitmapRatio); }
-        return Bitmap.createScaledBitmap(image, width, height, true);
+    private void confirmarBorradoArticulo(Articulo articulo) {
+        new AlertDialog.Builder(requireContext())
+                .setTitle("¿Eliminar artículo?")
+                .setMessage("Esta acción no se puede deshacer.")
+                .setPositiveButton("Eliminar", (d, w) -> {
+                    comunidadRef.child(articulo.getId()).removeValue();
+                    Toast.makeText(getContext(), "Artículo eliminado", Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Cancelar", null)
+                .show();
     }
+
+    // --- MÉTODOS DE APOYO (REUTILIZADOS) ---
 
     private void obtenerDatosUsuario() {
         if (currentUser != null) {
@@ -231,61 +289,20 @@ public class EducacionFragment extends Fragment {
         }
     }
 
-    private void configurarPestanas() {
-        tabLayout.removeAllTabs();
-        tabLayout.addTab(tabLayout.newTab().setText("Oficiales"));
-        tabLayout.addTab(tabLayout.newTab().setText("Comunidad"));
-        tabLayout.addTab(tabLayout.newTab().setText("Foro"));
-        tabLayout.addTab(tabLayout.newTab().setText("Mis Artículos"));
-
-        tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
-            @Override
-            public void onTabSelected(TabLayout.Tab tab) {
-                detenerListener();
-                actualizarVisibilidadFab();
-
-                int pos = tab.getPosition();
-                if (pos == 0) {
-                    rvContenido.setAdapter(articuloAdapter);
-                    cargarArticulos(oficialesRef, "Aún no hay artículos oficiales.");
-                } else if (pos == 1) {
-                    rvContenido.setAdapter(articuloAdapter);
-                    cargarArticulos(comunidadRef, "Aún no hay artículos en la comunidad.");
-                } else if (pos == 2) {
-                    rvContenido.setAdapter(foroAdapter);
-                    cargarHilosForo();
-                } else if (pos == 3) {
-                    rvContenido.setAdapter(articuloAdapter);
-                    if (currentUser != null) {
-                        Query misArticulos = comunidadRef.orderByChild("idAutor").equalTo(currentUser.getUid());
-                        cargarArticulos(misArticulos, "Aún no has escrito ningún artículo.");
-                    }
-                }
-            }
-            @Override public void onTabUnselected(TabLayout.Tab tab) {}
-            @Override public void onTabReselected(TabLayout.Tab tab) {}
-        });
-
-        // La carga inicial se hace aquí, pero el onViewCreated se encargará
-        // de disparar el evento del TabLayout si venimos de volver atrás.
-        cargarArticulos(oficialesRef, "Aún no hay artículos oficiales.");
-        rvContenido.setAdapter(articuloAdapter);
-    }
-
     private void actualizarVisibilidadFab() {
         int pos = tabLayout.getSelectedTabPosition();
-        if (pos == 0) {
+        TabLayout.Tab tab = tabLayout.getTabAt(pos);
+        if (tab == null || tab.getText() == null) return;
+        String titulo = tab.getText().toString();
+
+        if (titulo.equals("Oficiales")) {
             fabAgregar.setVisibility("admin".equals(rolUsuario) ? View.VISIBLE : View.GONE);
-        } else if (pos == 1) {
+        } else if (titulo.equals("Comunidad")) {
             fabAgregar.setVisibility(View.GONE);
-        } else if (pos == 2 || pos == 3) {
+        } else {
             fabAgregar.setVisibility(currentUser != null ? View.VISIBLE : View.GONE);
         }
     }
-
-    // --------------------------------------------------------
-    // MÉTODOS DE CARGA (ARTÍCULOS Y FORO)
-    // --------------------------------------------------------
 
     private void cargarArticulos(Query query, String mensajeVacio) {
         listaArticulos.clear();
@@ -296,33 +313,33 @@ public class EducacionFragment extends Fragment {
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 listaArticulos.clear();
                 for (DataSnapshot data : snapshot.getChildren()) {
-                    Articulo articulo = data.getValue(Articulo.class);
-                    if (articulo != null) listaArticulos.add(articulo);
+                    Articulo a = data.getValue(Articulo.class);
+                    if (a != null) listaArticulos.add(a);
                 }
                 Collections.sort(listaArticulos, (a1, a2) -> Long.compare(a2.getTimestampCreacion(), a1.getTimestampCreacion()));
                 articuloAdapter.notifyDataSetChanged();
             }
-            @Override public void onCancelled(@NonNull DatabaseError error) { }
+            @Override public void onCancelled(@NonNull DatabaseError error) {}
         };
         activeQuery.addValueEventListener(contenidoListener);
     }
 
-    private void cargarHilosForo() {
+    private void cargarHilos(Query query) {
         listaHilos.clear();
         foroAdapter.notifyDataSetChanged();
-        activeQuery = foroRef;
+        activeQuery = query;
         contenidoListener = new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 listaHilos.clear();
                 for (DataSnapshot data : snapshot.getChildren()) {
-                    HiloForo hilo = data.getValue(HiloForo.class);
-                    if (hilo != null) listaHilos.add(hilo);
+                    HiloForo h = data.getValue(HiloForo.class);
+                    if (h != null) listaHilos.add(h);
                 }
                 Collections.sort(listaHilos, (h1, h2) -> Long.compare(h2.getTimestampCreacion(), h1.getTimestampCreacion()));
                 foroAdapter.notifyDataSetChanged();
             }
-            @Override public void onCancelled(@NonNull DatabaseError error) { }
+            @Override public void onCancelled(@NonNull DatabaseError error) {}
         };
         activeQuery.addValueEventListener(contenidoListener);
     }
@@ -340,193 +357,16 @@ public class EducacionFragment extends Fragment {
         detenerListener();
     }
 
-    // --------------------------------------------------------
-    // CREAR HILO DEL FORO
-    // --------------------------------------------------------
-
-    private void mostrarDialogoCrearHilo() {
-        View view = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_agregar_hilo, null);
-        AlertDialog dialog = new AlertDialog.Builder(requireContext()).setView(view).create();
-
-        TextInputEditText etTitulo = view.findViewById(R.id.etTituloHilo);
-        TextInputEditText etDescripcion = view.findViewById(R.id.etDescripcionHilo);
-        MaterialButton btnCancelar = view.findViewById(R.id.btnCancelarHilo);
-        MaterialButton btnPublicar = view.findViewById(R.id.btnPublicarHilo);
-
-        btnCancelar.setOnClickListener(v -> dialog.dismiss());
-
-        btnPublicar.setOnClickListener(v -> {
-            String titulo = etTitulo.getText().toString().trim();
-            String descripcion = etDescripcion.getText().toString().trim();
-
-            if (titulo.isEmpty()) {
-                Toast.makeText(getContext(), "El título es obligatorio", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            String id = foroRef.push().getKey();
-            HiloForo nuevoHilo = new HiloForo(id, titulo, descripcion, currentUser.getUid(), miNick, System.currentTimeMillis());
-
-            foroRef.child(id).setValue(nuevoHilo).addOnSuccessListener(aVoid -> {
-                Toast.makeText(getContext(), "Hilo publicado en el foro", Toast.LENGTH_SHORT).show();
-                dialog.dismiss();
-            });
-        });
-
-        if (dialog.getWindow() != null) dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
-        dialog.show();
+    private Bitmap redimensionarImagen(Bitmap image, int maxSize) {
+        int width = image.getWidth();
+        int height = image.getHeight();
+        float bitmapRatio = (float) width / (float) height;
+        if (bitmapRatio > 1) { width = maxSize; height = (int) (width / bitmapRatio);
+        } else { height = maxSize; width = (int) (height * bitmapRatio); }
+        return Bitmap.createScaledBitmap(image, width, height, true);
     }
 
-    // --------------------------------------------------------
-    // GESTIÓN DE ARTÍCULOS (TUS MÉTODOS ORIGINALES)
-    // --------------------------------------------------------
-
-    private void mostrarDialogoCrearArticulo() {
-        boolean esOficial = (tabLayout.getSelectedTabPosition() == 0);
-        imagenSeleccionadaBase64 = "";
-
-        View view = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_agregar_articulo, null);
-        AlertDialog dialog = new AlertDialog.Builder(requireContext()).setView(view).create();
-
-        TextView tvTitle = view.findViewById(R.id.tvDialogTitle);
-        TextInputEditText etTitulo = view.findViewById(R.id.etDialogTitulo);
-        TextInputEditText etDescripcion = view.findViewById(R.id.etDialogDescripcion);
-        TextInputEditText etContenido = view.findViewById(R.id.etDialogContenido);
-        TextInputEditText etUrl = view.findViewById(R.id.etDialogUrl);
-        MaterialButton btnImagen = view.findViewById(R.id.btnDialogImagen);
-        ivVistaPreviaDialogo = view.findViewById(R.id.ivDialogVistaPrevia);
-
-        MaterialButton btnCancelar = view.findViewById(R.id.btnCancelarDialog);
-        MaterialButton btnGuardar = view.findViewById(R.id.btnGuardarDialog);
-
-        tvTitle.setText(esOficial ? "Crear Artículo Oficial" : "Publicar Artículo");
-
-        btnImagen.setOnClickListener(v -> galeriaLauncher.launch(new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)));
-        btnCancelar.setOnClickListener(v -> dialog.dismiss());
-
-        btnGuardar.setOnClickListener(v -> {
-            String titulo = etTitulo.getText().toString().trim();
-            String descripcion = etDescripcion.getText().toString().trim();
-            String contenido = etContenido.getText().toString().trim();
-            String url = etUrl.getText().toString().trim();
-
-            if (titulo.isEmpty() || descripcion.isEmpty() || contenido.isEmpty()) {
-                Toast.makeText(getContext(), "Rellena título, descripción y contenido", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            String autor = esOficial ? "EasyPets Oficial" : "@" + miNick;
-            String idAutor = currentUser != null ? currentUser.getUid() : "";
-            DatabaseReference targetRef = esOficial ? oficialesRef : comunidadRef;
-            String id = targetRef.push().getKey();
-
-            Articulo nuevoArticulo = new Articulo(id, idAutor, titulo, descripcion, contenido, autor, System.currentTimeMillis(), imagenSeleccionadaBase64, url, esOficial);
-
-            targetRef.child(id).setValue(nuevoArticulo).addOnSuccessListener(aVoid -> {
-                Toast.makeText(getContext(), "¡Publicado correctamente!", Toast.LENGTH_SHORT).show();
-                dialog.dismiss();
-            });
-        });
-
-        if (dialog.getWindow() != null) dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
-        dialog.show();
-    }
-
-    private void mostrarDialogoEditarArticulo(Articulo articulo) {
-        imagenSeleccionadaBase64 = articulo.getImagenPortadaBase64();
-
-        View view = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_agregar_articulo, null);
-        AlertDialog dialog = new AlertDialog.Builder(requireContext()).setView(view).create();
-
-        TextView tvTitle = view.findViewById(R.id.tvDialogTitle);
-        TextInputEditText etTitulo = view.findViewById(R.id.etDialogTitulo);
-        TextInputEditText etDescripcion = view.findViewById(R.id.etDialogDescripcion);
-        TextInputEditText etContenido = view.findViewById(R.id.etDialogContenido);
-        TextInputEditText etUrl = view.findViewById(R.id.etDialogUrl);
-        MaterialButton btnImagen = view.findViewById(R.id.btnDialogImagen);
-        ivVistaPreviaDialogo = view.findViewById(R.id.ivDialogVistaPrevia);
-
-        MaterialButton btnCancelar = view.findViewById(R.id.btnCancelarDialog);
-        MaterialButton btnGuardar = view.findViewById(R.id.btnGuardarDialog);
-
-        tvTitle.setText("Editar Mi Artículo");
-        btnImagen.setText("Cambiar Imagen");
-        btnGuardar.setText("Guardar cambios");
-
-        etTitulo.setText(articulo.getTitulo());
-        etDescripcion.setText(articulo.getDescripcionCorta());
-        etContenido.setText(articulo.getContenidoCompleto());
-        etUrl.setText(articulo.getUrlEnlace());
-
-        if (imagenSeleccionadaBase64 != null && !imagenSeleccionadaBase64.isEmpty()) {
-            try {
-                byte[] decodedString = Base64.decode(imagenSeleccionadaBase64, Base64.DEFAULT);
-                Bitmap decodedByte = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
-                ivVistaPreviaDialogo.setImageBitmap(decodedByte);
-                ivVistaPreviaDialogo.setVisibility(View.VISIBLE);
-            } catch (Exception e) { e.printStackTrace(); }
-        }
-
-        btnImagen.setOnClickListener(v -> galeriaLauncher.launch(new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)));
-        btnCancelar.setOnClickListener(v -> dialog.dismiss());
-
-        btnGuardar.setOnClickListener(v -> {
-            String nuevoTitulo = etTitulo.getText().toString().trim();
-            String nuevaDesc = etDescripcion.getText().toString().trim();
-            String nuevoContenido = etContenido.getText().toString().trim();
-            String nuevaUrl = etUrl.getText().toString().trim();
-
-            if (nuevoTitulo.isEmpty() || nuevaDesc.isEmpty() || nuevoContenido.isEmpty()) {
-                Toast.makeText(getContext(), "Rellena los campos obligatorios", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            Map<String, Object> updates = new HashMap<>();
-            updates.put("titulo", nuevoTitulo);
-            updates.put("descripcionCorta", nuevaDesc);
-            updates.put("contenidoCompleto", nuevoContenido);
-            updates.put("urlEnlace", nuevaUrl);
-            updates.put("imagenPortadaBase64", imagenSeleccionadaBase64);
-
-            comunidadRef.child(articulo.getId()).updateChildren(updates).addOnSuccessListener(aVoid -> {
-                Toast.makeText(getContext(), "¡Artículo actualizado!", Toast.LENGTH_SHORT).show();
-                dialog.dismiss();
-            });
-        });
-
-        if (dialog.getWindow() != null) dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
-        dialog.show();
-    }
-
-    private void mostrarOpcionesMisArticulos(Articulo articulo) {
-        BottomSheetDialog bottomSheet = new BottomSheetDialog(requireContext());
-        View view = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_opciones_articulo, null);
-        bottomSheet.setContentView(view);
-
-        ((View) view.getParent()).setBackgroundColor(android.graphics.Color.TRANSPARENT);
-
-        view.findViewById(R.id.btnOpcionVer).setOnClickListener(v -> {
-            bottomSheet.dismiss();
-            mostrarArticuloCompleto(articulo);
-        });
-
-        view.findViewById(R.id.btnOpcionEditar).setOnClickListener(v -> {
-            bottomSheet.dismiss();
-            mostrarDialogoEditarArticulo(articulo);
-        });
-
-        view.findViewById(R.id.btnOpcionEliminar).setOnClickListener(v -> {
-            bottomSheet.dismiss();
-            new AlertDialog.Builder(requireContext())
-                    .setTitle("¿Eliminar artículo?")
-                    .setMessage("Esta acción no se puede deshacer.")
-                    .setPositiveButton("Eliminar", (d, w) -> comunidadRef.child(articulo.getId()).removeValue())
-                    .setNegativeButton("Cancelar", null)
-                    .show();
-        });
-
-        bottomSheet.show();
-    }
+    // --- DIÁLOGOS Y NAVEGACIÓN (SIN CAMBIOS) ---
 
     private void mostrarArticuloCompleto(Articulo articulo) {
         BottomSheetDialog bottomSheet = new BottomSheetDialog(requireContext());
@@ -544,7 +384,7 @@ public class EducacionFragment extends Fragment {
                 byte[] decodedString = Base64.decode(articulo.getImagenPortadaBase64(), Base64.DEFAULT);
                 ivPortada.setImageBitmap(BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length));
                 layout.addView(ivPortada);
-            } catch (Exception e) { e.printStackTrace(); }
+            } catch (Exception e) {}
         }
 
         TextView tvTitulo = new TextView(requireContext());
@@ -581,5 +421,151 @@ public class EducacionFragment extends Fragment {
         scrollView.addView(layout);
         bottomSheet.setContentView(scrollView);
         bottomSheet.show();
+    }
+
+    private void mostrarDialogoCrearHilo() {
+        View view = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_agregar_hilo, null);
+        AlertDialog dialog = new AlertDialog.Builder(requireContext()).setView(view).create();
+        TextInputEditText etTitulo = view.findViewById(R.id.etTituloHilo);
+        TextInputEditText etDescripcion = view.findViewById(R.id.etDescripcionHilo);
+        MaterialButton btnCancelar = view.findViewById(R.id.btnCancelarHilo);
+        MaterialButton btnPublicar = view.findViewById(R.id.btnPublicarHilo);
+
+        btnCancelar.setOnClickListener(v -> dialog.dismiss());
+        btnPublicar.setOnClickListener(v -> {
+            String titulo = etTitulo.getText().toString().trim();
+            if (titulo.isEmpty()) { Toast.makeText(getContext(), "El título es obligatorio", Toast.LENGTH_SHORT).show(); return; }
+            String id = foroRef.push().getKey();
+            HiloForo nuevo = new HiloForo(id, titulo, etDescripcion.getText().toString().trim(), currentUser.getUid(), miNick, System.currentTimeMillis());
+            foroRef.child(id).setValue(nuevo).addOnSuccessListener(aVoid -> dialog.dismiss());
+        });
+        if (dialog.getWindow() != null) dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        dialog.show();
+    }
+
+    private void mostrarDialogoEditarHilo(HiloForo hilo) {
+        View view = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_agregar_hilo, null);
+        AlertDialog dialog = new AlertDialog.Builder(requireContext()).setView(view).create();
+        TextInputEditText etTitulo = view.findViewById(R.id.etTituloHilo);
+        TextInputEditText etDescripcion = view.findViewById(R.id.etDescripcionHilo);
+        MaterialButton btnPublicar = view.findViewById(R.id.btnPublicarHilo);
+        etTitulo.setText(hilo.getTitulo());
+        etDescripcion.setText(hilo.getDescripcion());
+        btnPublicar.setText("Guardar cambios");
+
+        btnPublicar.setOnClickListener(v -> {
+            Map<String, Object> updates = new HashMap<>();
+            updates.put("titulo", etTitulo.getText().toString().trim());
+            updates.put("descripcion", etDescripcion.getText().toString().trim());
+            foroRef.child(hilo.getId()).updateChildren(updates).addOnSuccessListener(aVoid -> dialog.dismiss());
+        });
+        if (dialog.getWindow() != null) dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        dialog.show();
+    }
+
+    private void confirmarBorradoHilo(HiloForo hilo) {
+        new AlertDialog.Builder(requireContext()).setTitle("Eliminar hilo").setMessage("¿Borrar hilo y respuestas?")
+                .setPositiveButton("Eliminar", (dialog, which) -> {
+                    foroRef.child(hilo.getId()).removeValue();
+                    FirebaseDatabase.getInstance().getReference("foro_respuestas").child(hilo.getId()).removeValue();
+                }).setNegativeButton("Cancelar", null).show();
+    }
+
+    private void mostrarDialogoCrearArticulo() {
+        boolean esOficial = (tabLayout.getSelectedTabPosition() == 0);
+        imagenSeleccionadaBase64 = "";
+
+        View view = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_agregar_articulo, null);
+        AlertDialog dialog = new AlertDialog.Builder(requireContext()).setView(view).create();
+
+        ivVistaPreviaDialogo = view.findViewById(R.id.ivDialogVistaPrevia);
+        TextInputEditText etTitulo = view.findViewById(R.id.etDialogTitulo);
+        TextInputEditText etDesc = view.findViewById(R.id.etDialogDescripcion);
+        TextInputEditText etCont = view.findViewById(R.id.etDialogContenido);
+        TextInputEditText etUrl = view.findViewById(R.id.etDialogUrl);
+
+        view.findViewById(R.id.btnGuardarDialog).setOnClickListener(v -> {
+            String titulo = etTitulo.getText().toString().trim();
+            if (titulo.isEmpty()) { Toast.makeText(getContext(), "Título obligatorio", Toast.LENGTH_SHORT).show(); return; }
+
+            DatabaseReference targetRef = esOficial ? oficialesRef : comunidadRef;
+            String id = targetRef.push().getKey();
+            String autor = esOficial ? "EasyPets Oficial" : "@" + miNick;
+
+            Articulo nuevo = new Articulo(id, currentUser.getUid(), titulo,
+                    etDesc.getText().toString().trim(),
+                    etCont.getText().toString().trim(),
+                    autor, System.currentTimeMillis(), imagenSeleccionadaBase64,
+                    etUrl.getText().toString().trim(), esOficial);
+
+            targetRef.child(id).setValue(nuevo).addOnSuccessListener(aVoid -> {
+                Toast.makeText(getContext(), "¡Publicado!", Toast.LENGTH_SHORT).show();
+                dialog.dismiss();
+            });
+        });
+
+        view.findViewById(R.id.btnDialogImagen).setOnClickListener(v ->
+                galeriaLauncher.launch(new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)));
+
+        view.findViewById(R.id.btnCancelarDialog).setOnClickListener(v -> dialog.dismiss());
+
+        if (dialog.getWindow() != null) dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        dialog.show();
+    }
+
+    private void mostrarDialogoEditarArticulo(Articulo articulo) {
+        imagenSeleccionadaBase64 = articulo.getImagenPortadaBase64();
+
+        View view = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_agregar_articulo, null);
+        AlertDialog dialog = new AlertDialog.Builder(requireContext()).setView(view).create();
+
+        // Referencias
+        TextView tvTitle = view.findViewById(R.id.tvDialogTitle);
+        TextInputEditText etTitulo = view.findViewById(R.id.etDialogTitulo);
+        TextInputEditText etDescripcion = view.findViewById(R.id.etDialogDescripcion);
+        TextInputEditText etContenido = view.findViewById(R.id.etDialogContenido);
+        TextInputEditText etUrl = view.findViewById(R.id.etDialogUrl);
+        MaterialButton btnImagen = view.findViewById(R.id.btnDialogImagen);
+        ivVistaPreviaDialogo = view.findViewById(R.id.ivDialogVistaPrevia);
+        MaterialButton btnGuardar = view.findViewById(R.id.btnGuardarDialog);
+        MaterialButton btnCancelar = view.findViewById(R.id.btnCancelarDialog);
+
+        // Setear datos actuales
+        tvTitle.setText("Editar Mi Artículo");
+        etTitulo.setText(articulo.getTitulo());
+        etDescripcion.setText(articulo.getDescripcionCorta());
+        etContenido.setText(articulo.getContenidoCompleto());
+        etUrl.setText(articulo.getUrlEnlace());
+
+        if (imagenSeleccionadaBase64 != null && !imagenSeleccionadaBase64.isEmpty()) {
+            try {
+                byte[] decodedString = Base64.decode(imagenSeleccionadaBase64, Base64.DEFAULT);
+                ivVistaPreviaDialogo.setImageBitmap(BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length));
+                ivVistaPreviaDialogo.setVisibility(View.VISIBLE);
+            } catch (Exception e) { e.printStackTrace(); }
+        }
+
+        btnImagen.setOnClickListener(v -> galeriaLauncher.launch(new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)));
+        btnCancelar.setOnClickListener(v -> dialog.dismiss());
+
+        btnGuardar.setOnClickListener(v -> {
+            String tit = etTitulo.getText().toString().trim();
+            if (tit.isEmpty()) { Toast.makeText(getContext(), "El título es obligatorio", Toast.LENGTH_SHORT).show(); return; }
+
+            Map<String, Object> updates = new HashMap<>();
+            updates.put("titulo", tit);
+            updates.put("descripcionCorta", etDescripcion.getText().toString().trim());
+            updates.put("contenidoCompleto", etContenido.getText().toString().trim());
+            updates.put("urlEnlace", etUrl.getText().toString().trim());
+            updates.put("imagenPortadaBase64", imagenSeleccionadaBase64);
+
+            comunidadRef.child(articulo.getId()).updateChildren(updates).addOnSuccessListener(aVoid -> {
+                Toast.makeText(getContext(), "Artículo actualizado", Toast.LENGTH_SHORT).show();
+                dialog.dismiss();
+            });
+        });
+
+        if (dialog.getWindow() != null) dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        dialog.show();
     }
 }
