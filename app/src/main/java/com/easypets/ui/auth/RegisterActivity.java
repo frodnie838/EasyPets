@@ -9,6 +9,7 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.credentials.CredentialManager;
@@ -26,8 +27,11 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthUserCollisionException;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.GoogleAuthProvider;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -38,7 +42,7 @@ import java.util.TimeZone;
 
 public class RegisterActivity extends AppCompatActivity {
 
-    private EditText nombreEditText, apellidosEditText, emailEditText, passwordEditText, confirmPasswordEditText;
+    private EditText nombreEditText, apellidosEditText, nickEditText, emailEditText, passwordEditText, confirmPasswordEditText;
     private CheckBox termsCheckBox;
     private Button btnRegistrar, btnGoogle;
     private TextView loginTextView;
@@ -58,6 +62,7 @@ public class RegisterActivity extends AppCompatActivity {
 
         nombreEditText = findViewById(R.id.nombreEditText);
         apellidosEditText = findViewById(R.id.apellidosEditText);
+        nickEditText = findViewById(R.id.nickEditText); // ✨ Vinculamos el nuevo campo Nick
         emailEditText = findViewById(R.id.emailEditText);
         passwordEditText = findViewById(R.id.passwordEditText);
         confirmPasswordEditText = findViewById(R.id.passwordConfirmEditText);
@@ -149,17 +154,24 @@ public class RegisterActivity extends AppCompatActivity {
                             if (taskDb.isSuccessful() && taskDb.getResult().exists()) {
                                 irAMain();
                             } else {
-                                // ✨ SOLO RECUPERAMOS NOMBRE Y APELLIDOS
                                 String nombre = googleCredential.getGivenName();
                                 String apellidos = googleCredential.getFamilyName();
                                 String correo = user.getEmail();
+                                String fotoUrl = "";
 
                                 if (nombre == null) nombre = user.getDisplayName();
                                 if (nombre == null) nombre = "Usuario";
                                 if (apellidos == null) apellidos = "";
 
-                                // ✨ YA NO PASAMOS FOTOURL
-                                guardarDatosFirestore(uid, nombre, apellidos, correo);
+                                if (user.getPhotoUrl() != null) {
+                                    fotoUrl = user.getPhotoUrl().toString();
+                                } else if (googleCredential.getProfilePictureUri() != null) {
+                                    fotoUrl = googleCredential.getProfilePictureUri().toString();
+                                }
+                                // ✨ Generamos un nick automático para los que entran con Google
+                                String nickGenerado = nombre.replaceAll("\\s+", "") + (System.currentTimeMillis() % 10000);
+
+                                guardarDatosFirestore(uid, nombre, apellidos, nickGenerado, correo, fotoUrl);
                             }
                         });
 
@@ -176,32 +188,60 @@ public class RegisterActivity extends AppCompatActivity {
     private void registrarUsuario() {
         String nombre = nombreEditText.getText().toString().trim();
         String apellidos = apellidosEditText.getText().toString().trim();
+        String nick = nickEditText.getText().toString().trim();
         String email = emailEditText.getText().toString().trim();
         String password = passwordEditText.getText().toString().trim();
         String confirmPassword = confirmPasswordEditText.getText().toString().trim();
 
         if (TextUtils.isEmpty(nombre)) { nombreEditText.setError("Introduce un nombre"); return; }
+        if (TextUtils.isEmpty(nick)) { nickEditText.setError("Introduce un nick"); return; }
+        if (nick.contains(" ")) { nickEditText.setError("El nick no puede tener espacios"); return; }
         if (TextUtils.isEmpty(email)) { emailEditText.setError("Introduce un correo"); return; }
         if (TextUtils.isEmpty(password) || password.length() < 6) { passwordEditText.setError("Mínimo 6 carácteres"); return; }
         if (!password.equals(confirmPassword)) { confirmPasswordEditText.setError("Las contraseñas no son iguales"); return; }
 
-        mAuth.createUserWithEmailAndPassword(email, password).addOnCompleteListener(task -> {
-            if (task.isSuccessful()) {
-                FirebaseUser user = mAuth.getCurrentUser();
-                if (user != null) {
-                    guardarDatosFirestore(user.getUid(), nombre, apellidos, email);
-                }
-            } else {
-                if (task.getException() instanceof FirebaseAuthUserCollisionException) {
-                    Toast.makeText(RegisterActivity.this, "Este correo ya está registrado", Toast.LENGTH_LONG).show();
+        btnRegistrar.setEnabled(false);
+        btnRegistrar.setText("Comprobando...");
+
+        db.child("usuarios").orderByChild("nick").equalTo(nick).addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                if (snapshot.exists()) {
+                    nickEditText.setError("Este nick ya está en uso");
+                    nickEditText.requestFocus();
+                    btnRegistrar.setEnabled(true);
+                    btnRegistrar.setText("Registrarse");
                 } else {
-                    Toast.makeText(RegisterActivity.this, "Error al registrarse", Toast.LENGTH_SHORT).show();
+                    // Si el nick está libre, creamos el usuario en Firebase Auth
+                    mAuth.createUserWithEmailAndPassword(email, password).addOnCompleteListener(task -> {
+                        if (task.isSuccessful()) {
+                            FirebaseUser user = mAuth.getCurrentUser();
+                            if (user != null) {
+                                guardarDatosFirestore(user.getUid(), nombre, apellidos, nick, email,null);
+                            }
+                        } else {
+                            if (task.getException() instanceof FirebaseAuthUserCollisionException) {
+                                Toast.makeText(RegisterActivity.this, "Este correo ya está registrado", Toast.LENGTH_LONG).show();
+                            } else {
+                                Toast.makeText(RegisterActivity.this, "Error al registrarse", Toast.LENGTH_SHORT).show();
+                            }
+                            btnRegistrar.setEnabled(true);
+                            btnRegistrar.setText("Registrarse");
+                        }
+                    });
                 }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Toast.makeText(RegisterActivity.this, "Error de conexión", Toast.LENGTH_SHORT).show();
+                btnRegistrar.setEnabled(true);
+                btnRegistrar.setText("Registrarse");
             }
         });
     }
 
-    private void guardarDatosFirestore(String uid, String nombre, String apellidos, String email) {
+    private void guardarDatosFirestore(String uid, String nombre, String apellidos, String nick, String email, String fotoUrl) {
         Date date = new Date();
         SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
         sdf.setTimeZone(TimeZone.getTimeZone("Europe/Madrid"));
@@ -211,18 +251,24 @@ public class RegisterActivity extends AppCompatActivity {
         usuario.put("idUsuario", uid);
         usuario.put("nombre", nombre);
         usuario.put("apellidos", apellidos);
+        usuario.put("nick", nick);
         usuario.put("correo", email);
         usuario.put("fechaRegistro", fecha);
         usuario.put("timestamp", System.currentTimeMillis());
         usuario.put("rol", "usuario");
 
+        if (fotoUrl != null && !fotoUrl.isEmpty()) {
+            usuario.put("fotoUrl", fotoUrl);
+        }
         db.child("usuarios").child(uid).setValue(usuario)
                 .addOnSuccessListener(aVoid -> {
-                    Toast.makeText(RegisterActivity.this, "¡Bienvenido " + nombre + "!", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(RegisterActivity.this, "¡Bienvenido @" + nick + "!", Toast.LENGTH_SHORT).show();
                     irAMain();
                 })
                 .addOnFailureListener(e -> {
                     Toast.makeText(RegisterActivity.this, "Fallo al guardar: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    btnRegistrar.setEnabled(true);
+                    btnRegistrar.setText("Registrarse");
                 });
     }
 

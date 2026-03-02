@@ -90,7 +90,7 @@
                 app:boxCornerRadiusTopStart="8dp"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/apellidosInputLayout">
+                app:layout_constraintTop_toBottomOf="@+id/nickInputLayout">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/emailEditText"
@@ -98,7 +98,29 @@
                     android:layout_height="wrap_content"
                     android:inputType="textEmailAddress" />
             </com.google.android.material.textfield.TextInputLayout>
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/nickInputLayout"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_marginEnd="16dp"
+                android:hint="Nombre de usuario"
+                app:boxBackgroundMode="outline"
+                app:boxCornerRadiusBottomEnd="8dp"
+                app:boxCornerRadiusBottomStart="8dp"
+                app:boxCornerRadiusTopEnd="8dp"
+                app:boxCornerRadiusTopStart="8dp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/apellidosInputLayout">
 
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/nickEditText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:maxLength="15"
+                    android:inputType="textNoSuggestions|textVisiblePassword" />
+            </com.google.android.material.textfield.TextInputLayout>
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/passwordInputLayout"
                 android:layout_width="0dp"
