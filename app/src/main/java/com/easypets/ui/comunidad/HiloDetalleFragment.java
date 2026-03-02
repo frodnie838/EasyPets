@@ -274,10 +274,16 @@ public class HiloDetalleFragment extends Fragment {
     private void confirmarBorrado(RespuestaForo respuesta) {
         new androidx.appcompat.app.AlertDialog.Builder(requireContext())
                 .setTitle("Eliminar respuesta")
-                .setMessage("¿Estás seguro de que quieres eliminar este mensaje para siempre?")
+                .setMessage("¿Estás seguro de que quieres eliminar este mensaje? Quedará marcado como eliminado para los demás usuarios.")
                 .setPositiveButton("Eliminar", (dialog, which) -> {
-                    // Borramos de Firebase usando el ID de la respuesta
-                    respuestasRef.child(respuesta.getId()).removeValue()
+
+                    java.util.Map<String, Object> updates = new java.util.HashMap<>();
+                    updates.put("eliminado", true);
+                    updates.put("texto", "🚫 Este mensaje ha sido eliminado por el autor.");
+                    updates.put("idAutor", "deleted");
+                    updates.put("editado", false);
+
+                    respuestasRef.child(respuesta.getId()).updateChildren(updates)
                             .addOnSuccessListener(aVoid -> {
                                 Toast.makeText(getContext(), "Mensaje eliminado", Toast.LENGTH_SHORT).show();
                             })

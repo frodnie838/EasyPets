@@ -7,7 +7,7 @@ public class RespuestaForo {
     private String nombreAutor;
     private long timestampCreacion;
     private boolean editado = false;
-
+    private boolean eliminado = false;
     public RespuestaForo() {}
 
     public RespuestaForo(String id, String texto, String idAutor, String nombreAutor, long timestampCreacion, boolean editado) {
@@ -17,6 +17,7 @@ public class RespuestaForo {
         this.nombreAutor = nombreAutor;
         this.timestampCreacion = timestampCreacion;
         this.editado = editado;
+        this.eliminado = false;
     }
 
     // Getters y Setters
@@ -36,4 +37,6 @@ public class RespuestaForo {
 
     public long getTimestampCreacion() { return timestampCreacion; }
     public void setTimestampCreacion(long timestampCreacion) { this.timestampCreacion = timestampCreacion; }
+    public boolean isEliminado() { return eliminado; }
+    public void setEliminado(boolean eliminado) { this.eliminado = eliminado; }
 }

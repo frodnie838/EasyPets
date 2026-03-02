@@ -49,25 +49,40 @@ public class RespuestaAdapter extends RecyclerView.Adapter<RespuestaAdapter.Resp
     @Override
     public void onBindViewHolder(@NonNull RespuestaViewHolder holder, int position) {
         RespuestaForo respuesta = respuestas.get(position);
-        holder.tvTexto.setText(respuesta.getTexto());
 
-        // Fecha relativa
+        holder.tvTexto.setText(respuesta.getTexto());
         CharSequence tiempo = android.text.format.DateUtils.getRelativeTimeSpanString(
                 respuesta.getTimestampCreacion(), System.currentTimeMillis(), android.text.format.DateUtils.MINUTE_IN_MILLIS);
         holder.tvFecha.setText(" • " + tiempo);
 
-        // Lógica de "Editado"
-        holder.tvEditado.setVisibility(respuesta.isEditado() ? View.VISIBLE : View.GONE);
+        if (respuesta.isEliminado()) {
+            // Estilo de mensaje borrado
+            holder.tvTexto.setTypeface(null, android.graphics.Typeface.ITALIC);
+            holder.tvTexto.setTextColor(android.graphics.Color.parseColor("#9E9E9E"));
+            holder.tvAutor.setText("Mensaje eliminado");
+            holder.tvEditado.setVisibility(View.GONE);
+            holder.btnMenu.setVisibility(View.GONE);
 
-        // Configuración inicial del autor
+            // Foto gris por defecto
+            holder.ivAvatar.setImageResource(R.drawable.profile);
+            holder.ivAvatar.setImageTintList(android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#E0E0E0")));
+            return; // Salimos de la función para no cargar los datos de Firebase del autor
+        } else {
+            // Estilo normal
+            holder.tvTexto.setTypeface(null, android.graphics.Typeface.NORMAL);
+            holder.tvTexto.setTextColor(android.graphics.Color.BLACK);
+            holder.tvEditado.setVisibility(respuesta.isEditado() ? View.VISIBLE : View.GONE);
+        }
+
+        // Lógica de foto, Nick y botón Menú (SOLO SI NO ESTÁ ELIMINADO)
         holder.tvAutor.setText("Cargando...");
         holder.ivAvatar.setImageResource(R.drawable.profile);
         holder.ivAvatar.setImageTintList(android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#9E9E9E")));
 
-        if (respuesta.getIdAutor().equals(currentUserId)) {
+        if (currentUserId != null && respuesta.getIdAutor().equals(currentUserId)) {
             holder.btnMenu.setVisibility(View.VISIBLE);
             holder.btnMenu.setOnClickListener(v -> {
-                PopupMenu popup = new PopupMenu(v.getContext(), v);
+                android.widget.PopupMenu popup = new android.widget.PopupMenu(v.getContext(), v);
                 popup.getMenu().add("Editar");
                 popup.getMenu().add("Eliminar");
 
@@ -85,13 +100,12 @@ public class RespuestaAdapter extends RecyclerView.Adapter<RespuestaAdapter.Resp
             holder.btnMenu.setVisibility(View.GONE);
         }
 
-        // Carga de datos del usuario (Nick y Foto)
+        // Carga del autor desde Firebase
         FirebaseDatabase.getInstance().getReference("usuarios").child(respuesta.getIdAutor())
                 .addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot snapshot) {
                         if (snapshot.exists()) {
-                            // Prioridad Nick > Nombre
                             String nick = snapshot.child("nick").getValue(String.class);
                             if (nick != null && !nick.isEmpty()) {
                                 holder.tvAutor.setText("@" + nick);
@@ -100,7 +114,6 @@ public class RespuestaAdapter extends RecyclerView.Adapter<RespuestaAdapter.Resp
                                 holder.tvAutor.setText(nombre != null ? nombre : "Usuario");
                             }
 
-                            // Carga de Foto
                             String foto = snapshot.child("fotoPerfil").getValue(String.class);
                             if (foto != null && !foto.isEmpty()) {
                                 if (foto.startsWith("http")) {
