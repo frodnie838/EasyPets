@@ -13,6 +13,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -79,6 +80,7 @@ public class EducacionFragment extends Fragment {
     private String imagenSeleccionadaBase64 = "";
     private ImageView ivVistaPreviaDialogo;
     private ActivityResultLauncher<Intent> galeriaLauncher;
+    private ProgressBar pbCargando;
 
     @Nullable
     @Override
@@ -89,6 +91,7 @@ public class EducacionFragment extends Fragment {
         tabLayout = view.findViewById(R.id.tabLayoutEducacion);
         fabAgregar = view.findViewById(R.id.fabAgregarArticulo);
         chipGroupMisPublicaciones = view.findViewById(R.id.chipGroupMisPublicaciones);
+        pbCargando = view.findViewById(R.id.pbCargando);
 
         currentUser = FirebaseAuth.getInstance().getCurrentUser();
         FirebaseDatabase db = FirebaseDatabase.getInstance();
@@ -99,7 +102,19 @@ public class EducacionFragment extends Fragment {
 
         listaArticulos = new ArrayList<>();
         listaHilos = new ArrayList<>();
-
+        if (getActivity() != null) {
+            BottomNavigationView bottomNav = getActivity().findViewById(R.id.bottom_navigation);
+            if (bottomNav != null) {
+                android.view.Menu menu = bottomNav.getMenu();
+                // Le quitamos la obligación de tener uno seleccionado
+                menu.setGroupCheckable(0, true, false);
+                for (int i = 0; i < menu.size(); i++) {
+                    menu.getItem(i).setChecked(false); // Apagamos todos
+                }
+                // Le volvemos a poner la protección
+                menu.setGroupCheckable(0, true, true);
+            }
+        }
         // 1. Inicializar ArticuloAdapter con la nueva interfaz de 3 métodos
         articuloAdapter = new ArticuloAdapter(listaArticulos, new ArticuloAdapter.OnArticuloClickListener() {
             @Override
@@ -211,12 +226,17 @@ public class EducacionFragment extends Fragment {
                 actualizarVisibilidadFab();
                 String titulo = tab.getText().toString();
 
+                listaArticulos.clear();
+                listaHilos.clear();
+                articuloAdapter.notifyDataSetChanged();
+
+                foroAdapter.notifyDataSetChanged();
                 if (titulo.equals("Mis Publicaciones")) {
                     chipGroupMisPublicaciones.setVisibility(View.VISIBLE);
                     actualizarListaMisPublicaciones();
                 } else {
                     chipGroupMisPublicaciones.setVisibility(View.GONE);
-                    articuloAdapter.setMostrarOpciones(false); // Desactivar puntos en pestañas generales
+                    articuloAdapter.setMostrarOpciones(false);
                     foroAdapter.setMostrarOpciones(false);
 
                     if (titulo.equals("Oficiales")) {
@@ -307,6 +327,9 @@ public class EducacionFragment extends Fragment {
     private void cargarArticulos(Query query, String mensajeVacio) {
         listaArticulos.clear();
         articuloAdapter.notifyDataSetChanged();
+
+        pbCargando.setVisibility(View.VISIBLE); // 🔄 Mostrar cargando
+
         activeQuery = query;
         contenidoListener = new ValueEventListener() {
             @Override
@@ -318,8 +341,14 @@ public class EducacionFragment extends Fragment {
                 }
                 Collections.sort(listaArticulos, (a1, a2) -> Long.compare(a2.getTimestampCreacion(), a1.getTimestampCreacion()));
                 articuloAdapter.notifyDataSetChanged();
+
+                pbCargando.setVisibility(View.GONE);
             }
-            @Override public void onCancelled(@NonNull DatabaseError error) {}
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                pbCargando.setVisibility(View.GONE);
+            }
         };
         activeQuery.addValueEventListener(contenidoListener);
     }
@@ -327,6 +356,9 @@ public class EducacionFragment extends Fragment {
     private void cargarHilos(Query query) {
         listaHilos.clear();
         foroAdapter.notifyDataSetChanged();
+
+        pbCargando.setVisibility(View.VISIBLE);
+
         activeQuery = query;
         contenidoListener = new ValueEventListener() {
             @Override
@@ -338,8 +370,14 @@ public class EducacionFragment extends Fragment {
                 }
                 Collections.sort(listaHilos, (h1, h2) -> Long.compare(h2.getTimestampCreacion(), h1.getTimestampCreacion()));
                 foroAdapter.notifyDataSetChanged();
+
+                pbCargando.setVisibility(View.GONE);
             }
-            @Override public void onCancelled(@NonNull DatabaseError error) {}
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                pbCargando.setVisibility(View.GONE);
+            }
         };
         activeQuery.addValueEventListener(contenidoListener);
     }
