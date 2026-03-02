@@ -4,20 +4,33 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#F5F5F5">
+    android:background="@color/fondo_base">
 
     <androidx.appcompat.widget.Toolbar
         android:id="@+id/toolbarHilo"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
-        android:background="@color/white"
+        android:background="@color/fondo_base"
         app:navigationIcon="?attr/homeAsUpIndicator"
-        app:title="Discusion" />
+        android:elevation="0dp"
+        app:contentInsetStartWithNavigation="0dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Foro"
+            android:textColor="@color/color_acento_primario"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+    </androidx.appcompat.widget.Toolbar>
 
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1">
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:paddingBottom="20dp">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -27,42 +40,113 @@
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                app:cardElevation="0dp">
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="16dp"
+                app:cardBackgroundColor="@color/white"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="2dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="16dp">
+                    android:padding="20dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <com.google.android.material.imageview.ShapeableImageView
+                            android:id="@+id/ivAvatarDetalle"
+                            android:layout_width="44dp"
+                            android:layout_height="44dp"
+                            android:src="@drawable/profile"
+                            android:tint="@color/grey"
+                            android:scaleType="centerCrop"
+                            app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.App.Circle"
+                            android:layout_marginEnd="12dp"/>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/tvAutorDetalle"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Cargando..."
+                                android:textStyle="bold"
+                                android:textColor="@color/color_acento_primario"
+                                android:textSize="15sp"/>
+
+                            <TextView
+                                android:id="@+id/tvFechaDetalle"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Calculando fecha..."
+                                android:textColor="#9E9E9E"
+                                android:textSize="12sp"
+                                android:layout_marginTop="2dp"/>
+                        </LinearLayout>
+                    </LinearLayout>
 
                     <TextView
                         android:id="@+id/tvDetalleTitulo"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
                         android:textSize="20sp"
                         android:textStyle="bold"
                         android:textColor="@color/black"
+                        android:lineSpacingExtra="2dp"
                         android:text="Título del hilo" />
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:layout_marginTop="12dp"
+                        android:layout_marginBottom="12dp"
+                        android:background="#F0F0F0" />
 
                     <TextView
                         android:id="@+id/tvDetalleDescripcion"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
                         android:textSize="16sp"
                         android:textColor="#424242"
+                        android:lineSpacingExtra="5dp"
                         android:text="Contenido detallado..." />
-
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
-            <TextView
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:padding="16dp"
-                android:text="Respuestas"
-                android:textStyle="bold"
-                android:textColor="#757575" />
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="20dp"
+                android:paddingTop="12dp"
+                android:paddingBottom="8dp">
+
+                <View
+                    android:layout_width="4dp"
+                    android:layout_height="18dp"
+                    android:background="@color/color_acento_primario"
+                    android:layout_marginEnd="8dp"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Respuestas"
+                    android:textStyle="bold"
+                    android:textSize="17sp"
+                    android:textColor="@color/black" />
+            </LinearLayout>
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rvRespuestas"
@@ -70,38 +154,77 @@
                 android:layout_height="wrap_content"
                 android:nestedScrollingEnabled="false" />
 
+            <LinearLayout
+                android:id="@+id/layoutEmptyStateRespuestas"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:padding="32dp"
+                android:visibility="gone"> <ImageView
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                android:src="@drawable/mensajes"
+                app:tint="@color/color_acento_primario"
+                android:alpha="0.6"/>
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Aún no hay respuestas"
+                    android:textStyle="bold"
+                    android:textColor="@color/black"
+                    android:alpha="0.5"
+                    android:textSize="16sp"
+                    android:layout_marginTop="16dp"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="¡Sé el primero en ayudar!"
+                    android:textColor="@color/grey"
+                    android:textSize="14sp"
+                    android:layout_marginTop="4dp"/>
+            </LinearLayout>
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
 
-    <androidx.cardview.widget.CardView
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        app:cardElevation="8dp">
+        android:orientation="horizontal"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="10dp"
+        android:background="@color/white"
+        android:elevation="8dp"
+        android:gravity="center_vertical">
 
         <LinearLayout
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:padding="8dp"
-            android:gravity="center_vertical">
+            android:layout_weight="1"
+            android:background="@drawable/bg_boton_cerrar_pequeno"
+            android:backgroundTint="#F5F5F5"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="2dp"
+            android:layout_marginEnd="12dp">
 
             <EditText
                 android:id="@+id/etNuevaRespuesta"
-                android:layout_width="0dp"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
                 android:hint="Escribe una respuesta..."
                 android:background="@android:color/transparent"
-                android:padding="12dp"
+                android:paddingVertical="10dp"
+                android:textSize="15sp"
                 android:maxLines="4" />
-
-            <ImageButton
-                android:id="@+id/btnEnviarRespuesta"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:src="@android:drawable/ic_menu_send"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                app:tint="@color/color_acento_primario" />
         </LinearLayout>
-    </androidx.cardview.widget.CardView>
+
+        <ImageButton
+            android:id="@+id/btnEnviarRespuesta"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:src="@android:drawable/ic_menu_send"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            app:tint="@color/color_acento_primario" />
+    </LinearLayout>
 </LinearLayout>

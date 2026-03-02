@@ -34,13 +34,14 @@
                 android:layout_height="200dp"
                 android:adjustViewBounds="true"
                 android:src="@drawable/transportin"
-                android:alpha="0.6"
-                android:layout_marginBottom="8dp"/>
+                android:alpha="0.7"
+                android:layout_marginBottom="8dp"
+                app:tint="@color/color_acento_primario" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="¡Aún no tienes peludos!"
+                android:text="¡Aún no tienes mascotas!"
                 android:textSize="22sp"
                 android:textStyle="bold"
                 android:textColor="@color/black"

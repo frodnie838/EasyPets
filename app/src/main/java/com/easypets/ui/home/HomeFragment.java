@@ -1,6 +1,5 @@
-package com.easypets.ui.main;
+package com.easypets.ui.home;
 
-import android.app.AlertDialog;
 import android.app.DatePickerDialog;
 import android.content.Intent;
 import android.os.Bundle;
@@ -26,6 +25,8 @@ import com.easypets.models.Mascota;
 import com.easypets.repositories.EventoRepository;
 import com.easypets.repositories.MascotaRepository;
 import com.easypets.ui.auth.LoginActivity;
+import com.easypets.ui.comunidad.EducacionFragment;
+import com.easypets.ui.veterinarios.VeterinariosFragment;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.button.MaterialButton;
 import com.google.firebase.auth.FirebaseAuth;

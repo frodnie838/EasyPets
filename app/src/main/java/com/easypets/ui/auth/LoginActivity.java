@@ -18,7 +18,7 @@ import androidx.credentials.GetCredentialResponse;
 import androidx.credentials.exceptions.GetCredentialException;
 
 import com.easypets.R;
-import com.easypets.ui.main.MainActivity;
+import com.easypets.ui.base.MainActivity;
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption;
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential;
 import com.google.android.material.button.MaterialButton;
@@ -217,12 +217,17 @@ public class LoginActivity extends AppCompatActivity {
                             if (dbTask.isSuccessful() && !dbTask.getResult().exists()) {
                                 String nombre = googleCredential.getGivenName();
                                 String apellidos = googleCredential.getFamilyName();
-
+                                String urlFoto = "";
+                                if (user.getPhotoUrl() != null) {
+                                    urlFoto = user.getPhotoUrl().toString();
+                                } else if (googleCredential.getProfilePictureUri() != null) {
+                                    urlFoto = googleCredential.getProfilePictureUri().toString();
+                                }
                                 if (nombre == null) nombre = user.getDisplayName();
                                 if (nombre == null) nombre = "Usuario";
                                 if (apellidos == null) apellidos = "";
-
-                                guardarDatosEnBaseDeDatos(user.getUid(), nombre, apellidos, user.getEmail());
+                                String nickGenerado = nombre.replaceAll("\\s+", "") + (System.currentTimeMillis() % 10000);
+                                guardarDatosEnBaseDeDatos(user.getUid(), nombre, apellidos, nickGenerado, user.getEmail(), urlFoto);
                             } else {
                                 irAMainActivity();
                             }
@@ -237,7 +242,7 @@ public class LoginActivity extends AppCompatActivity {
         }
     }
 
-    private void guardarDatosEnBaseDeDatos(String uid, String nombre, String apellidos, String email) {
+    private void guardarDatosEnBaseDeDatos(String uid, String nombre, String apellidos, String nick, String email, String fotoUrl) {
         long timestamp = System.currentTimeMillis();
 
         java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.getDefault());
@@ -248,12 +253,15 @@ public class LoginActivity extends AppCompatActivity {
         usuario.put("idUsuario", uid);
         usuario.put("nombre", nombre);
         usuario.put("apellidos", apellidos);
+        usuario.put("nick", nick);
         usuario.put("correo", email);
         usuario.put("fechaRegistro", fechaBonita);
         usuario.put("timestamp", timestamp);
         usuario.put("rol", "usuario");
 
-        // Ya no guardamos "fotoPerfilUrl" aquí. El PerfilFragment la leerá de FirebaseUser.
+        if (fotoUrl != null && !fotoUrl.isEmpty()) {
+            usuario.put("fotoPerfil", fotoUrl);
+        }
 
         FirebaseDatabase.getInstance().getReference().child("usuarios").child(uid).setValue(usuario)
                 .addOnSuccessListener(aVoid -> {

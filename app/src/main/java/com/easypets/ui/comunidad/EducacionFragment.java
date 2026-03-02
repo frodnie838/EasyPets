@@ -1,4 +1,4 @@
-package com.easypets.ui.main;
+package com.easypets.ui.comunidad;
 
 import android.app.Activity;
 import android.content.Intent;
@@ -7,7 +7,6 @@ import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
-import android.text.format.DateUtils;
 import android.util.Base64;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -27,6 +26,8 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.easypets.R;
+import com.easypets.adapters.ArticuloAdapter;
+import com.easypets.adapters.ForoAdapter;
 import com.easypets.models.Articulo;
 import com.easypets.models.HiloForo;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
@@ -119,8 +120,26 @@ public class EducacionFragment extends Fragment {
             }
         }
         foroAdapter = new ForoAdapter(listaHilos, hilo -> {
-            // TODO: En el siguiente paso abriremos la pantalla de respuestas
-            Toast.makeText(getContext(), "Abriendo hilo: " + hilo.getTitulo(), Toast.LENGTH_SHORT).show();
+            // ✨ CREAMOS EL FRAGMENTO DEL DETALLE
+            HiloDetalleFragment detalleFragment = new HiloDetalleFragment();
+
+            // ✨ LE PASAMOS LOS DATOS DEL HILO QUE HEMOS PULSADO
+            Bundle args = new Bundle();
+            args.putString("hiloId", hilo.getId());
+            args.putString("titulo", hilo.getTitulo());
+            args.putString("descripcion", hilo.getDescripcion());
+            args.putString("idAutor", hilo.getIdAutor());
+            args.putLong("timestamp", hilo.getTimestampCreacion());
+            detalleFragment.setArguments(args);
+
+            // ✨ ABRIMOS LA PANTALLA
+            // Usamos frame_container que es donde están tus fragmentos principales
+            if (getActivity() != null) {
+                getActivity().getSupportFragmentManager().beginTransaction()
+                        .replace(R.id.frame_container, detalleFragment)
+                        .addToBackStack(null)
+                        .commit();
+            }
         });
 
         rvContenido.setLayoutManager(new LinearLayoutManager(getContext()));
@@ -128,7 +147,6 @@ public class EducacionFragment extends Fragment {
         obtenerDatosUsuario();
         configurarPestanas();
 
-        // ✨ El botón + decide qué hacer según la pestaña
         fabAgregar.setOnClickListener(v -> {
             if (tabLayout.getSelectedTabPosition() == 2) {
                 mostrarDialogoCrearHilo();
@@ -537,189 +555,5 @@ public class EducacionFragment extends Fragment {
         scrollView.addView(layout);
         bottomSheet.setContentView(scrollView);
         bottomSheet.show();
-    }
-
-    // --------------------------------------------------------
-    // ADAPTADORES (ARTÍCULOS Y FORO)
-    // --------------------------------------------------------
-
-    static class ArticuloAdapter extends RecyclerView.Adapter<ArticuloAdapter.ArticuloViewHolder> {
-        private List<Articulo> articulos;
-        private OnArticuloClickListener listener;
-        public interface OnArticuloClickListener { void onArticuloClick(Articulo articulo); }
-
-        public ArticuloAdapter(List<Articulo> articulos, OnArticuloClickListener listener) {
-            this.articulos = articulos;
-            this.listener = listener;
-        }
-
-        @NonNull @Override
-        public ArticuloViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-            View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_articulo, parent, false);
-            return new ArticuloViewHolder(view);
-        }
-
-        @Override
-        public void onBindViewHolder(@NonNull ArticuloViewHolder holder, int position) {
-            Articulo articulo = articulos.get(position);
-            holder.tvTitulo.setText(articulo.getTitulo());
-            holder.tvDescripcion.setText(articulo.getDescripcionCorta());
-            String fecha = new SimpleDateFormat("dd MMM", Locale.getDefault()).format(new Date(articulo.getTimestampCreacion()));
-            holder.tvAutor.setText(articulo.isEsOficial() ? "✓ Oficial • " + fecha : "Por: " + articulo.getAutor());
-
-            if (articulo.getImagenPortadaBase64() != null && !articulo.getImagenPortadaBase64().isEmpty()) {
-                try {
-                    byte[] decodedString = Base64.decode(articulo.getImagenPortadaBase64(), Base64.DEFAULT);
-                    holder.ivIcono.setImageBitmap(BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length));
-                    holder.ivIcono.setScaleType(ImageView.ScaleType.CENTER_CROP);
-                    holder.ivIcono.setImageTintList(null);
-                } catch (Exception e) {
-                    holder.ivIcono.setImageResource(articulo.isEsOficial() ? R.drawable.consejos : R.drawable.profile);
-                }
-            } else {
-                holder.ivIcono.setImageResource(articulo.isEsOficial() ? R.drawable.consejos : R.drawable.profile);
-            }
-            holder.itemView.setOnClickListener(v -> listener.onArticuloClick(articulo));
-        }
-
-        @Override public int getItemCount() { return articulos.size(); }
-
-        class ArticuloViewHolder extends RecyclerView.ViewHolder {
-            TextView tvTitulo, tvDescripcion, tvAutor;
-            ImageView ivIcono;
-            public ArticuloViewHolder(@NonNull View itemView) {
-                super(itemView);
-                tvTitulo = itemView.findViewById(R.id.tvTituloArticulo);
-                tvDescripcion = itemView.findViewById(R.id.tvDescripcionArticulo);
-                tvAutor = itemView.findViewById(R.id.tvAutorArticulo);
-                ivIcono = itemView.findViewById(R.id.ivIconoArticulo);
-            }
-        }
-    }
-
-    // ✨ ADAPTADOR PARA EL FORO (Usando tu lógica de hilos secundarios)
-    static class ForoAdapter extends RecyclerView.Adapter<ForoAdapter.ForoViewHolder> {
-        private List<HiloForo> hilos;
-        private OnHiloClickListener listener;
-        public interface OnHiloClickListener { void onHiloClick(HiloForo hilo); }
-
-        public ForoAdapter(List<HiloForo> hilos, OnHiloClickListener listener) {
-            this.hilos = hilos;
-            this.listener = listener;
-        }
-
-        @NonNull @Override
-        public ForoViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-            View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_hilo, parent, false);
-            return new ForoViewHolder(view);
-        }
-
-        @Override
-        public void onBindViewHolder(@NonNull ForoViewHolder holder, int position) {
-            HiloForo hilo = hilos.get(position);
-            holder.tvTitulo.setText(hilo.getTitulo());
-
-            if (hilo.getDescripcion() != null && !hilo.getDescripcion().isEmpty()) {
-                holder.tvDescripcion.setText(hilo.getDescripcion());
-                holder.tvDescripcion.setVisibility(View.VISIBLE);
-            } else {
-                holder.tvDescripcion.setVisibility(View.GONE);
-            }
-
-            CharSequence tiempoTranscurrido = android.text.format.DateUtils.getRelativeTimeSpanString(
-                    hilo.getTimestampCreacion(), System.currentTimeMillis(), android.text.format.DateUtils.MINUTE_IN_MILLIS);
-            holder.tvFecha.setText(" • " + tiempoTranscurrido);
-
-            // Valores por defecto mientras carga
-            holder.tvAutor.setText("Cargando...");
-            holder.ivAvatar.setImageResource(R.drawable.profile);
-            holder.ivAvatar.setImageTintList(android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#9E9E9E")));
-            holder.ivAvatar.setPadding(10, 10, 10, 10);
-
-            FirebaseDatabase.getInstance().getReference("usuarios").child(hilo.getIdAutor())
-                    .addListenerForSingleValueEvent(new ValueEventListener() {
-                        @Override
-                        public void onDataChange(@NonNull DataSnapshot snapshot) {
-                            if (snapshot.exists()) {
-                                // 1. Ponemos su Nick actual
-                                String nick = snapshot.child("nick").getValue(String.class);
-                                if (nick != null && !nick.isEmpty()) {
-                                    holder.tvAutor.setText("@" + nick);
-                                } else {
-                                    String nombre = snapshot.child("nombre").getValue(String.class);
-                                    holder.tvAutor.setText(nombre != null ? nombre : "Usuario");
-                                }
-
-                                // 2. Lógica de la Foto (Un solo campo: fotoPerfil)
-                                String foto = snapshot.child("fotoPerfil").getValue(String.class);
-
-                                if (foto != null && !foto.isEmpty()) {
-                                    if (foto.startsWith("http")) {
-                                        // ✨ CASO A: Es una URL (de Google). La descargamos con tu hilo secundario.
-                                        cargarFotoGoogle(foto, holder.ivAvatar);
-                                    } else {
-                                        // ✨ CASO B: Es Base64 (de la galería). La decodificamos.
-                                        try {
-                                            byte[] decodedString = Base64.decode(foto, Base64.DEFAULT);
-                                            Bitmap bitmap = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
-                                            holder.ivAvatar.setImageBitmap(bitmap);
-                                            holder.ivAvatar.setPadding(0, 0, 0, 0);
-                                            holder.ivAvatar.setImageTintList(null);
-                                        } catch (Exception e) {
-                                            e.printStackTrace();
-                                            // Si falla la decodificación, ponemos la por defecto
-                                            holder.ivAvatar.setImageResource(R.drawable.profile);
-                                        }
-                                    }
-                                } else {
-                                    // ✨ CASO C: No tiene foto de ningún tipo
-                                    holder.ivAvatar.setImageResource(R.drawable.profile);
-                                    holder.ivAvatar.setPadding(10, 10, 10, 10);
-                                    holder.ivAvatar.setImageTintList(android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#9E9E9E")));
-                                }
-                            }
-                        }
-
-                        @Override
-                        public void onCancelled(@NonNull DatabaseError error) {}
-                    });
-
-            holder.itemView.setOnClickListener(v -> listener.onHiloClick(hilo));
-        }
-
-        @Override public int getItemCount() { return hilos.size(); }
-
-        private void cargarFotoGoogle(String urlImagen, ImageView targetImageView) {
-            new Thread(() -> {
-                try {
-                    java.io.InputStream in = new java.net.URL(urlImagen).openStream();
-                    Bitmap foto = BitmapFactory.decodeStream(in);
-
-                    if (targetImageView != null) {
-                        targetImageView.post(() -> {
-                            targetImageView.setImageBitmap(foto);
-                            targetImageView.setPadding(0, 0, 0, 0);
-                            targetImageView.setImageTintList(null);
-                        });
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }).start();
-        }
-
-        class ForoViewHolder extends RecyclerView.ViewHolder {
-            TextView tvTitulo, tvDescripcion, tvAutor, tvFecha;
-            ImageView ivAvatar;
-
-            public ForoViewHolder(@NonNull View itemView) {
-                super(itemView);
-                tvTitulo = itemView.findViewById(R.id.tvTituloHilo);
-                tvDescripcion = itemView.findViewById(R.id.tvDescripcionHilo);
-                tvAutor = itemView.findViewById(R.id.tvAutorHilo);
-                tvFecha = itemView.findViewById(R.id.tvFechaHilo);
-                ivAvatar = itemView.findViewById(R.id.ivAvatarHilo);
-            }
-        }
     }
 }

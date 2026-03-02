@@ -1,4 +1,4 @@
-package com.easypets.ui.main;
+package com.easypets.ui.base;
 
 import android.os.Bundle;
 import android.widget.Toast;
@@ -6,6 +6,8 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 
+import com.easypets.ui.calendario.CalendarioFragment;
+import com.easypets.ui.home.HomeFragment;
 import com.easypets.ui.mascotas.MascotasFragment;
 import com.easypets.ui.perfil.PerfilFragment;
 import com.easypets.R;
