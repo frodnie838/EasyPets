@@ -42,6 +42,8 @@ public class HiloDetalleFragment extends Fragment {
     private ImageButton btnEnviarRespuesta;
 
     private RespuestaAdapter adapter;
+    private RespuestaForo respuestaAEditar = null;
+
     private List<RespuestaForo> listaRespuestas;
     private DatabaseReference respuestasRef;
     private FirebaseUser currentUser;
@@ -88,12 +90,24 @@ public class HiloDetalleFragment extends Fragment {
 
         cargarDatosAutorPrincipal();
 
-        // Configurar Firebase y RecyclerView
         currentUser = FirebaseAuth.getInstance().getCurrentUser();
         respuestasRef = FirebaseDatabase.getInstance().getReference("foro_respuestas").child(hiloId);
 
         listaRespuestas = new ArrayList<>();
-        adapter = new RespuestaAdapter(listaRespuestas);
+        adapter = new RespuestaAdapter(listaRespuestas, new RespuestaAdapter.OnRespuestaAccionListener() {
+            @Override
+            public void onBorrarClick(RespuestaForo respuesta) {
+                confirmarBorrado(respuesta);
+            }
+
+            @Override
+            public void onEditarClick(RespuestaForo respuesta) {
+                respuestaAEditar = respuesta;
+                etNuevaRespuesta.setText(respuesta.getTexto());
+                etNuevaRespuesta.requestFocus();
+                btnEnviarRespuesta.setImageResource(android.R.drawable.ic_menu_save);
+            }
+        });
         rvRespuestas.setLayoutManager(new LinearLayoutManager(getContext()));
         rvRespuestas.setAdapter(adapter);
 
@@ -155,18 +169,48 @@ public class HiloDetalleFragment extends Fragment {
         if (texto.isEmpty()) return;
 
         // Deshabilitar botón temporalmente para evitar doble clic
-        btnEnviarRespuesta.setEnabled(false);
+        actualizarEstadoBoton(false);
 
-        String idRespuesta = respuestasRef.push().getKey();
-        RespuestaForo nuevaRespuesta = new RespuestaForo(idRespuesta,texto, currentUser.getUid(), "", System.currentTimeMillis());
+        if (respuestaAEditar != null) {
+            // --- MODO EDICIÓN ---
+            respuestaAEditar.setTexto(texto);
+            respuestaAEditar.setEditado(true); // Marcamos como editado
 
-        respuestasRef.child(idRespuesta).setValue(nuevaRespuesta).addOnSuccessListener(aVoid -> {
-            etNuevaRespuesta.setText(""); // Limpiar la caja de texto
-            btnEnviarRespuesta.setEnabled(true);
-        }).addOnFailureListener(e -> {
-            Toast.makeText(getContext(), "Error al enviar", Toast.LENGTH_SHORT).show();
-            btnEnviarRespuesta.setEnabled(true);
-        });
+            respuestasRef.child(respuestaAEditar.getId()).setValue(respuestaAEditar)
+                    .addOnSuccessListener(aVoid -> {
+                        Toast.makeText(getContext(), "Respuesta actualizada", Toast.LENGTH_SHORT).show();
+                        limpiarPostEnvio();
+                    })
+                    .addOnFailureListener(e -> {
+                        Toast.makeText(getContext(), "Error al actualizar", Toast.LENGTH_SHORT).show();
+                        actualizarEstadoBoton(true);
+                    });
+        } else {
+            // --- MODO NUEVA RESPUESTA ---
+            String idRespuesta = respuestasRef.push().getKey();
+            // Añadimos el 'false' al final para el nuevo campo 'editado' del constructor
+            RespuestaForo nuevaRespuesta = new RespuestaForo(idRespuesta, texto,
+                    currentUser.getUid(), "", System.currentTimeMillis(), false);
+
+            if (idRespuesta != null) {
+                respuestasRef.child(idRespuesta).setValue(nuevaRespuesta)
+                        .addOnSuccessListener(aVoid -> {
+                            limpiarPostEnvio();
+                        })
+                        .addOnFailureListener(e -> {
+                            Toast.makeText(getContext(), "Error al enviar", Toast.LENGTH_SHORT).show();
+                            actualizarEstadoBoton(true);
+                        });
+            }
+        }
+    }
+
+    // Método auxiliar para resetear la interfaz después de enviar o editar
+    private void limpiarPostEnvio() {
+        respuestaAEditar = null;
+        etNuevaRespuesta.setText("");
+        btnEnviarRespuesta.setImageResource(android.R.drawable.ic_menu_send); // Volver al icono de enviar
+        actualizarEstadoBoton(false); // Deshabilitar porque el texto está vacío
     }
     private void cargarDatosAutorPrincipal() {
         if (idAutor == null) return;
@@ -226,5 +270,22 @@ public class HiloDetalleFragment extends Fragment {
             // Desactivado
             btnEnviarRespuesta.setColorFilter(androidx.core.content.ContextCompat.getColor(requireContext(), R.color.grey));
         }
+    }
+    private void confirmarBorrado(RespuestaForo respuesta) {
+        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setTitle("Eliminar respuesta")
+                .setMessage("¿Estás seguro de que quieres eliminar este mensaje para siempre?")
+                .setPositiveButton("Eliminar", (dialog, which) -> {
+                    // Borramos de Firebase usando el ID de la respuesta
+                    respuestasRef.child(respuesta.getId()).removeValue()
+                            .addOnSuccessListener(aVoid -> {
+                                Toast.makeText(getContext(), "Mensaje eliminado", Toast.LENGTH_SHORT).show();
+                            })
+                            .addOnFailureListener(e -> {
+                                Toast.makeText(getContext(), "Error al eliminar", Toast.LENGTH_SHORT).show();
+                            });
+                })
+                .setNegativeButton("Cancelar", null)
+                .show();
     }
 }

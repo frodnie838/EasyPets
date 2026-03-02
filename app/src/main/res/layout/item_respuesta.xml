@@ -55,6 +55,28 @@
                     android:textColor="#757575"
                     android:textSize="12sp"
                     android:layout_marginStart="4dp"/>
+                <TextView
+                    android:id="@+id/tvEditado"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text=" (editado)"
+                    android:textColor="#9E9E9E"
+                    android:textSize="11sp"
+                    android:visibility="gone"/>
+                <Space
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1" />
+
+                <ImageButton
+                    android:id="@+id/btnMenuRespuesta"
+                    android:layout_width="15dp"
+                    android:layout_height="25dp"
+                    android:src="@drawable/ic_more_vert"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    app:tint="@color/grey"
+                    android:alpha="0.8"
+                    android:visibility="gone"/>
             </LinearLayout>
 
             <TextView

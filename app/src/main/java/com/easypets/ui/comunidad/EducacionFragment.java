@@ -73,7 +73,7 @@ public class EducacionFragment extends Fragment {
     private Query activeQuery;
 
     private String rolUsuario = "usuario";
-    private String miNick = "Usuario"; // ✨ Guardaremos aquí el nick del usuario
+    private String miNick = "Usuario";
 
     private String imagenSeleccionadaBase64 = "";
     private ImageView ivVistaPreviaDialogo;
@@ -93,12 +93,12 @@ public class EducacionFragment extends Fragment {
         comunidadRef = db.getReference("articulos_comunidad");
         oficialesRef = db.getReference("articulos_oficiales");
         usuariosRef = db.getReference("usuarios");
-        foroRef = db.getReference("foro_hilos"); // ✨ Nueva referencia al foro
+        foroRef = db.getReference("foro_hilos");
 
         listaArticulos = new ArrayList<>();
         listaHilos = new ArrayList<>();
 
-        // Inicializamos los dos adaptadores
+        // 1. Inicializar ArticuloAdapter
         articuloAdapter = new ArticuloAdapter(listaArticulos, articulo -> {
             if (tabLayout.getSelectedTabPosition() == 3) {
                 mostrarOpcionesMisArticulos(articulo);
@@ -106,38 +106,44 @@ public class EducacionFragment extends Fragment {
                 mostrarArticuloCompleto(articulo);
             }
         });
+
+        // Apaño visual del BottomNav
         if (getActivity() != null) {
             BottomNavigationView bottomNav = getActivity().findViewById(R.id.bottom_navigation);
             if (bottomNav != null) {
                 android.view.Menu menu = bottomNav.getMenu();
-                // Le quitamos la obligación de tener uno seleccionado
                 menu.setGroupCheckable(0, true, false);
                 for (int i = 0; i < menu.size(); i++) {
-                    menu.getItem(i).setChecked(false); // Apagamos todos
+                    menu.getItem(i).setChecked(false);
                 }
-                // Le volvemos a poner la protección
                 menu.setGroupCheckable(0, true, true);
             }
         }
+
+        // 2. Inicializar ForoAdapter con navegación correcta
         foroAdapter = new ForoAdapter(listaHilos, hilo -> {
-            // ✨ CREAMOS EL FRAGMENTO DEL DETALLE
             HiloDetalleFragment detalleFragment = new HiloDetalleFragment();
 
-            // ✨ LE PASAMOS LOS DATOS DEL HILO QUE HEMOS PULSADO
-            Bundle args = new Bundle();
-            args.putString("hiloId", hilo.getId());
-            args.putString("titulo", hilo.getTitulo());
-            args.putString("descripcion", hilo.getDescripcion());
-            args.putString("idAutor", hilo.getIdAutor());
-            args.putLong("timestamp", hilo.getTimestampCreacion());
-            detalleFragment.setArguments(args);
+            // Le pasamos los datos al detalle
+            Bundle argsDetalle = new Bundle();
+            argsDetalle.putString("hiloId", hilo.getId());
+            argsDetalle.putString("titulo", hilo.getTitulo());
+            argsDetalle.putString("descripcion", hilo.getDescripcion());
+            argsDetalle.putString("idAutor", hilo.getIdAutor());
+            argsDetalle.putLong("timestamp", hilo.getTimestampCreacion());
+            detalleFragment.setArguments(argsDetalle);
 
-            // ✨ ABRIMOS LA PANTALLA
-            // Usamos frame_container que es donde están tus fragmentos principales
+            // ✨ ESTO ES LO NUEVO: Nos guardamos a nosotros mismos en qué pestaña estamos
+            Bundle misArgs = getArguments();
+            if (misArgs == null) misArgs = new Bundle();
+            misArgs.putInt("selected_tab", 2); // 2 = Foro
+            this.setArguments(misArgs);
+
+            // Navegamos (solo UNA vez, usando frame_container)
             if (getActivity() != null) {
                 getActivity().getSupportFragmentManager().beginTransaction()
                         .replace(R.id.frame_container, detalleFragment)
-                        .addToBackStack(null)
+                        .addToBackStack(null) // Para que el botón 'atrás' funcione
                         .commit();
             }
         });
@@ -180,6 +186,26 @@ public class EducacionFragment extends Fragment {
         return view;
     }
 
+    // ✨ NUEVO MÉTODO PARA LEER LA PESTAÑA AL VOLVER ATRÁS
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+
+        // Si tenemos un argumento guardado, movemos la pestaña visualmente
+        if (getArguments() != null && getArguments().containsKey("selected_tab")) {
+            int tabToSelect = getArguments().getInt("selected_tab");
+
+            // Seleccionamos la pestaña
+            TabLayout.Tab tab = tabLayout.getTabAt(tabToSelect);
+            if (tab != null) {
+                tab.select();
+            }
+
+            // Limpiamos el argumento para que no se quede atascado
+            getArguments().remove("selected_tab");
+        }
+    }
+
     private Bitmap redimensionarImagen(Bitmap image, int maxSize) {
         int width = image.getWidth();
         int height = image.getHeight();
@@ -209,7 +235,7 @@ public class EducacionFragment extends Fragment {
         tabLayout.removeAllTabs();
         tabLayout.addTab(tabLayout.newTab().setText("Oficiales"));
         tabLayout.addTab(tabLayout.newTab().setText("Comunidad"));
-        tabLayout.addTab(tabLayout.newTab().setText("Foro")); // ✨ Nueva pestaña
+        tabLayout.addTab(tabLayout.newTab().setText("Foro"));
         tabLayout.addTab(tabLayout.newTab().setText("Mis Artículos"));
 
         tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
@@ -226,7 +252,6 @@ public class EducacionFragment extends Fragment {
                     rvContenido.setAdapter(articuloAdapter);
                     cargarArticulos(comunidadRef, "Aún no hay artículos en la comunidad.");
                 } else if (pos == 2) {
-                    // ✨ Si estamos en el foro, cambiamos el adaptador y cargamos hilos
                     rvContenido.setAdapter(foroAdapter);
                     cargarHilosForo();
                 } else if (pos == 3) {
@@ -241,6 +266,8 @@ public class EducacionFragment extends Fragment {
             @Override public void onTabReselected(TabLayout.Tab tab) {}
         });
 
+        // La carga inicial se hace aquí, pero el onViewCreated se encargará
+        // de disparar el evento del TabLayout si venimos de volver atrás.
         cargarArticulos(oficialesRef, "Aún no hay artículos oficiales.");
         rvContenido.setAdapter(articuloAdapter);
     }
@@ -292,7 +319,6 @@ public class EducacionFragment extends Fragment {
                     HiloForo hilo = data.getValue(HiloForo.class);
                     if (hilo != null) listaHilos.add(hilo);
                 }
-                // Los más recientes primero
                 Collections.sort(listaHilos, (h1, h2) -> Long.compare(h2.getTimestampCreacion(), h1.getTimestampCreacion()));
                 foroAdapter.notifyDataSetChanged();
             }

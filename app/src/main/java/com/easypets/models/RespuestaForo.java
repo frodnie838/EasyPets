@@ -6,16 +6,17 @@ public class RespuestaForo {
     private String idAutor;
     private String nombreAutor;
     private long timestampCreacion;
+    private boolean editado = false;
 
-    // Constructor vacío para Firebase
     public RespuestaForo() {}
 
-    public RespuestaForo(String id, String texto, String idAutor, String nombreAutor, long timestampCreacion) {
+    public RespuestaForo(String id, String texto, String idAutor, String nombreAutor, long timestampCreacion, boolean editado) {
         this.id = id;
         this.texto = texto;
         this.idAutor = idAutor;
         this.nombreAutor = nombreAutor;
         this.timestampCreacion = timestampCreacion;
+        this.editado = editado;
     }
 
     // Getters y Setters
@@ -24,6 +25,8 @@ public class RespuestaForo {
 
     public String getTexto() { return texto; }
     public void setTexto(String texto) { this.texto = texto; }
+    public boolean isEditado() { return editado; }
+    public void setEditado(boolean editado) { this.editado = editado; }
 
     public String getIdAutor() { return idAutor; }
     public void setIdAutor(String idAutor) { this.idAutor = idAutor; }
