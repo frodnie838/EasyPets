@@ -158,17 +158,17 @@ public class RegisterActivity extends AppCompatActivity {
                                 String apellidos = googleCredential.getFamilyName();
                                 String correo = user.getEmail();
                                 String fotoUrl = "";
-
-                                if (nombre == null) nombre = user.getDisplayName();
-                                if (nombre == null) nombre = "Usuario";
-                                if (apellidos == null) apellidos = "";
-
                                 if (user.getPhotoUrl() != null) {
                                     fotoUrl = user.getPhotoUrl().toString();
                                 } else if (googleCredential.getProfilePictureUri() != null) {
                                     fotoUrl = googleCredential.getProfilePictureUri().toString();
                                 }
-                                // ✨ Generamos un nick automático para los que entran con Google
+
+                                if (nombre == null) nombre = user.getDisplayName();
+                                if (nombre == null) nombre = "Usuario";
+                                if (apellidos == null) apellidos = "";
+
+                                // Generamos un nick automático para los que entran con Google
                                 String nickGenerado = nombre.replaceAll("\\s+", "") + (System.currentTimeMillis() % 10000);
 
                                 guardarDatosFirestore(uid, nombre, apellidos, nickGenerado, correo, fotoUrl);
@@ -258,7 +258,7 @@ public class RegisterActivity extends AppCompatActivity {
         usuario.put("rol", "usuario");
 
         if (fotoUrl != null && !fotoUrl.isEmpty()) {
-            usuario.put("fotoUrl", fotoUrl);
+            usuario.put("fotoPerfil", fotoUrl);
         }
         db.child("usuarios").child(uid).setValue(usuario)
                 .addOnSuccessListener(aVoid -> {

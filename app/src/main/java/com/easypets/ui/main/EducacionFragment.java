@@ -29,6 +29,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.easypets.R;
 import com.easypets.models.Articulo;
 import com.easypets.models.HiloForo;
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
@@ -104,7 +105,19 @@ public class EducacionFragment extends Fragment {
                 mostrarArticuloCompleto(articulo);
             }
         });
-
+        if (getActivity() != null) {
+            BottomNavigationView bottomNav = getActivity().findViewById(R.id.bottom_navigation);
+            if (bottomNav != null) {
+                android.view.Menu menu = bottomNav.getMenu();
+                // Le quitamos la obligación de tener uno seleccionado
+                menu.setGroupCheckable(0, true, false);
+                for (int i = 0; i < menu.size(); i++) {
+                    menu.getItem(i).setChecked(false); // Apagamos todos
+                }
+                // Le volvemos a poner la protección
+                menu.setGroupCheckable(0, true, true);
+            }
+        }
         foroAdapter = new ForoAdapter(listaHilos, hilo -> {
             // TODO: En el siguiente paso abriremos la pantalla de respuestas
             Toast.makeText(getContext(), "Abriendo hilo: " + hilo.getTitulo(), Toast.LENGTH_SHORT).show();

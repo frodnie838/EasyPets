@@ -101,7 +101,7 @@
                 android:layout_height="48dp"
                 android:src="@android:drawable/ic_menu_send"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                app:tint="@color/teal_700" />
+                app:tint="@color/color_acento_primario" />
         </LinearLayout>
     </androidx.cardview.widget.CardView>
 </LinearLayout>
