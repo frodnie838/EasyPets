@@ -27,6 +27,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.easypets.R;
 import com.easypets.models.Articulo;
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
@@ -94,6 +95,19 @@ public class EducacionFragment extends Fragment {
             }
         });
 
+        if (getActivity() != null) {
+            BottomNavigationView bottomNav = getActivity().findViewById(R.id.bottom_navigation);
+            if (bottomNav != null) {
+                android.view.Menu menu = bottomNav.getMenu();
+                // Le quitamos la obligación de tener uno seleccionado
+                menu.setGroupCheckable(0, true, false);
+                for (int i = 0; i < menu.size(); i++) {
+                    menu.getItem(i).setChecked(false); // Apagamos todos
+                }
+                // Le volvemos a poner la protección
+                menu.setGroupCheckable(0, true, true);
+            }
+        }
         rvArticulos.setLayoutManager(new LinearLayoutManager(getContext()));
         rvArticulos.setAdapter(adapter);
 

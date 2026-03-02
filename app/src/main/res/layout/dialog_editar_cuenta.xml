@@ -40,7 +40,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Toca para cambiar foto"
+        android:text="Toca para cambiar la foto"
         android:textSize="12sp"
         android:textColor="@color/color_acento_primario"
         android:layout_marginTop="8dp"
