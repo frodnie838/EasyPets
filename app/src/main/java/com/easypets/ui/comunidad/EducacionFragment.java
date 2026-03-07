@@ -82,6 +82,8 @@ public class EducacionFragment extends Fragment {
     private ActivityResultLauncher<Intent> galeriaLauncher;
     private ProgressBar pbCargando;
 
+    private static int tabGuardada = 0;
+
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
@@ -102,20 +104,19 @@ public class EducacionFragment extends Fragment {
 
         listaArticulos = new ArrayList<>();
         listaHilos = new ArrayList<>();
+
         if (getActivity() != null) {
             BottomNavigationView bottomNav = getActivity().findViewById(R.id.bottom_navigation);
             if (bottomNav != null) {
                 android.view.Menu menu = bottomNav.getMenu();
-                // Le quitamos la obligación de tener uno seleccionado
                 menu.setGroupCheckable(0, true, false);
                 for (int i = 0; i < menu.size(); i++) {
-                    menu.getItem(i).setChecked(false); // Apagamos todos
+                    menu.getItem(i).setChecked(false);
                 }
-                // Le volvemos a poner la protección
                 menu.setGroupCheckable(0, true, true);
             }
         }
-        // 1. Inicializar ArticuloAdapter con la nueva interfaz de 3 métodos
+
         articuloAdapter = new ArticuloAdapter(listaArticulos, new ArticuloAdapter.OnArticuloClickListener() {
             @Override
             public void onArticuloClick(Articulo articulo) {
@@ -133,7 +134,6 @@ public class EducacionFragment extends Fragment {
             }
         });
 
-        // 2. Inicializar ForoAdapter
         foroAdapter = new ForoAdapter(listaHilos, new ForoAdapter.OnHiloAccionListener() {
             @Override
             public void onHiloClick(HiloForo hilo) {
@@ -145,11 +145,6 @@ public class EducacionFragment extends Fragment {
                 argsDetalle.putString("idAutor", hilo.getIdAutor());
                 argsDetalle.putLong("timestamp", hilo.getTimestampCreacion());
                 detalleFragment.setArguments(argsDetalle);
-
-                Bundle misArgs = getArguments();
-                if (misArgs == null) misArgs = new Bundle();
-                misArgs.putInt("selected_tab", tabLayout.getSelectedTabPosition());
-                EducacionFragment.this.setArguments(misArgs);
 
                 if (getActivity() != null) {
                     getActivity().getSupportFragmentManager().beginTransaction()
@@ -222,6 +217,8 @@ public class EducacionFragment extends Fragment {
         tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
             @Override
             public void onTabSelected(TabLayout.Tab tab) {
+                tabGuardada = tab.getPosition();
+
                 detenerListener();
                 actualizarVisibilidadFab();
                 String titulo = tab.getText().toString();
@@ -229,8 +226,8 @@ public class EducacionFragment extends Fragment {
                 listaArticulos.clear();
                 listaHilos.clear();
                 articuloAdapter.notifyDataSetChanged();
-
                 foroAdapter.notifyDataSetChanged();
+
                 if (titulo.equals("Mis Publicaciones")) {
                     chipGroupMisPublicaciones.setVisibility(View.VISIBLE);
                     actualizarListaMisPublicaciones();
@@ -252,15 +249,20 @@ public class EducacionFragment extends Fragment {
                 }
             }
             @Override public void onTabUnselected(TabLayout.Tab tab) {}
-            @Override public void onTabReselected(TabLayout.Tab tab) {}
+            @Override public void onTabReselected(TabLayout.Tab tab) {
+                onTabSelected(tab);
+            }
         });
 
         chipGroupMisPublicaciones.setOnCheckedStateChangeListener((group, checkedIds) -> {
             if (!checkedIds.isEmpty()) actualizarListaMisPublicaciones();
         });
 
-        rvContenido.setAdapter(articuloAdapter);
-        cargarArticulos(oficialesRef, "");
+        // ✨ EN VEZ DE CARGAR OFICIALES, CARGAMOS LA PESTAÑA GUARDADA AL ENTRAR AL FRAGMENT
+        TabLayout.Tab tabToSelect = tabLayout.getTabAt(tabGuardada);
+        if (tabToSelect != null) {
+            tabToSelect.select();
+        }
     }
 
     private void actualizarListaMisPublicaciones() {
@@ -290,8 +292,6 @@ public class EducacionFragment extends Fragment {
                 .setNegativeButton("Cancelar", null)
                 .show();
     }
-
-    // --- MÉTODOS DE APOYO (REUTILIZADOS) ---
 
     private void obtenerDatosUsuario() {
         if (currentUser != null) {
@@ -404,7 +404,7 @@ public class EducacionFragment extends Fragment {
         return Bitmap.createScaledBitmap(image, width, height, true);
     }
 
-    // --- DIÁLOGOS Y NAVEGACIÓN (SIN CAMBIOS) ---
+    // --- DIÁLOGOS Y NAVEGACIÓN ---
 
     private void mostrarArticuloCompleto(Articulo articulo) {
         BottomSheetDialog bottomSheet = new BottomSheetDialog(requireContext());

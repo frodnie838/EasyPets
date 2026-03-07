@@ -149,8 +149,7 @@ public class ForoAdapter extends RecyclerView.Adapter<ForoAdapter.ForoViewHolder
     public static class ForoViewHolder extends RecyclerView.ViewHolder {
         TextView tvTitulo, tvDescripcion, tvAutor, tvFecha;
         ImageView ivAvatar;
-        ImageButton btnMenu; // ✨ Nuevo botón
-
+        ImageButton btnMenu;
         public ForoViewHolder(@NonNull View itemView) {
             super(itemView);
             tvTitulo = itemView.findViewById(R.id.tvTituloHilo);
@@ -158,7 +157,7 @@ public class ForoAdapter extends RecyclerView.Adapter<ForoAdapter.ForoViewHolder
             tvAutor = itemView.findViewById(R.id.tvAutorHilo);
             tvFecha = itemView.findViewById(R.id.tvFechaHilo);
             ivAvatar = itemView.findViewById(R.id.ivAvatarHilo);
-            btnMenu = itemView.findViewById(R.id.btnMenuHilo); // ✨ Lo vinculamos
+            btnMenu = itemView.findViewById(R.id.btnMenuHilo);
         }
     }
 }
