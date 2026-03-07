@@ -60,6 +60,40 @@
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintBottom_toBottomOf="parent"/>
 
+        <LinearLayout
+            android:id="@+id/layoutTopSearch"
+            android:layout_width="0dp"
+            android:layout_height="36dp"
+            android:layout_marginHorizontal="16dp"
+            android:background="@drawable/bg_search_bar_top"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="12dp"
+            android:visibility="gone"
+            app:layout_constraintStart_toEndOf="@id/cardTopProfile"
+            app:layout_constraintEnd_toStartOf="@id/btnTopNotificaciones"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent">
+
+            <ImageView
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:src="@android:drawable/ic_menu_search"
+                app:tint="#757575"/>
+
+            <EditText
+                android:id="@+id/etTopSearch"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:background="@null"
+                android:hint="Buscar ..."
+                android:textSize="14sp"
+                android:textColor="#333333"
+                android:textColorHint="#9E9E9E"
+                android:singleLine="true"
+                android:imeOptions="actionSearch"/>
+        </LinearLayout>
+
         <ImageButton
             android:id="@+id/btnTopNotificaciones"
             android:layout_width="32dp"

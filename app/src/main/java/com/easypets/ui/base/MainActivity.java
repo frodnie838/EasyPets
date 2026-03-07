@@ -33,8 +33,10 @@ public class MainActivity extends AppCompatActivity {
     private long tiempoUltimoClicAtras = 0;
 
     private CardView cardTopProfile;
-    private ImageView ivTopProfile;
+    private ImageView ivTopProfile, ivTopLogo;
     private android.widget.ImageButton btnTopBack;
+    private android.widget.LinearLayout layoutTopSearch;
+    private android.widget.EditText etTopSearch;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,6 +48,9 @@ public class MainActivity extends AppCompatActivity {
         cardTopProfile = findViewById(R.id.cardTopProfile);
         ivTopProfile = findViewById(R.id.ivTopProfile);
         btnTopBack = findViewById(R.id.btnTopBack);
+        layoutTopSearch = findViewById(R.id.layoutTopSearch);
+        etTopSearch = findViewById(R.id.etTopSearch);
+        ivTopLogo = findViewById(R.id.ivTopLogo);
 
         btnTopBack.setOnClickListener(v -> {
             getOnBackPressedDispatcher().onBackPressed();
@@ -103,24 +108,35 @@ public class MainActivity extends AppCompatActivity {
                     .commit();
         }
 
-        // ✨ EL ESCUCHADOR MÁGICO QUE TE FALTABA
+        // ✨ EL ESCUCHADOR MÁGICO
         getSupportFragmentManager().registerFragmentLifecycleCallbacks(new androidx.fragment.app.FragmentManager.FragmentLifecycleCallbacks() {
             @Override
             public void onFragmentResumed(@NonNull androidx.fragment.app.FragmentManager fm, @NonNull Fragment f) {
                 super.onFragmentResumed(fm, f);
 
                 if (f instanceof PerfilFragment) {
-                    // En el perfil: Oculta la foto (INVISIBLE) y muestra la flecha
+                    // En Perfil: Flecha atrás, sin logo, sin buscador
                     cardTopProfile.setVisibility(android.view.View.INVISIBLE);
                     btnTopBack.setVisibility(android.view.View.VISIBLE);
-                } else {
-                    // En otras pestañas: Muestra la foto y oculta la flecha
+                    ivTopLogo.setVisibility(android.view.View.VISIBLE); // Opcional: dejar o quitar logo en perfil
+                    layoutTopSearch.setVisibility(android.view.View.GONE);
+
+                } else if (f instanceof EducacionFragment) {
+                    // ✨ En Comunidad: Foto, SIN logo, CON buscador central
                     cardTopProfile.setVisibility(android.view.View.VISIBLE);
                     btnTopBack.setVisibility(android.view.View.GONE);
+                    ivTopLogo.setVisibility(android.view.View.GONE);
+                    layoutTopSearch.setVisibility(android.view.View.VISIBLE);
+
+                } else {
+                    // Estado Normal (Home, Calendario, Mascotas): Foto, logo central, sin buscador
+                    cardTopProfile.setVisibility(android.view.View.VISIBLE);
+                    btnTopBack.setVisibility(android.view.View.GONE);
+                    ivTopLogo.setVisibility(android.view.View.VISIBLE);
+                    layoutTopSearch.setVisibility(android.view.View.GONE);
                 }
             }
         }, true);
-        // ✨ FIN DEL ESCUCHADOR MÁGICO
 
         getOnBackPressedDispatcher().addCallback(this, new androidx.activity.OnBackPressedCallback(true) {
             @Override

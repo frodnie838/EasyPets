@@ -21,29 +21,7 @@
             android:paddingHorizontal="20dp"
             android:paddingTop="20dp"
             android:paddingBottom="10dp"/>
-        <androidx.cardview.widget.CardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginHorizontal="16dp"
-            android:layout_marginTop="12dp"
-            android:layout_marginBottom="8dp"
-            app:cardCornerRadius="24dp"
-            app:cardElevation="2dp">
 
-            <EditText
-                android:id="@+id/etBuscador"
-                android:layout_width="match_parent"
-                android:layout_height="42dp"
-                android:background="@android:color/transparent"
-                android:hint="Buscar por título..."
-                android:paddingHorizontal="16dp"
-                android:drawableStart="@android:drawable/ic_menu_search"
-                android:drawableTint="#818181"
-                android:drawableTintMode="src_in"
-                android:drawablePadding="6dp"
-                android:singleLine="true"
-                android:imeOptions="actionSearch"/>
-        </androidx.cardview.widget.CardView>
         <com.google.android.material.tabs.TabLayout
             android:id="@+id/tabLayoutEducacion"
             android:layout_width="match_parent"

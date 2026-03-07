@@ -34,7 +34,6 @@ import com.easypets.adapters.ArticuloAdapter;
 import com.easypets.adapters.ForoAdapter;
 import com.easypets.models.Articulo;
 import com.easypets.models.HiloForo;
-import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.chip.ChipGroup;
@@ -67,12 +66,14 @@ public class EducacionFragment extends Fragment {
     private FloatingActionButton fabAgregar;
     private ChipGroup chipGroupMisPublicaciones;
     private ProgressBar pbCargando;
-    private EditText etBuscador; // ✨ Buscador
+    private EditText etBuscador;
+
+    // ✨ Escuchador del buscador
+    private TextWatcher buscadorWatcher;
 
     private ArticuloAdapter articuloAdapter;
     private ForoAdapter foroAdapter;
 
-    // ✨ Listas "Originales" para el buscador
     private List<Articulo> listaArticulos;
     private List<Articulo> listaArticulosOriginal;
     private List<HiloForo> listaHilos;
@@ -102,7 +103,11 @@ public class EducacionFragment extends Fragment {
         fabAgregar = view.findViewById(R.id.fabAgregarArticulo);
         chipGroupMisPublicaciones = view.findViewById(R.id.chipGroupMisPublicaciones);
         pbCargando = view.findViewById(R.id.pbCargando);
-        etBuscador = view.findViewById(R.id.etBuscador); // ✨ Enlazar vista
+
+        // ✨ CONECTAR CON EL BUSCADOR DE LA CABECERA (MainActivity)
+        if (getActivity() != null) {
+            etBuscador = getActivity().findViewById(R.id.etTopSearch);
+        }
 
         currentUser = FirebaseAuth.getInstance().getCurrentUser();
         FirebaseDatabase db = FirebaseDatabase.getInstance();
@@ -149,15 +154,16 @@ public class EducacionFragment extends Fragment {
         obtenerDatosUsuario();
         configurarPestanas();
 
-        // ✨ LISTENER DEL BUSCADOR
+        // ✨ LISTENER DEL BUSCADOR (CREADO Y ASIGNADO)
         if (etBuscador != null) {
-            etBuscador.addTextChangedListener(new TextWatcher() {
+            buscadorWatcher = new TextWatcher() {
                 @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
                 @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
                     aplicarFiltroActual();
                 }
                 @Override public void afterTextChanged(Editable s) {}
-            });
+            };
+            etBuscador.addTextChangedListener(buscadorWatcher);
         }
 
         fabAgregar.setOnClickListener(v -> {
@@ -221,7 +227,6 @@ public class EducacionFragment extends Fragment {
                 actualizarVisibilidadFab();
                 String titulo = tab.getText().toString();
 
-                // ✨ Limpiar buscador al cambiar de pestaña
                 if (etBuscador != null) etBuscador.setText("");
 
                 listaArticulos.clear();
@@ -284,7 +289,6 @@ public class EducacionFragment extends Fragment {
         }
     }
 
-    // ✨ MOTOR DE BÚSQUEDA
     private void aplicarFiltroActual() {
         if (etBuscador == null) return;
         String texto = etBuscador.getText().toString().toLowerCase().trim();
@@ -333,7 +337,7 @@ public class EducacionFragment extends Fragment {
                     if (a != null) listaArticulosOriginal.add(a);
                 }
                 Collections.sort(listaArticulosOriginal, (a1, a2) -> Long.compare(a2.getTimestampCreacion(), a1.getTimestampCreacion()));
-                aplicarFiltroActual(); // ✨ Aquí llenamos la lista visible
+                aplicarFiltroActual();
                 pbCargando.setVisibility(View.GONE);
             }
             @Override public void onCancelled(@NonNull DatabaseError error) { pbCargando.setVisibility(View.GONE); }
@@ -357,15 +361,13 @@ public class EducacionFragment extends Fragment {
                     if (h != null) listaHilosOriginal.add(h);
                 }
                 Collections.sort(listaHilosOriginal, (h1, h2) -> Long.compare(h2.getTimestampCreacion(), h1.getTimestampCreacion()));
-                aplicarFiltroActual(); // ✨ Aquí llenamos la lista visible
+                aplicarFiltroActual();
                 pbCargando.setVisibility(View.GONE);
             }
             @Override public void onCancelled(@NonNull DatabaseError error) { pbCargando.setVisibility(View.GONE); }
         };
         activeQuery.addValueEventListener(contenidoListener);
     }
-
-    // --- MÉTODOS DE APOYO (REUTILIZADOS) ---
 
     private void obtenerDatosUsuario() {
         if (currentUser != null) {
@@ -409,6 +411,11 @@ public class EducacionFragment extends Fragment {
     public void onDestroyView() {
         super.onDestroyView();
         detenerListener();
+
+        // ✨ LIMPIEZA DEL BUSCADOR AL SALIR (Evita Bugs y Lentitud)
+        if (etBuscador != null && buscadorWatcher != null) {
+            etBuscador.removeTextChangedListener(buscadorWatcher);
+        }
     }
 
     private Bitmap redimensionarImagen(Bitmap image, int maxSize) {
@@ -419,8 +426,6 @@ public class EducacionFragment extends Fragment {
         } else { height = maxSize; width = (int) (height * bitmapRatio); }
         return Bitmap.createScaledBitmap(image, width, height, true);
     }
-
-    // --- DIÁLOGOS Y NAVEGACIÓN ---
 
     private void mostrarArticuloCompleto(Articulo articulo) {
         BottomSheetDialog bottomSheet = new BottomSheetDialog(requireContext());
