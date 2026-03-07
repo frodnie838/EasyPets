@@ -7,10 +7,13 @@ import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.Base64;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -63,11 +66,17 @@ public class EducacionFragment extends Fragment {
     private TabLayout tabLayout;
     private FloatingActionButton fabAgregar;
     private ChipGroup chipGroupMisPublicaciones;
+    private ProgressBar pbCargando;
+    private EditText etBuscador; // ✨ Buscador
 
     private ArticuloAdapter articuloAdapter;
     private ForoAdapter foroAdapter;
+
+    // ✨ Listas "Originales" para el buscador
     private List<Articulo> listaArticulos;
+    private List<Articulo> listaArticulosOriginal;
     private List<HiloForo> listaHilos;
+    private List<HiloForo> listaHilosOriginal;
 
     private DatabaseReference comunidadRef, oficialesRef, usuariosRef, foroRef;
     private static FirebaseUser currentUser;
@@ -80,7 +89,6 @@ public class EducacionFragment extends Fragment {
     private String imagenSeleccionadaBase64 = "";
     private ImageView ivVistaPreviaDialogo;
     private ActivityResultLauncher<Intent> galeriaLauncher;
-    private ProgressBar pbCargando;
 
     private static int tabGuardada = 0;
 
@@ -94,6 +102,7 @@ public class EducacionFragment extends Fragment {
         fabAgregar = view.findViewById(R.id.fabAgregarArticulo);
         chipGroupMisPublicaciones = view.findViewById(R.id.chipGroupMisPublicaciones);
         pbCargando = view.findViewById(R.id.pbCargando);
+        etBuscador = view.findViewById(R.id.etBuscador); // ✨ Enlazar vista
 
         currentUser = FirebaseAuth.getInstance().getCurrentUser();
         FirebaseDatabase db = FirebaseDatabase.getInstance();
@@ -102,8 +111,11 @@ public class EducacionFragment extends Fragment {
         usuariosRef = db.getReference("usuarios");
         foroRef = db.getReference("foro_hilos");
 
+        // ✨ Inicializar TODAS las listas
         listaArticulos = new ArrayList<>();
+        listaArticulosOriginal = new ArrayList<>();
         listaHilos = new ArrayList<>();
+        listaHilosOriginal = new ArrayList<>();
 
         if (getActivity() != null) {
             BottomNavigationView bottomNav = getActivity().findViewById(R.id.bottom_navigation);
@@ -118,20 +130,9 @@ public class EducacionFragment extends Fragment {
         }
 
         articuloAdapter = new ArticuloAdapter(listaArticulos, new ArticuloAdapter.OnArticuloClickListener() {
-            @Override
-            public void onArticuloClick(Articulo articulo) {
-                mostrarArticuloCompleto(articulo);
-            }
-
-            @Override
-            public void onEditarClick(Articulo articulo) {
-                mostrarDialogoEditarArticulo(articulo);
-            }
-
-            @Override
-            public void onBorrarClick(Articulo articulo) {
-                confirmarBorradoArticulo(articulo);
-            }
+            @Override public void onArticuloClick(Articulo articulo) { mostrarArticuloCompleto(articulo); }
+            @Override public void onEditarClick(Articulo articulo) { mostrarDialogoEditarArticulo(articulo); }
+            @Override public void onBorrarClick(Articulo articulo) { confirmarBorradoArticulo(articulo); }
         });
 
         foroAdapter = new ForoAdapter(listaHilos, new ForoAdapter.OnHiloAccionListener() {
@@ -160,6 +161,17 @@ public class EducacionFragment extends Fragment {
         rvContenido.setLayoutManager(new LinearLayoutManager(getContext()));
         obtenerDatosUsuario();
         configurarPestanas();
+
+        // ✨ LISTENER DEL BUSCADOR
+        if (etBuscador != null) {
+            etBuscador.addTextChangedListener(new TextWatcher() {
+                @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+                @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
+                    aplicarFiltroActual();
+                }
+                @Override public void afterTextChanged(Editable s) {}
+            });
+        }
 
         fabAgregar.setOnClickListener(v -> {
             TabLayout.Tab tab = tabLayout.getTabAt(tabLayout.getSelectedTabPosition());
@@ -218,10 +230,12 @@ public class EducacionFragment extends Fragment {
             @Override
             public void onTabSelected(TabLayout.Tab tab) {
                 tabGuardada = tab.getPosition();
-
                 detenerListener();
                 actualizarVisibilidadFab();
                 String titulo = tab.getText().toString();
+
+                // ✨ Limpiar buscador al cambiar de pestaña
+                if (etBuscador != null) etBuscador.setText("");
 
                 listaArticulos.clear();
                 listaHilos.clear();
@@ -255,10 +269,12 @@ public class EducacionFragment extends Fragment {
         });
 
         chipGroupMisPublicaciones.setOnCheckedStateChangeListener((group, checkedIds) -> {
-            if (!checkedIds.isEmpty()) actualizarListaMisPublicaciones();
+            if (!checkedIds.isEmpty()) {
+                if (etBuscador != null) etBuscador.setText("");
+                actualizarListaMisPublicaciones();
+            }
         });
 
-        // ✨ EN VEZ DE CARGAR OFICIALES, CARGAMOS LA PESTAÑA GUARDADA AL ENTRAR AL FRAGMENT
         TabLayout.Tab tabToSelect = tabLayout.getTabAt(tabGuardada);
         if (tabToSelect != null) {
             tabToSelect.select();
@@ -271,27 +287,98 @@ public class EducacionFragment extends Fragment {
         int selectedChipId = chipGroupMisPublicaciones.getCheckedChipId();
 
         if (selectedChipId == R.id.chipMisArticulos) {
-            articuloAdapter.setMostrarOpciones(true); // Activar puntos para mis artículos
+            articuloAdapter.setMostrarOpciones(true);
             rvContenido.setAdapter(articuloAdapter);
             cargarArticulos(comunidadRef.orderByChild("idAutor").equalTo(currentUser.getUid()), "");
         } else if (selectedChipId == R.id.chipMisHilos) {
-            foroAdapter.setMostrarOpciones(true); // Activar puntos para mis hilos
+            foroAdapter.setMostrarOpciones(true);
             rvContenido.setAdapter(foroAdapter);
             cargarHilos(foroRef.orderByChild("idAutor").equalTo(currentUser.getUid()));
         }
     }
 
-    private void confirmarBorradoArticulo(Articulo articulo) {
-        new AlertDialog.Builder(requireContext())
-                .setTitle("¿Eliminar artículo?")
-                .setMessage("Esta acción no se puede deshacer.")
-                .setPositiveButton("Eliminar", (d, w) -> {
-                    comunidadRef.child(articulo.getId()).removeValue();
-                    Toast.makeText(getContext(), "Artículo eliminado", Toast.LENGTH_SHORT).show();
-                })
-                .setNegativeButton("Cancelar", null)
-                .show();
+    // ✨ MOTOR DE BÚSQUEDA
+    private void aplicarFiltroActual() {
+        if (etBuscador == null) return;
+        String texto = etBuscador.getText().toString().toLowerCase().trim();
+
+        if (rvContenido.getAdapter() == articuloAdapter) {
+            listaArticulos.clear();
+            if (texto.isEmpty()) {
+                listaArticulos.addAll(listaArticulosOriginal);
+            } else {
+                for (Articulo a : listaArticulosOriginal) {
+                    if (a.getTitulo().toLowerCase().contains(texto)) {
+                        listaArticulos.add(a);
+                    }
+                }
+            }
+            articuloAdapter.notifyDataSetChanged();
+
+        } else if (rvContenido.getAdapter() == foroAdapter) {
+            listaHilos.clear();
+            if (texto.isEmpty()) {
+                listaHilos.addAll(listaHilosOriginal);
+            } else {
+                for (HiloForo h : listaHilosOriginal) {
+                    if (h.getTitulo().toLowerCase().contains(texto)) {
+                        listaHilos.add(h);
+                    }
+                }
+            }
+            foroAdapter.notifyDataSetChanged();
+        }
     }
+
+    private void cargarArticulos(Query query, String mensajeVacio) {
+        listaArticulosOriginal.clear();
+        listaArticulos.clear();
+        articuloAdapter.notifyDataSetChanged();
+        pbCargando.setVisibility(View.VISIBLE);
+
+        activeQuery = query;
+        contenidoListener = new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                listaArticulosOriginal.clear();
+                for (DataSnapshot data : snapshot.getChildren()) {
+                    Articulo a = data.getValue(Articulo.class);
+                    if (a != null) listaArticulosOriginal.add(a);
+                }
+                Collections.sort(listaArticulosOriginal, (a1, a2) -> Long.compare(a2.getTimestampCreacion(), a1.getTimestampCreacion()));
+                aplicarFiltroActual(); // ✨ Aquí llenamos la lista visible
+                pbCargando.setVisibility(View.GONE);
+            }
+            @Override public void onCancelled(@NonNull DatabaseError error) { pbCargando.setVisibility(View.GONE); }
+        };
+        activeQuery.addValueEventListener(contenidoListener);
+    }
+
+    private void cargarHilos(Query query) {
+        listaHilosOriginal.clear();
+        listaHilos.clear();
+        foroAdapter.notifyDataSetChanged();
+        pbCargando.setVisibility(View.VISIBLE);
+
+        activeQuery = query;
+        contenidoListener = new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                listaHilosOriginal.clear();
+                for (DataSnapshot data : snapshot.getChildren()) {
+                    HiloForo h = data.getValue(HiloForo.class);
+                    if (h != null) listaHilosOriginal.add(h);
+                }
+                Collections.sort(listaHilosOriginal, (h1, h2) -> Long.compare(h2.getTimestampCreacion(), h1.getTimestampCreacion()));
+                aplicarFiltroActual(); // ✨ Aquí llenamos la lista visible
+                pbCargando.setVisibility(View.GONE);
+            }
+            @Override public void onCancelled(@NonNull DatabaseError error) { pbCargando.setVisibility(View.GONE); }
+        };
+        activeQuery.addValueEventListener(contenidoListener);
+    }
+
+    // --- MÉTODOS DE APOYO (REUTILIZADOS) ---
 
     private void obtenerDatosUsuario() {
         if (currentUser != null) {
@@ -322,64 +409,6 @@ public class EducacionFragment extends Fragment {
         } else {
             fabAgregar.setVisibility(currentUser != null ? View.VISIBLE : View.GONE);
         }
-    }
-
-    private void cargarArticulos(Query query, String mensajeVacio) {
-        listaArticulos.clear();
-        articuloAdapter.notifyDataSetChanged();
-
-        pbCargando.setVisibility(View.VISIBLE); // 🔄 Mostrar cargando
-
-        activeQuery = query;
-        contenidoListener = new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                listaArticulos.clear();
-                for (DataSnapshot data : snapshot.getChildren()) {
-                    Articulo a = data.getValue(Articulo.class);
-                    if (a != null) listaArticulos.add(a);
-                }
-                Collections.sort(listaArticulos, (a1, a2) -> Long.compare(a2.getTimestampCreacion(), a1.getTimestampCreacion()));
-                articuloAdapter.notifyDataSetChanged();
-
-                pbCargando.setVisibility(View.GONE);
-            }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {
-                pbCargando.setVisibility(View.GONE);
-            }
-        };
-        activeQuery.addValueEventListener(contenidoListener);
-    }
-
-    private void cargarHilos(Query query) {
-        listaHilos.clear();
-        foroAdapter.notifyDataSetChanged();
-
-        pbCargando.setVisibility(View.VISIBLE);
-
-        activeQuery = query;
-        contenidoListener = new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                listaHilos.clear();
-                for (DataSnapshot data : snapshot.getChildren()) {
-                    HiloForo h = data.getValue(HiloForo.class);
-                    if (h != null) listaHilos.add(h);
-                }
-                Collections.sort(listaHilos, (h1, h2) -> Long.compare(h2.getTimestampCreacion(), h1.getTimestampCreacion()));
-                foroAdapter.notifyDataSetChanged();
-
-                pbCargando.setVisibility(View.GONE);
-            }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {
-                pbCargando.setVisibility(View.GONE);
-            }
-        };
-        activeQuery.addValueEventListener(contenidoListener);
     }
 
     private void detenerListener() {
@@ -507,6 +536,18 @@ public class EducacionFragment extends Fragment {
                     foroRef.child(hilo.getId()).removeValue();
                     FirebaseDatabase.getInstance().getReference("foro_respuestas").child(hilo.getId()).removeValue();
                 }).setNegativeButton("Cancelar", null).show();
+    }
+
+    private void confirmarBorradoArticulo(Articulo articulo) {
+        new AlertDialog.Builder(requireContext())
+                .setTitle("¿Eliminar artículo?")
+                .setMessage("Esta acción no se puede deshacer.")
+                .setPositiveButton("Eliminar", (d, w) -> {
+                    comunidadRef.child(articulo.getId()).removeValue();
+                    Toast.makeText(getContext(), "Artículo eliminado", Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Cancelar", null)
+                .show();
     }
 
     private void mostrarDialogoCrearArticulo() {

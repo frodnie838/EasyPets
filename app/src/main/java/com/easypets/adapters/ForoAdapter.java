@@ -17,6 +17,7 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import java.util.List;
@@ -24,7 +25,7 @@ import java.util.List;
 public class ForoAdapter extends RecyclerView.Adapter<ForoAdapter.ForoViewHolder> {
     private List<HiloForo> hilos;
     private OnHiloAccionListener listener;
-    private boolean mostrarOpciones = false; // ✨ Interruptor apagado por defecto
+    private boolean mostrarOpciones = false;
 
     public interface OnHiloAccionListener {
         void onHiloClick(HiloForo hilo);
@@ -37,7 +38,6 @@ public class ForoAdapter extends RecyclerView.Adapter<ForoAdapter.ForoViewHolder
         this.listener = listener;
     }
 
-    // ✨ MÉTODO para encender/apagar los puntos desde el Fragmento
     public void setMostrarOpciones(boolean mostrarOpciones) {
         this.mostrarOpciones = mostrarOpciones;
     }
@@ -64,7 +64,6 @@ public class ForoAdapter extends RecyclerView.Adapter<ForoAdapter.ForoViewHolder
                 hilo.getTimestampCreacion(), System.currentTimeMillis(), android.text.format.DateUtils.MINUTE_IN_MILLIS);
         holder.tvFecha.setText(" • " + tiempoTranscurrido);
 
-        // ✨ AQUÍ ESTÁ EL CAMBIO: Comprobamos 'mostrarOpciones' primero
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
         if (mostrarOpciones && currentUser != null && hilo.getIdAutor().equals(currentUser.getUid())) {
             holder.btnMenu.setVisibility(View.VISIBLE);
@@ -125,6 +124,46 @@ public class ForoAdapter extends RecyclerView.Adapter<ForoAdapter.ForoViewHolder
                     @Override public void onCancelled(@NonNull DatabaseError error) {}
                 });
 
+        String currentUserId = (currentUser != null) ? currentUser.getUid() : "";
+        int numeroDeLikes = 0;
+        boolean isLikedByMe = false;
+
+        // Comprobamos los likes actuales
+        if (hilo.getLikes() != null) {
+            numeroDeLikes = hilo.getLikes().size();
+            isLikedByMe = hilo.getLikes().containsKey(currentUserId);
+        }
+
+        // Diseño: Simetría y contadores
+        if (numeroDeLikes == 0) {
+            holder.tvLikeCount.setVisibility(View.GONE); // Desaparece si es 0
+        } else {
+            holder.tvLikeCount.setVisibility(View.VISIBLE);
+            holder.tvLikeCount.setText(String.valueOf(numeroDeLikes));
+        }
+
+        // Diseño: Corazón lleno o vacío
+        if (isLikedByMe) {
+            holder.btnLike.setImageResource(R.drawable.ic_heart_filled);
+            holder.btnLike.setImageTintList(android.content.res.ColorStateList.valueOf(androidx.core.content.ContextCompat.getColor(holder.itemView.getContext(), R.color.color_acento_primario)));
+        } else {
+            holder.btnLike.setImageResource(R.drawable.ic_heart_outline);
+        }
+
+        // Acción al pulsar el corazón
+        boolean finalIsLikedByMe = isLikedByMe;
+        holder.btnLike.setOnClickListener(v -> {
+            if (currentUserId.isEmpty()) return; // Si no hay usuario, no hace nada
+
+            DatabaseReference likesRef = FirebaseDatabase.getInstance().getReference("foro_hilos")
+                    .child(hilo.getId()).child("likes").child(currentUserId);
+
+            if (finalIsLikedByMe) {
+                likesRef.removeValue(); // Quitar like
+            } else {
+                likesRef.setValue(true); // Dar like
+            }
+        });
         holder.itemView.setOnClickListener(v -> listener.onHiloClick(hilo));
     }
 
@@ -147,9 +186,9 @@ public class ForoAdapter extends RecyclerView.Adapter<ForoAdapter.ForoViewHolder
     }
 
     public static class ForoViewHolder extends RecyclerView.ViewHolder {
-        TextView tvTitulo, tvDescripcion, tvAutor, tvFecha;
+        TextView tvTitulo, tvDescripcion, tvAutor, tvFecha, tvLikeCount;
         ImageView ivAvatar;
-        ImageButton btnMenu;
+        ImageButton btnMenu, btnLike;
         public ForoViewHolder(@NonNull View itemView) {
             super(itemView);
             tvTitulo = itemView.findViewById(R.id.tvTituloHilo);
@@ -158,6 +197,8 @@ public class ForoAdapter extends RecyclerView.Adapter<ForoAdapter.ForoViewHolder
             tvFecha = itemView.findViewById(R.id.tvFechaHilo);
             ivAvatar = itemView.findViewById(R.id.ivAvatarHilo);
             btnMenu = itemView.findViewById(R.id.btnMenuHilo);
+            btnLike = itemView.findViewById(R.id.btnLikeHilo);
+            tvLikeCount = itemView.findViewById(R.id.tvLikeCountHilo);
         }
     }
 }

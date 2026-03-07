@@ -1,5 +1,8 @@
 package com.easypets.models;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public class Articulo {
     private String id;
     private String idAutor;
@@ -10,6 +13,7 @@ public class Articulo {
     private long timestampCreacion;
     private String imagenPortadaBase64;
     private String urlEnlace;
+    private Map<String, Boolean> likes = new HashMap<>();
     private boolean esOficial;
 
     // 1. Constructor vacío (Obligatorio para que Firebase no dé error al leer)
@@ -42,6 +46,8 @@ public class Articulo {
     public String getImagenPortadaBase64() { return imagenPortadaBase64; }
     public String getUrlEnlace() { return urlEnlace; }
     public boolean isEsOficial() { return esOficial; }
+    public Map<String, Boolean> getLikes() { return likes; }
+    public void setLikes(Map<String, Boolean> likes) { this.likes = likes; }
 
     public void setId(String id) { this.id = id; }
 

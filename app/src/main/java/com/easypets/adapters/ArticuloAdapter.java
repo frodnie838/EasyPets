@@ -14,6 +14,8 @@ import com.easypets.R;
 import com.easypets.models.Articulo;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -37,7 +39,7 @@ public class ArticuloAdapter extends RecyclerView.Adapter<ArticuloAdapter.Articu
         this.listener = listener;
     }
 
-    // ✨ Método para activar/desactivar el menú desde el fragmento
+    // Método para activar/desactivar el menú desde el fragmento
     public void setMostrarOpciones(boolean mostrarOpciones) {
         this.mostrarOpciones = mostrarOpciones;
     }
@@ -70,7 +72,6 @@ public class ArticuloAdapter extends RecyclerView.Adapter<ArticuloAdapter.Articu
             holder.ivIcono.setImageResource(articulo.isEsOficial() ? R.drawable.consejos : R.drawable.profile);
         }
 
-        // ✨ LÓGICA DE LOS 3 PUNTITOS
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
         if (mostrarOpciones && currentUser != null && articulo.getIdAutor().equals(currentUser.getUid())) {
             holder.btnMenu.setVisibility(View.VISIBLE);
@@ -93,23 +94,63 @@ public class ArticuloAdapter extends RecyclerView.Adapter<ArticuloAdapter.Articu
             holder.btnMenu.setVisibility(View.GONE);
         }
 
+        String currentUserId = (currentUser != null) ? currentUser.getUid() : "";
+        int numeroDeLikes = 0;
+        boolean isLikedByMe = false;
+
+        if (articulo.getLikes() != null) {
+            numeroDeLikes = articulo.getLikes().size();
+            isLikedByMe = articulo.getLikes().containsKey(currentUserId);
+        }
+
+        if (numeroDeLikes == 0) {
+            holder.tvLikeCount.setVisibility(View.GONE);
+        } else {
+            holder.tvLikeCount.setVisibility(View.VISIBLE);
+            holder.tvLikeCount.setText(String.valueOf(numeroDeLikes));
+        }
+
+        if (isLikedByMe) {
+            holder.btnLike.setImageResource(R.drawable.ic_heart_filled);
+            holder.btnLike.setImageTintList(android.content.res.ColorStateList.valueOf(androidx.core.content.ContextCompat.getColor(holder.itemView.getContext(), R.color.color_acento_primario)));
+        } else {
+            holder.btnLike.setImageResource(R.drawable.ic_heart_outline);
+        }
+
+        boolean finalIsLikedByMe = isLikedByMe;
+        holder.btnLike.setOnClickListener(v -> {
+            if (currentUserId.isEmpty()) return;
+
+            // Diferenciamos si va a la comunidad o a los oficiales
+            String nodoFirebase = articulo.isEsOficial() ? "articulos_oficiales" : "articulos_comunidad";
+
+            DatabaseReference likesRef = FirebaseDatabase.getInstance().getReference(nodoFirebase)
+                    .child(articulo.getId()).child("likes").child(currentUserId);
+
+            if (finalIsLikedByMe) {
+                likesRef.removeValue();
+            } else {
+                likesRef.setValue(true);
+            }
+        });
         holder.itemView.setOnClickListener(v -> listener.onArticuloClick(articulo));
     }
 
     @Override public int getItemCount() { return articulos.size(); }
 
     public static class ArticuloViewHolder extends RecyclerView.ViewHolder {
-        TextView tvTitulo, tvDescripcion, tvAutor;
+        TextView tvTitulo, tvDescripcion, tvAutor, tvLikeCount;
         ImageView ivIcono;
-        ImageButton btnMenu; // ✨ Referencia al nuevo botón
-
+        ImageButton btnMenu, btnLike;
         public ArticuloViewHolder(@NonNull View itemView) {
             super(itemView);
             tvTitulo = itemView.findViewById(R.id.tvTituloArticulo);
             tvDescripcion = itemView.findViewById(R.id.tvDescripcionArticulo);
             tvAutor = itemView.findViewById(R.id.tvAutorArticulo);
             ivIcono = itemView.findViewById(R.id.ivIconoArticulo);
-            btnMenu = itemView.findViewById(R.id.btnMenuArticulo); // ✨ Lo vinculamos
+            btnMenu = itemView.findViewById(R.id.btnMenuArticulo);
+            btnLike = itemView.findViewById(R.id.btnLikeArticulo);
+            tvLikeCount = itemView.findViewById(R.id.tvLikeCountArticulo);
         }
     }
 }
