@@ -5,6 +5,10 @@
         android:icon="@drawable/ic_home"
         android:title="Inicio" />
     <item
+        android:id="@+id/nav_comunidad"
+        android:icon="@drawable/libro"
+        android:title="Comunidad" />
+    <item
         android:id="@+id/nav_pets"
         android:icon="@drawable/huella"
         android:title="Mascotas" />

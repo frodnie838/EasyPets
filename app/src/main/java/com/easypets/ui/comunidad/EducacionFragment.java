@@ -111,23 +111,10 @@ public class EducacionFragment extends Fragment {
         usuariosRef = db.getReference("usuarios");
         foroRef = db.getReference("foro_hilos");
 
-        // ✨ Inicializar TODAS las listas
         listaArticulos = new ArrayList<>();
         listaArticulosOriginal = new ArrayList<>();
         listaHilos = new ArrayList<>();
         listaHilosOriginal = new ArrayList<>();
-
-        if (getActivity() != null) {
-            BottomNavigationView bottomNav = getActivity().findViewById(R.id.bottom_navigation);
-            if (bottomNav != null) {
-                android.view.Menu menu = bottomNav.getMenu();
-                menu.setGroupCheckable(0, true, false);
-                for (int i = 0; i < menu.size(); i++) {
-                    menu.getItem(i).setChecked(false);
-                }
-                menu.setGroupCheckable(0, true, true);
-            }
-        }
 
         articuloAdapter = new ArticuloAdapter(listaArticulos, new ArticuloAdapter.OnArticuloClickListener() {
             @Override public void onArticuloClick(Articulo articulo) { mostrarArticuloCompleto(articulo); }
