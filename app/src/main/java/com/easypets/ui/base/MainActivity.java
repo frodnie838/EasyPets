@@ -4,6 +4,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.util.Base64;
+import android.view.View; // Importante para View.VISIBLE y View.GONE
 import android.widget.ImageView;
 import android.widget.Toast;
 
@@ -62,17 +63,11 @@ public class MainActivity extends AppCompatActivity {
                     .replace(R.id.frame_container, new PerfilFragment())
                     .addToBackStack(null)
                     .commit();
-
-            // "Desmarcar" visualmente todas las pestañas del menú inferior
-            int size = bottomNav.getMenu().size();
-            for (int i = 0; i < size; i++) {
-                bottomNav.getMenu().getItem(i).setChecked(false);
-            }
         });
 
         cargarFotoDePerfilEnCabecera();
 
-        // Configurar el listener de la barra
+        // Configurar el listener de la barra inferior
         bottomNav.setOnItemSelectedListener(item -> {
             Fragment selectedFragment = null;
 
@@ -106,79 +101,76 @@ public class MainActivity extends AppCompatActivity {
                     .commit();
         }
 
-        // ✨ EL ESCUCHADOR MÁGICO
+        // ✨ EL ESCUCHADOR MÁGICO (AQUÍ CENTRALIZAMOS TODO EL DISEÑO VISUAL)
         getSupportFragmentManager().registerFragmentLifecycleCallbacks(new androidx.fragment.app.FragmentManager.FragmentLifecycleCallbacks() {
             @Override
             public void onFragmentResumed(@NonNull androidx.fragment.app.FragmentManager fm, @NonNull Fragment f) {
                 super.onFragmentResumed(fm, f);
 
                 if (f instanceof PerfilFragment) {
-                    // 🔝 BARRA SUPERIOR: En Perfil: Flecha atrás, sin buscador
-                    cardTopProfile.setVisibility(android.view.View.INVISIBLE);
-                    btnTopBack.setVisibility(android.view.View.VISIBLE);
-                    ivTopLogo.setVisibility(android.view.View.VISIBLE);
-                    layoutTopSearch.setVisibility(android.view.View.GONE);
+                    cardTopProfile.setVisibility(View.INVISIBLE);
+                    btnTopBack.setVisibility(View.VISIBLE);
+                    ivTopLogo.setVisibility(View.VISIBLE);
+                    layoutTopSearch.setVisibility(View.GONE);
 
-                    // ⬇️ BARRA INFERIOR: Desmarcar todas las pestañas
+                    // Desmarcar todas las pestañas al entrar al perfil
                     int size = bottomNav.getMenu().size();
                     for (int i = 0; i < size; i++) {
                         bottomNav.getMenu().getItem(i).setChecked(false);
                     }
 
                 } else if (f instanceof EducacionFragment) {
-                    // 🔝 BARRA SUPERIOR: Foto, SIN logo, CON buscador central
-                    cardTopProfile.setVisibility(android.view.View.VISIBLE);
-                    btnTopBack.setVisibility(android.view.View.GONE);
-                    ivTopLogo.setVisibility(android.view.View.GONE);
-                    layoutTopSearch.setVisibility(android.view.View.VISIBLE);
+                    cardTopProfile.setVisibility(View.VISIBLE);
+                    btnTopBack.setVisibility(View.GONE);
+                    ivTopLogo.setVisibility(View.GONE);
+                    layoutTopSearch.setVisibility(View.VISIBLE);
 
-                    // ⬇️ BARRA INFERIOR: Marcar pestaña Educación (comprueba tu ID real)
                     bottomNav.getMenu().findItem(R.id.nav_comunidad).setChecked(true);
 
                 } else if (f instanceof CalendarioFragment) {
-                    // 🔝 BARRA SUPERIOR: Estado Normal
-                    cardTopProfile.setVisibility(android.view.View.VISIBLE);
-                    btnTopBack.setVisibility(android.view.View.GONE);
-                    ivTopLogo.setVisibility(android.view.View.VISIBLE);
-                    layoutTopSearch.setVisibility(android.view.View.GONE);
+                    cardTopProfile.setVisibility(View.VISIBLE);
+                    btnTopBack.setVisibility(View.GONE);
+                    ivTopLogo.setVisibility(View.VISIBLE);
+                    layoutTopSearch.setVisibility(View.GONE);
 
-                    // ⬇️ BARRA INFERIOR: Marcar pestaña Calendario
                     bottomNav.getMenu().findItem(R.id.nav_calendar).setChecked(true);
 
-                } else {
-                    // 🔝 BARRA SUPERIOR: Estado Normal (Home, Mascotas, etc.)
-                    cardTopProfile.setVisibility(android.view.View.VISIBLE);
-                    btnTopBack.setVisibility(android.view.View.GONE);
-                    ivTopLogo.setVisibility(android.view.View.VISIBLE);
-                    layoutTopSearch.setVisibility(android.view.View.GONE);
+                } else if (f instanceof MascotasFragment) {
+                    cardTopProfile.setVisibility(View.VISIBLE);
+                    btnTopBack.setVisibility(View.GONE);
+                    ivTopLogo.setVisibility(View.VISIBLE);
+                    layoutTopSearch.setVisibility(View.GONE);
 
-                    // ⬇️ BARRA INFERIOR: Aquí puedes añadir más 'else if' para Mascotas o Inicio
-                    // Por ejemplo, si es el Home:
-                    // if (f instanceof InicioFragment) bottomNav.getMenu().findItem(R.id.nav_inicio).setChecked(true);
+                    bottomNav.getMenu().findItem(R.id.nav_pets).setChecked(true);
+
+                } else if (f instanceof HomeFragment) {
+                    cardTopProfile.setVisibility(View.VISIBLE);
+                    btnTopBack.setVisibility(View.GONE);
+                    ivTopLogo.setVisibility(View.VISIBLE);
+                    layoutTopSearch.setVisibility(View.GONE);
+
+                    bottomNav.getMenu().findItem(R.id.nav_home).setChecked(true);
                 }
             }
         }, true);
 
+        // GESTOR DEL BOTÓN ATRÁS
         getOnBackPressedDispatcher().addCallback(this, new androidx.activity.OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
+                // Si hay un fragmento en la pila (como el Perfil), simplemente lo sacamos
                 if (getSupportFragmentManager().getBackStackEntryCount() > 0) {
                     getSupportFragmentManager().popBackStack();
-
-                    // Asegurarnos de marcar la pestaña correcta en el menú inferior al volver atrás
-                    getSupportFragmentManager().executePendingTransactions();
-                    Fragment current = getSupportFragmentManager().findFragmentById(R.id.frame_container);
-                    if (current instanceof HomeFragment) bottomNav.setSelectedItemId(R.id.nav_home);
-                    else if (current instanceof MascotasFragment) bottomNav.setSelectedItemId(R.id.nav_pets);
-                    else if (current instanceof CalendarioFragment) bottomNav.setSelectedItemId(R.id.nav_calendar);
-                    else if (current instanceof EducacionFragment) bottomNav.setSelectedItemId(R.id.nav_comunidad);
-
+                    // Al sacarlo, el FragmentLifecycleCallbacks se encargará de repintar el menú.
                 } else {
+                    // Si estamos en la base (no hay historial)
                     Fragment currentFragment = getSupportFragmentManager().findFragmentById(R.id.frame_container);
 
                     if (!(currentFragment instanceof HomeFragment)) {
+                        // Si no estamos en Home, volvemos a Home simulando un clic
                         bottomNav.setSelectedItemId(R.id.nav_home);
                     } else {
+                        // Si ya estamos en Home, salimos de la app
                         if (System.currentTimeMillis() - tiempoUltimoClicAtras < 2000) {
                             finish();
                         } else {
@@ -204,11 +196,8 @@ public class MainActivity extends AppCompatActivity {
 
                         if (fotoBase64Actual != null && !fotoBase64Actual.isEmpty()) {
                             try {
-                                // Decodificar Base64 a Bitmap
                                 byte[] decodedString = Base64.decode(fotoBase64Actual, Base64.DEFAULT);
                                 Bitmap bitmap = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
-
-                                // Poner el Bitmap
                                 ivTopProfile.setImageBitmap(bitmap);
                                 ivTopProfile.setImageTintList(null);
                             } catch (Exception e) {
@@ -219,9 +208,7 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 @Override
-                public void onCancelled(@NonNull DatabaseError error) {
-                    // Si falla, se queda el icono de perfil gris por defecto
-                }
+                public void onCancelled(@NonNull DatabaseError error) {}
             });
         }
     }

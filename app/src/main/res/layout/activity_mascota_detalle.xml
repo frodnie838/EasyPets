@@ -1,134 +1,186 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/mascotaDetalle"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fillViewport="true"
     android:background="@color/fondo_base">
 
-    <LinearLayout
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/top_bar"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="20dp">
+        android:layout_height="56dp"
+        android:paddingHorizontal="16dp"
+        android:background="@color/fondo_base"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
 
-        <androidx.cardview.widget.CardView
-            android:layout_width="120dp"
-            android:layout_height="120dp"
-            android:layout_gravity="center"
-            android:layout_marginTop="20dp"
-            app:cardCornerRadius="60dp"
-            app:cardElevation="4dp">
-            <ImageView
-                android:id="@+id/ivDetalleFoto"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:scaleType="centerCrop"
-                android:src="@drawable/huella"
-                android:padding="20dp"
-                app:tint="@color/color_acento_primario" />
-        </androidx.cardview.widget.CardView>
+        <ImageButton
+            android:id="@+id/btnTopBack"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:src="@drawable/ic_arrow_back"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            app:tint="@color/color_acento_primario"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"/>
 
-        <TextView
-            android:id="@+id/tvDetalleNombre"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:layout_marginTop="16dp"
-            android:layout_marginBottom="24dp"
-            android:text="Nombre"
-            android:textColor="#333333"
-            android:textSize="28sp"
-            android:textStyle="bold" />
+        <ImageView
+            android:id="@+id/ivTopLogo"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/logo_cabecera"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"/>
 
-        <androidx.cardview.widget.CardView
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <View
+        android:id="@+id/linea_separadora_top"
+        android:layout_width="match_parent"
+        android:layout_height="1.5dp"
+        android:background="@color/white"
+        app:layout_constraintTop_toBottomOf="@+id/top_bar"/>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:fillViewport="true"
+        app:layout_constraintTop_toBottomOf="@+id/linea_separadora_top"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:cardBackgroundColor="@color/white"
-            app:cardCornerRadius="20dp"
-            app:cardElevation="2dp">
+            android:orientation="vertical"
+            android:padding="20dp">
 
-            <LinearLayout
+            <androidx.cardview.widget.CardView
+                android:layout_width="120dp"
+                android:layout_height="120dp"
+                android:layout_gravity="center"
+                android:layout_marginTop="20dp"
+                app:cardCornerRadius="60dp"
+                app:cardElevation="4dp">
+                <ImageView
+                    android:id="@+id/ivDetalleFoto"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="centerCrop"
+                    android:src="@drawable/huella"
+                    android:padding="20dp"
+                    app:tint="@color/color_acento_primario" />
+            </androidx.cardview.widget.CardView>
+
+            <TextView
+                android:id="@+id/tvDetalleNombre"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="24dp"
+                android:text="Nombre"
+                android:textColor="#333333"
+                android:textSize="28sp"
+                android:textStyle="bold" />
+
+            <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="20dp">
+                app:cardBackgroundColor="@color/white"
+                app:cardCornerRadius="20dp"
+                app:cardElevation="2dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal">
-                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Especie" android:textColor="#9E9E9E" android:textSize="13sp" />
-                        <TextView android:id="@+id/tvDetalleEspecie" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Desconocido" android:textColor="#424242" android:textSize="16sp" android:textStyle="bold" />
+                    android:orientation="vertical"
+                    android:padding="20dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+                        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Especie" android:textColor="#9E9E9E" android:textSize="13sp" />
+                            <TextView android:id="@+id/tvDetalleEspecie" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Desconocido" android:textColor="#424242" android:textSize="16sp" android:textStyle="bold" />
+                        </LinearLayout>
+                        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Raza" android:textColor="#9E9E9E" android:textSize="13sp" />
+                            <TextView android:id="@+id/tvDetalleRaza" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Desconocido" android:textColor="#424242" android:textSize="16sp" android:textStyle="bold" />
+                        </LinearLayout>
                     </LinearLayout>
-                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Raza" android:textColor="#9E9E9E" android:textSize="13sp" />
-                        <TextView android:id="@+id/tvDetalleRaza" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Desconocido" android:textColor="#424242" android:textSize="16sp" android:textStyle="bold" />
+
+                    <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginVertical="15dp" android:background="#F0F0F0" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+                        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Sexo" android:textColor="#9E9E9E" android:textSize="13sp" />
+                            <TextView android:id="@+id/tvDetalleSexo" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Desconocido" android:textColor="#424242" android:textSize="16sp" android:textStyle="bold" />
+                        </LinearLayout>
+                        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Color" android:textColor="#9E9E9E" android:textSize="13sp" />
+                            <TextView android:id="@+id/tvDetalleColor" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Desconocido" android:textColor="#424242" android:textSize="16sp" android:textStyle="bold" />
+                        </LinearLayout>
                     </LinearLayout>
+
+                    <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginVertical="15dp" android:background="#F0F0F0"/>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginBottom="20dp">
+                        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Nacimiento" android:textColor="#9E9E9E" android:textSize="13sp" />
+                            <TextView android:id="@+id/tvDetalleFechaNacimiento" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Desconocido" android:textColor="#424242" android:textSize="16sp" android:textStyle="bold" />
+                        </LinearLayout>
+                        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Peso" android:textColor="#9E9E9E" android:textSize="13sp" />
+                            <TextView android:id="@+id/tvDetallePeso" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Desconocido" android:textColor="@color/color_acento_primario" android:textSize="16sp" android:textStyle="bold" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnEditarMascota"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:text="Editar"
+                        android:textColor="#555555"
+                        app:cornerRadius="20dp"
+                        app:icon="@android:drawable/ic_menu_edit"
+                        app:iconTint="#555555"
+                        app:strokeColor="#DDDDDD" />
+
                 </LinearLayout>
+            </androidx.cardview.widget.CardView>
 
-                <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginVertical="15dp" android:background="#F0F0F0" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnEliminarMascota"
+                android:layout_width="match_parent"
+                android:layout_height="55dp"
+                android:layout_marginTop="32dp"
+                android:layout_marginBottom="20dp"
+                android:text="Eliminar Mascota"
+                android:letterSpacing="0.1"
+                app:backgroundTint="#EF5350"
+                app:cornerRadius="20dp"
+                app:icon="@android:drawable/ic_menu_delete"
+                app:iconGravity="textStart" />
 
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal">
-                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Sexo" android:textColor="#9E9E9E" android:textSize="13sp" />
-                        <TextView android:id="@+id/tvDetalleSexo" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Desconocido" android:textColor="#424242" android:textSize="16sp" android:textStyle="bold" />
-                    </LinearLayout>
-                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Color" android:textColor="#9E9E9E" android:textSize="13sp" />
-                        <TextView android:id="@+id/tvDetalleColor" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Desconocido" android:textColor="#424242" android:textSize="16sp" android:textStyle="bold" />
-                    </LinearLayout>
-                </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
 
-                <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginVertical="15dp" android:background="#F0F0F0"/>
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:layout_marginBottom="20dp">
-                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Nacimiento" android:textColor="#9E9E9E" android:textSize="13sp" />
-                        <TextView android:id="@+id/tvDetalleFechaNacimiento" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Desconocido" android:textColor="#424242" android:textSize="16sp" android:textStyle="bold" />
-                    </LinearLayout>
-                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Peso" android:textColor="#9E9E9E" android:textSize="13sp" />
-                        <TextView android:id="@+id/tvDetallePeso" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Desconocido" android:textColor="@color/color_acento_primario" android:textSize="16sp" android:textStyle="bold" />
-                    </LinearLayout>
-                </LinearLayout>
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnEditarMascota"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="center"
-                    android:text="Editar"
-                    android:textColor="#555555"
-                    app:cornerRadius="20dp"
-                    app:icon="@android:drawable/ic_menu_edit"
-                    app:iconTint="#555555"
-                    app:strokeColor="#DDDDDD" />
-
-            </LinearLayout>
-        </androidx.cardview.widget.CardView>
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnEliminarMascota"
-            android:layout_width="match_parent"
-            android:layout_height="55dp"
-            android:layout_marginTop="32dp"
-            android:layout_marginBottom="20dp"
-            android:text="Eliminar Mascota"
-            android:letterSpacing="0.1"
-            app:backgroundTint="#EF5350"
-            app:cornerRadius="20dp"
-            app:icon="@android:drawable/ic_menu_delete"
-            app:iconGravity="textStart" />
-
-    </LinearLayout>
-</ScrollView>
+</androidx.constraintlayout.widget.ConstraintLayout>
