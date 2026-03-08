@@ -58,10 +58,8 @@ public class MainActivity extends AppCompatActivity {
 
         // Hacer que la foto de perfil funcione como botón
         cardTopProfile.setOnClickListener(v -> {
-            // Cargar el Fragmento de Perfil
             getSupportFragmentManager().beginTransaction()
                     .replace(R.id.frame_container, new PerfilFragment())
-                    // Añadimos el perfil a la pila de retroceso (BackStack) para que la flecha pueda volver
                     .addToBackStack(null)
                     .commit();
 
@@ -115,25 +113,48 @@ public class MainActivity extends AppCompatActivity {
                 super.onFragmentResumed(fm, f);
 
                 if (f instanceof PerfilFragment) {
-                    // En Perfil: Flecha atrás, sin logo, sin buscador
+                    // 🔝 BARRA SUPERIOR: En Perfil: Flecha atrás, sin buscador
                     cardTopProfile.setVisibility(android.view.View.INVISIBLE);
                     btnTopBack.setVisibility(android.view.View.VISIBLE);
-                    ivTopLogo.setVisibility(android.view.View.VISIBLE); // Opcional: dejar o quitar logo en perfil
+                    ivTopLogo.setVisibility(android.view.View.VISIBLE);
                     layoutTopSearch.setVisibility(android.view.View.GONE);
 
+                    // ⬇️ BARRA INFERIOR: Desmarcar todas las pestañas
+                    int size = bottomNav.getMenu().size();
+                    for (int i = 0; i < size; i++) {
+                        bottomNav.getMenu().getItem(i).setChecked(false);
+                    }
+
                 } else if (f instanceof EducacionFragment) {
-                    // ✨ En Comunidad: Foto, SIN logo, CON buscador central
+                    // 🔝 BARRA SUPERIOR: Foto, SIN logo, CON buscador central
                     cardTopProfile.setVisibility(android.view.View.VISIBLE);
                     btnTopBack.setVisibility(android.view.View.GONE);
                     ivTopLogo.setVisibility(android.view.View.GONE);
                     layoutTopSearch.setVisibility(android.view.View.VISIBLE);
 
-                } else {
-                    // Estado Normal (Home, Calendario, Mascotas): Foto, logo central, sin buscador
+                    // ⬇️ BARRA INFERIOR: Marcar pestaña Educación (comprueba tu ID real)
+                    bottomNav.getMenu().findItem(R.id.nav_comunidad).setChecked(true);
+
+                } else if (f instanceof CalendarioFragment) {
+                    // 🔝 BARRA SUPERIOR: Estado Normal
                     cardTopProfile.setVisibility(android.view.View.VISIBLE);
                     btnTopBack.setVisibility(android.view.View.GONE);
                     ivTopLogo.setVisibility(android.view.View.VISIBLE);
                     layoutTopSearch.setVisibility(android.view.View.GONE);
+
+                    // ⬇️ BARRA INFERIOR: Marcar pestaña Calendario
+                    bottomNav.getMenu().findItem(R.id.nav_calendar).setChecked(true);
+
+                } else {
+                    // 🔝 BARRA SUPERIOR: Estado Normal (Home, Mascotas, etc.)
+                    cardTopProfile.setVisibility(android.view.View.VISIBLE);
+                    btnTopBack.setVisibility(android.view.View.GONE);
+                    ivTopLogo.setVisibility(android.view.View.VISIBLE);
+                    layoutTopSearch.setVisibility(android.view.View.GONE);
+
+                    // ⬇️ BARRA INFERIOR: Aquí puedes añadir más 'else if' para Mascotas o Inicio
+                    // Por ejemplo, si es el Home:
+                    // if (f instanceof InicioFragment) bottomNav.getMenu().findItem(R.id.nav_inicio).setChecked(true);
                 }
             }
         }, true);

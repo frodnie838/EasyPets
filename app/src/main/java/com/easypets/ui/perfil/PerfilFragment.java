@@ -126,12 +126,12 @@ public class PerfilFragment extends Fragment {
                     String nombreCompleto = (nombreActual != null ? nombreActual : "") + " " + (apellidosActuales != null ? apellidosActuales : "");
                     tvNombre.setText(nombreCompleto.trim().isEmpty() ? "Usuario EasyPets" : nombreCompleto.trim());
 
-                    // ✨ Mostramos el Nick
+                    // Mostramos el Nick
                     if (nickActual != null && !nickActual.trim().isEmpty()) {
                         tvNick.setText("@" + nickActual);
                         tvNick.setVisibility(View.VISIBLE);
                     } else {
-                        tvNick.setText("@usuario_sin_nick");
+                        tvNick.setText("@usuario");
                         tvNick.setVisibility(View.VISIBLE);
                     }
 

@@ -6,96 +6,113 @@
     android:layout_height="match_parent"
     android:background="@color/fondo_base">
 
-    <LinearLayout
+    <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="vertical">
+        android:fillViewport="true">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginHorizontal="20dp"
-            android:layout_marginTop="20dp"
-            android:gravity="center_vertical">
-
-            <TextView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Mi Calendario"
-                android:textSize="22sp"
-                android:textStyle="bold"
-                android:textColor="@color/color_acento_primario"/>
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnIrAFecha"
-                style="@style/Widget.MaterialComponents.Button.TextButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Ir a fecha..."
-                app:icon="@android:drawable/ic_menu_search"
-                android:textColor="#757575"
-                app:iconTint="#757575"/>
-        </LinearLayout>
-
-        <androidx.cardview.widget.CardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginHorizontal="16dp"
-            android:layout_marginTop="8dp"
-            android:layout_marginBottom="16dp"
-            app:cardCornerRadius="16dp"
-            app:cardElevation="2dp">
-
-            <CalendarView
-                android:id="@+id/calendarView"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:theme="@style/TemaCalendario"/>
-        </androidx.cardview.widget.CardView>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal">
-            <TextView
-                android:id="@+id/tvFechaSeleccionada"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Eventos para hoy"
-                android:textSize="16sp"
-                android:textStyle="bold"
-                android:textColor="@color/black"
-                android:layout_marginHorizontal="20dp"
-                android:layout_marginBottom="8dp"/>
-            <ImageButton
-                android:id="@+id/btnFiltrarEventos"
-                android:layout_width="30dp"
-                android:layout_height="30dp"
-                android:layout_marginEnd="15dp"
-                android:layout_marginBottom="10dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:src="@android:drawable/ic_menu_sort_by_size"
-                app:tint="@color/color_acento_primario"
-                android:contentDescription="Filtrar eventos"/>
-        </LinearLayout>
-
-        <FrameLayout
-            android:layout_width="match_parent"
-            android:layout_height="match_parent">
-
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/rvEventos"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:paddingHorizontal="16dp"
-                android:clipToPadding="false"
-                android:paddingBottom="80dp"
-                android:visibility="gone"/>
+            android:orientation="vertical">
 
             <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginHorizontal="20dp"
+                android:layout_marginTop="20dp"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Mi Calendario"
+                    android:textSize="22sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/color_acento_primario"/>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnIrAFecha"
+                    style="@style/Widget.MaterialComponents.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Ir a fecha..."
+                    app:icon="@android:drawable/ic_menu_search"
+                    android:textColor="#757575"
+                    app:iconTint="#757575"/>
+            </LinearLayout>
+
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="16dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="2dp">
+
+                <com.applandeo.materialcalendarview.CalendarView
+                    android:id="@+id/calendarView"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@color/white"
+
+                    app:type="one_day_picker" app:headerColor="@color/white"
+                    app:headerLabelColor="@color/black"
+                    app:forwardButtonSrc="@drawable/ic_arrow_forward"
+                    app:previousButtonSrc="@drawable/ic_arrow_back"
+                    app:pagesColor="@color/white"
+                    app:abbreviationsBarColor="@color/white"
+                    app:selectionColor="@color/color_acento_primario"
+                    app:selectionLabelColor="@color/white"
+                    app:todayLabelColor="@color/color_acento_primario"
+                    app:daysLabelsColor="#757575"
+                    app:abbreviationsLabelsColor="@color/black"
+                    app:eventsEnabled="true"/>
+            </androidx.cardview.widget.CardView>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+                <TextView
+                    android:id="@+id/tvFechaSeleccionada"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Eventos para hoy"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/black"
+                    android:layout_marginHorizontal="20dp"
+                    android:layout_marginBottom="8dp"/>
+                <ImageButton
+                    android:id="@+id/btnFiltrarEventos"
+                    android:layout_width="30dp"
+                    android:layout_height="30dp"
+                    android:layout_marginEnd="15dp"
+                    android:layout_marginBottom="10dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:src="@android:drawable/ic_menu_sort_by_size"
+                    app:tint="@color/color_acento_primario"
+                    android:contentDescription="Filtrar eventos"/>
+            </LinearLayout>
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rvEventos"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:paddingHorizontal="16dp"
+                    android:clipToPadding="false"
+                    android:paddingBottom="80dp"
+                    android:visibility="gone"
+                    android:nestedScrollingEnabled="false" /> <LinearLayout
                 android:id="@+id/layoutSinEventos"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -108,7 +125,7 @@
                 <ImageView
                     android:layout_width="64dp"
                     android:layout_height="64dp"
-                    android:src="@android:drawable/ic_menu_my_calendar"
+                    android:src="@drawable/calendario"
                     app:tint="#BDBDBD"
                     android:layout_marginBottom="16dp"/>
 
@@ -120,53 +137,54 @@
                     android:textColor="#757575"/>
             </LinearLayout>
 
-            <LinearLayout
-                android:id="@+id/layoutAvisoInvitadoCalendario"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:gravity="center"
-                android:layout_gravity="center"
-                android:padding="32dp"
-                android:visibility="gone">
-
-                <ImageView
-                    android:layout_width="64dp"
-                    android:layout_height="64dp"
-                    android:src="@drawable/huella"
-                    app:tint="@color/color_acento_primario"
-                    android:alpha="0.5"
-                    android:layout_marginBottom="16dp"/>
-
-                <TextView
-                    android:layout_width="wrap_content"
+                <LinearLayout
+                    android:id="@+id/layoutAvisoInvitadoCalendario"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Agenda personal"
-                    android:textStyle="bold"
-                    android:textSize="16sp"
-                    android:textColor="@color/black"/>
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Regístrate para anotar citas médicas y recordatorios."
-                    android:textSize="14sp"
-                    android:textColor="#757575"
+                    android:orientation="vertical"
                     android:gravity="center"
-                    android:layout_marginTop="8dp"/>
+                    android:layout_gravity="center"
+                    android:padding="32dp"
+                    android:visibility="gone">
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnIrALoginCalendario"
-                    style="@style/Widget.MaterialComponents.Button.TextButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="Iniciar Sesión"
-                    android:textColor="@color/color_acento_primario"/>
-            </LinearLayout>
+                    <ImageView
+                        android:layout_width="64dp"
+                        android:layout_height="64dp"
+                        android:src="@drawable/huella"
+                        app:tint="@color/color_acento_primario"
+                        android:alpha="0.5"
+                        android:layout_marginBottom="16dp"/>
 
-        </FrameLayout>
-    </LinearLayout>
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Agenda personal"
+                        android:textStyle="bold"
+                        android:textSize="16sp"
+                        android:textColor="@color/black"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Regístrate para anotar citas médicas y recordatorios."
+                        android:textSize="14sp"
+                        android:textColor="#757575"
+                        android:gravity="center"
+                        android:layout_marginTop="8dp"/>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnIrALoginCalendario"
+                        style="@style/Widget.MaterialComponents.Button.TextButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="Iniciar Sesión"
+                        android:textColor="@color/color_acento_primario"/>
+                </LinearLayout>
+
+            </FrameLayout>
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fabAgregarEvento"

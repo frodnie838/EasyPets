@@ -6,7 +6,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
@@ -15,7 +14,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
-import android.widget.CalendarView;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -30,6 +28,13 @@ import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+// ✨ IMPORTS DE LA NUEVA LIBRERÍA DE CALENDARIO ACTUALIZADOS A LA VERSIÓN 1.9.0
+import com.applandeo.materialcalendarview.CalendarView;
+import com.applandeo.materialcalendarview.EventDay;
+import com.applandeo.materialcalendarview.CalendarDay; // ✨ NUEVO
+import com.applandeo.materialcalendarview.listeners.OnCalendarDayClickListener; // ✨ NUEVO
+import com.applandeo.materialcalendarview.exceptions.OutOfDateRangeException;
+
 import com.easypets.R;
 import com.easypets.adapters.EventoAdapter;
 import com.easypets.models.Evento;
@@ -43,6 +48,13 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+
+// IMPORTS PARA FIREBASE
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -115,15 +127,28 @@ public class CalendarioFragment extends Fragment {
                 calendarioActual.get(Calendar.YEAR));
     }
 
-    private void configurarModoUsuario(FirebaseUser user) {
+    private void configurarModoUsuario(final FirebaseUser user) {
         layoutAvisoInvitado.setVisibility(View.GONE);
         fabAgregarEvento.setVisibility(View.VISIBLE);
 
         cargarMascotasDelUsuario(user);
         configurarSwipe(requireContext());
 
-        calendarView.setOnDateChangeListener((view, year, month, dayOfMonth) -> {
-            calendarioActual.set(year, month, dayOfMonth);
+        // ✨ NUEVO LISTENER MODERNIZADO: setOnCalendarDayClickListener (Ver. 1.9.0)
+        calendarView.setOnCalendarDayClickListener(calendarDay -> {
+            Calendar clickedDayCalendar = calendarDay.getCalendar();
+            calendarioActual = clickedDayCalendar;
+
+            try {
+                calendarView.setDate(clickedDayCalendar);
+            } catch (OutOfDateRangeException e) {
+                e.printStackTrace();
+            }
+
+            int dayOfMonth = clickedDayCalendar.get(Calendar.DAY_OF_MONTH);
+            int month = clickedDayCalendar.get(Calendar.MONTH);
+            int year = clickedDayCalendar.get(Calendar.YEAR);
+
             actualizarTextoFecha(dayOfMonth, month, year);
             cargarEventosDeFecha(user.getUid(), dayOfMonth, month, year);
         });
@@ -134,6 +159,8 @@ public class CalendarioFragment extends Fragment {
 
         cargarEventosDeFecha(user.getUid(), calendarioActual.get(Calendar.DAY_OF_MONTH),
                 calendarioActual.get(Calendar.MONTH), calendarioActual.get(Calendar.YEAR));
+
+        cargarPuntitosEnCalendario(user.getUid());
     }
 
     private void configurarModoInvitado() {
@@ -142,8 +169,22 @@ public class CalendarioFragment extends Fragment {
         rvEventos.setVisibility(View.GONE);
         fabAgregarEvento.setVisibility(View.GONE);
 
-        calendarView.setOnDateChangeListener((view, year, month, dayOfMonth) ->
-                actualizarTextoFecha(dayOfMonth, month, year));
+        calendarView.setOnCalendarDayClickListener(calendarDay -> {
+            Calendar clickedDayCalendar = calendarDay.getCalendar();
+            calendarioActual = clickedDayCalendar;
+
+            try {
+                calendarView.setDate(clickedDayCalendar);
+            } catch (OutOfDateRangeException e) {
+                e.printStackTrace();
+            }
+
+            int dayOfMonth = clickedDayCalendar.get(Calendar.DAY_OF_MONTH);
+            int month = clickedDayCalendar.get(Calendar.MONTH);
+            int year = clickedDayCalendar.get(Calendar.YEAR);
+
+            actualizarTextoFecha(dayOfMonth, month, year);
+        });
 
         View.OnClickListener aviso = v ->
                 Toast.makeText(getContext(), "Función solo para usuarios registrados", Toast.LENGTH_SHORT).show();
@@ -160,16 +201,56 @@ public class CalendarioFragment extends Fragment {
         }
     }
 
-    private void configurarSwipe(Context context) {
-        ItemTouchHelper.SimpleCallback simpleCallback = new ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT) {
+    private void cargarPuntitosEnCalendario(String uid) {
+        DatabaseReference ref = FirebaseDatabase.getInstance().getReference().child("eventos").child(uid);
+
+        ref.addValueEventListener(new ValueEventListener() {
             @Override
-            public boolean onMove(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder, @NonNull RecyclerView.ViewHolder target) {
-                return false;
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                if (!isAdded()) return;
+
+                List<CalendarDay> eventosCalendario = new ArrayList<>();
+
+                for (DataSnapshot ds : snapshot.getChildren()) {
+                    Evento evt = ds.getValue(Evento.class);
+                    if (evt != null && evt.getFecha() != null) {
+                        try {
+                            String[] partes = evt.getFecha().split("/");
+                            if (partes.length == 3) {
+                                Calendar cal = Calendar.getInstance();
+                                cal.set(Calendar.DAY_OF_MONTH, Integer.parseInt(partes[0]));
+                                cal.set(Calendar.MONTH, Integer.parseInt(partes[1]) - 1);
+                                cal.set(Calendar.YEAR, Integer.parseInt(partes[2]));
+
+                                CalendarDay calendarDay = new CalendarDay(cal);
+                                calendarDay.setImageResource(R.drawable.huella);
+
+                                calendarDay.setLabelColor(R.color.color_acento_primario);
+
+                                eventosCalendario.add(calendarDay);
+                            }
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+
+                calendarView.setCalendarDays(eventosCalendario);
             }
 
             @Override
+            public void onCancelled(@NonNull DatabaseError error) {}
+        });
+    }
+
+    private void configurarSwipe(Context context) {
+        ItemTouchHelper.SimpleCallback simpleCallback = new ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT) {
+            @Override
+            public boolean onMove(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder, @NonNull RecyclerView.ViewHolder target) { return false; }
+
+            @Override
             public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
-                int posicion = viewHolder.getBindingAdapterPosition(); // getAdapterPosition está deprecado
+                int posicion = viewHolder.getBindingAdapterPosition();
                 Evento evento = eventoAdapter.getEventoAt(posicion);
 
                 if (direction == ItemTouchHelper.LEFT) {
@@ -234,12 +315,20 @@ public class CalendarioFragment extends Fragment {
     }
 
     private void mostrarBuscadorDeFecha(String uid) {
-        new DatePickerDialog(requireContext(), (view, year, month, dayOfMonth) -> {
+        DatePickerDialog datePicker = new DatePickerDialog(requireContext(), R.style.TemaPickerVerde, (view, year, month, dayOfMonth) -> {
             calendarioActual.set(year, month, dayOfMonth);
-            calendarView.setDate(calendarioActual.getTimeInMillis(), true, true);
+            try {
+                calendarView.setDate(calendarioActual);
+            } catch (OutOfDateRangeException e) {
+                e.printStackTrace();
+            }
             actualizarTextoFecha(dayOfMonth, month, year);
             cargarEventosDeFecha(uid, dayOfMonth, month, year);
-        }, calendarioActual.get(Calendar.YEAR), calendarioActual.get(Calendar.MONTH), calendarioActual.get(Calendar.DAY_OF_MONTH)).show();
+        }, calendarioActual.get(Calendar.YEAR), calendarioActual.get(Calendar.MONTH), calendarioActual.get(Calendar.DAY_OF_MONTH));
+
+        datePicker.show();
+        datePicker.getButton(DatePickerDialog.BUTTON_POSITIVE).setTextColor(ContextCompat.getColor(requireContext(), R.color.color_acento_primario));
+        datePicker.getButton(DatePickerDialog.BUTTON_NEGATIVE).setTextColor(ContextCompat.getColor(requireContext(), R.color.color_acento_primario));
     }
 
     private void actualizarTextoFecha(int dia, int mes, int anio) {
@@ -283,34 +372,30 @@ public class CalendarioFragment extends Fragment {
         View dialogView = getLayoutInflater().inflate(R.layout.dialog_agregar_evento, null);
         builder.setView(dialogView);
         AlertDialog dialog = builder.create();
+
         if (dialog.getWindow() != null) {
-            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         }
 
-        // 1. Vinculamos las vistas
         TextInputEditText etTitulo = dialogView.findViewById(R.id.etTituloEvento);
         AutoCompleteTextView spinnerTipo = dialogView.findViewById(R.id.spinnerTipoEvento);
         AutoCompleteTextView spinnerMascotas = dialogView.findViewById(R.id.spinnerMascotas);
         MaterialButton btnFecha = dialogView.findViewById(R.id.btnFechaDialog);
         MaterialButton btnHora = dialogView.findViewById(R.id.btnHoraDialog);
         MaterialButton btnGuardar = dialogView.findViewById(R.id.btnGuardarDialog);
-        MaterialButton btnCancelar = dialogView.findViewById(R.id.btnCancelarDialog); // Nos faltaba vincular este
+        MaterialButton btnCancelar = dialogView.findViewById(R.id.btnCancelarDialog);
 
-        // 2. Configuramos los desplegables
         spinnerMascotas.setAdapter(new ArrayAdapter<>(requireContext(), android.R.layout.simple_dropdown_item_1line, nombresMascotas));
         String[] opcionesTipo = {"Nota", "Veterinario", "Peluquería", "Guardería"};
         spinnerTipo.setAdapter(new ArrayAdapter<>(requireContext(), android.R.layout.simple_dropdown_item_1line, opcionesTipo));
 
-        // 3. ✨ LÓGICA DE RELLENADO DE DATOS (Lo que faltaba)
         if (eventoExistente != null) {
-            // Es una edición: rellenamos con la info de la base de datos
             etTitulo.setText(eventoExistente.getTitulo());
             spinnerTipo.setText(eventoExistente.getTipo(), false);
             btnFecha.setText(eventoExistente.getFecha());
             btnHora.setText(eventoExistente.getHora().isEmpty() ? "Hora (Opcional)" : eventoExistente.getHora());
             btnGuardar.setText("Actualizar");
 
-            // Rellenar la mascota correcta
             if (eventoExistente.getIdMascota() == null || eventoExistente.getIdMascota().isEmpty()) {
                 spinnerMascotas.setText("General", false);
             } else {
@@ -322,7 +407,6 @@ public class CalendarioFragment extends Fragment {
                 }
             }
         } else {
-            // Es un evento nuevo: ponemos valores por defecto
             spinnerTipo.setText(opcionesTipo[0], false);
             if (!nombresMascotas.isEmpty()) {
                 spinnerMascotas.setText(nombresMascotas.get(0), false);
@@ -333,20 +417,27 @@ public class CalendarioFragment extends Fragment {
                     calendarioActual.get(Calendar.YEAR)));
         }
 
-        // 4. ✨ LÓGICA DE BOTONES (Lo que faltaba)
         btnFecha.setOnClickListener(v -> {
-            new DatePickerDialog(requireContext(), (view, year, month, dayOfMonth) -> {
+            DatePickerDialog datePicker = new DatePickerDialog(requireContext(), R.style.TemaPickerVerde, (view, year, month, dayOfMonth) -> {
                 btnFecha.setText(String.format(Locale.getDefault(), "%02d/%02d/%d", dayOfMonth, month + 1, year));
-            }, calendarioActual.get(Calendar.YEAR), calendarioActual.get(Calendar.MONTH), calendarioActual.get(Calendar.DAY_OF_MONTH)).show();
+            }, calendarioActual.get(Calendar.YEAR), calendarioActual.get(Calendar.MONTH), calendarioActual.get(Calendar.DAY_OF_MONTH));
+
+            datePicker.show();
+            datePicker.getButton(DatePickerDialog.BUTTON_POSITIVE).setTextColor(ContextCompat.getColor(requireContext(), R.color.color_acento_primario));
+            datePicker.getButton(DatePickerDialog.BUTTON_NEGATIVE).setTextColor(ContextCompat.getColor(requireContext(), R.color.color_acento_primario));
         });
 
         btnHora.setOnClickListener(v -> {
-            new TimePickerDialog(requireContext(), (view, hour, minute) -> {
+            TimePickerDialog timePicker = new TimePickerDialog(requireContext(), R.style.TemaPickerVerde, (view, hour, minute) -> {
                 btnHora.setText(String.format(Locale.getDefault(), "%02d:%02d", hour, minute));
-            }, 12, 0, true).show();
+            }, 12, 0, true);
+
+            timePicker.show();
+            timePicker.getButton(TimePickerDialog.BUTTON_POSITIVE).setTextColor(ContextCompat.getColor(requireContext(), R.color.color_acento_primario));
+            timePicker.getButton(TimePickerDialog.BUTTON_NEGATIVE).setTextColor(ContextCompat.getColor(requireContext(), R.color.color_acento_primario));
         });
 
-        btnCancelar.setOnClickListener(v -> dialog.dismiss()); // Ahora sí funciona el botón Cancelar
+        btnCancelar.setOnClickListener(v -> dialog.dismiss());
 
         btnGuardar.setOnClickListener(v -> {
             String titulo = etTitulo.getText() != null ? etTitulo.getText().toString().trim() : "";
@@ -355,7 +446,6 @@ public class CalendarioFragment extends Fragment {
                 return;
             }
 
-            // Conseguir el ID de la mascota seleccionada
             String mascotaTxt = spinnerMascotas.getText().toString();
             String idMascota = "";
             if (!mascotaTxt.equals("General")) {
@@ -367,7 +457,6 @@ public class CalendarioFragment extends Fragment {
                 }
             }
 
-            // Crear el evento y guardarlo en Firebase
             Evento e = new Evento(
                     eventoExistente != null ? eventoExistente.getId() : null,
                     titulo,
@@ -377,13 +466,13 @@ public class CalendarioFragment extends Fragment {
                     idMascota
             );
 
-            FirebaseUser user = mAuth.getCurrentUser();
-            if (user != null) {
-                eventoRepository.guardarEvento(user.getUid(), e, new EventoRepository.AccionCallback() {
+            FirebaseUser userC = mAuth.getCurrentUser();
+            if (userC != null) {
+                eventoRepository.guardarEvento(userC.getUid(), e, new EventoRepository.AccionCallback() {
                     @Override
                     public void onExito() {
                         dialog.dismiss();
-                        cargarEventosDeFecha(user.getUid(), calendarioActual.get(Calendar.DAY_OF_MONTH), calendarioActual.get(Calendar.MONTH), calendarioActual.get(Calendar.YEAR));
+                        cargarEventosDeFecha(userC.getUid(), calendarioActual.get(Calendar.DAY_OF_MONTH), calendarioActual.get(Calendar.MONTH), calendarioActual.get(Calendar.YEAR));
                     }
                     @Override
                     public void onError(String error) {
