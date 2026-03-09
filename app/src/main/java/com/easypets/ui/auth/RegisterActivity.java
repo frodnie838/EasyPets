@@ -2,7 +2,13 @@ package com.easypets.ui.auth;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.text.SpannableString;
+import android.text.Spanned;
+import android.text.TextPaint;
 import android.text.TextUtils;
+import android.text.method.LinkMovementMethod;
+import android.text.style.ClickableSpan;
+import android.view.View;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
@@ -10,6 +16,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.credentials.CredentialManager;
@@ -56,13 +63,17 @@ public class RegisterActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_register);
 
+        // ✨ FORZAMOS LA BARRA DE SISTEMA A BLANCO OPACO (Igual que el Main)
+        getWindow().setStatusBarColor(ContextCompat.getColor(this, R.color.white));
+        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
+
         mAuth = FirebaseAuth.getInstance();
         db = FirebaseDatabase.getInstance().getReference();
         credentialManager = CredentialManager.create(this);
 
         nombreEditText = findViewById(R.id.nombreEditText);
         apellidosEditText = findViewById(R.id.apellidosEditText);
-        nickEditText = findViewById(R.id.nickEditText); // ✨ Vinculamos el nuevo campo Nick
+        nickEditText = findViewById(R.id.nickEditText);
         emailEditText = findViewById(R.id.emailEditText);
         passwordEditText = findViewById(R.id.passwordEditText);
         confirmPasswordEditText = findViewById(R.id.passwordConfirmEditText);
@@ -73,6 +84,9 @@ public class RegisterActivity extends AppCompatActivity {
 
         btnRegistrar.setEnabled(false);
         btnRegistrar.setAlpha(0.5f);
+
+        // ✨ CONFIGURACIÓN DEL TEXTO CLICABLE EN EL CHECKBOX
+        configurarTextoTerminos(termsCheckBox);
 
         termsCheckBox.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (isChecked) {
@@ -96,6 +110,49 @@ public class RegisterActivity extends AppCompatActivity {
         if (abrirGoogle) {
             signInConGoogle();
         }
+    }
+
+    // ✨ MÉTODO MAGIA: HACE EL TEXTO CLICABLE
+    private void configurarTextoTerminos(CheckBox cb) {
+        String textoCompleto = "Acepto los Términos y Condiciones";
+        SpannableString spannableString = new SpannableString(textoCompleto);
+
+        ClickableSpan clickableSpan = new ClickableSpan() {
+            @Override
+            public void onClick(@NonNull View widget) {
+                // Previene que se marque el checkbox al tocar las letras
+                cb.setChecked(!cb.isChecked());
+                mostrarDialogoTerminos();
+            }
+
+            @Override
+            public void updateDrawState(@NonNull TextPaint ds) {
+                super.updateDrawState(ds);
+                // Pintamos las letras verdes y subrayadas
+                ds.setColor(ContextCompat.getColor(RegisterActivity.this, R.color.color_acento_primario));
+                ds.setUnderlineText(true);
+            }
+        };
+
+        // Empieza en la letra 11 ("T") y acaba en la 33 ("s")
+        spannableString.setSpan(clickableSpan, 11, 33, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+
+        cb.setText(spannableString);
+        cb.setMovementMethod(LinkMovementMethod.getInstance());
+        cb.setHighlightColor(android.graphics.Color.TRANSPARENT); // Quita el fondo gris feo al tocar
+    }
+
+    // ✨ DIÁLOGO DE TÉRMINOS
+    private void mostrarDialogoTerminos() {
+        new AlertDialog.Builder(this)
+                .setTitle("Términos y Condiciones")
+                .setMessage("Bienvenido a EasyPets.\n\n" +
+                        "1. Uso de la aplicación: Al registrarte, aceptas usar esta aplicación con el único propósito de gestionar la información de tus mascotas.\n\n" +
+                        "2. Privacidad: Nos tomamos muy en serio la privacidad de tus datos. Tus fotos, ubicaciones y datos se almacenan de forma segura.\n\n" +
+                        "3. Comunidad: Te comprometes a mantener un ambiente de respeto en el foro y la sección de educación.\n\n" +
+                        "4. Responsabilidad: EasyPets no sustituye el consejo de un veterinario profesional.")
+                .setPositiveButton("Entendido", null)
+                .show();
     }
 
     private void signInConGoogle() {
@@ -168,9 +225,7 @@ public class RegisterActivity extends AppCompatActivity {
                                 if (nombre == null) nombre = "Usuario";
                                 if (apellidos == null) apellidos = "";
 
-                                // Generamos un nick automático para los que entran con Google
                                 String nickGenerado = nombre.replaceAll("\\s+", "") + (System.currentTimeMillis() % 10000);
-
                                 guardarDatosFirestore(uid, nombre, apellidos, nickGenerado, correo, fotoUrl);
                             }
                         });
@@ -212,7 +267,6 @@ public class RegisterActivity extends AppCompatActivity {
                     btnRegistrar.setEnabled(true);
                     btnRegistrar.setText("Registrarse");
                 } else {
-                    // Si el nick está libre, creamos el usuario en Firebase Auth
                     mAuth.createUserWithEmailAndPassword(email, password).addOnCompleteListener(task -> {
                         if (task.isSuccessful()) {
                             FirebaseUser user = mAuth.getCurrentUser();

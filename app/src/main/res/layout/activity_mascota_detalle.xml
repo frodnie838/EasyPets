@@ -5,7 +5,7 @@
     android:id="@+id/mascotaDetalle"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/fondo_base">
+    android:fitsSystemWindows="true">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/top_bar"
@@ -60,7 +60,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="20dp">
+            android:padding="20dp"
+            android:background="@color/fondo_base">
 
             <androidx.cardview.widget.CardView
                 android:layout_width="120dp"

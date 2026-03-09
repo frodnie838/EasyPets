@@ -14,13 +14,9 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
 
 import com.easypets.R;
 import com.easypets.models.Mascota;
@@ -47,15 +43,11 @@ public class MascotaDetalleActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        EdgeToEdge.enable(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_mascota_detalle);
 
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.mascotaDetalle), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
-            return insets;
-        });
+        getWindow().setStatusBarColor(ContextCompat.getColor(this, R.color.white));
+        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
 
         ImageButton btnTopBack = findViewById(R.id.btnTopBack);
         btnTopBack.setOnClickListener(v -> finish());
@@ -74,7 +66,7 @@ public class MascotaDetalleActivity extends AppCompatActivity {
         btnEditar = findViewById(R.id.btnEditarMascota);
         ivDetalleFoto = findViewById(R.id.ivDetalleFoto);
 
-        // ✨ NUEVO: Click listener para la foto de detalle ✨
+        // Click listener para la foto de detalle
         ivDetalleFoto.setOnClickListener(v -> {
             if (ivDetalleFoto.getDrawable() != null) {
                 mostrarFotoGrande();
