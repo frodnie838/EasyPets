@@ -147,6 +147,11 @@ public class MascotaDetalleActivity extends AppCompatActivity {
                     tvPatologias.setText(mascota.getPatologias() != null && !mascota.getPatologias().isEmpty() ? mascota.getPatologias() : "Ninguna");
                     tvMedicacion.setText(mascota.getMedicacionActual() != null && !mascota.getMedicacionActual().isEmpty() ? mascota.getMedicacionActual() : "Ninguna");
 
+                    String microchip = mascota.getMicrochip();
+                    String alergias = mascota.getAlergias();
+                    String patologias = mascota.getPatologias();
+                    String medicacion = mascota.getMedicacionActual();
+
                     // ✨ LA MAGIA QUE DECIDE QUÉ CAJA MOSTRAR
                     boolean tieneDatos = (mascota.getMicrochip() != null && !mascota.getMicrochip().isEmpty()) ||
                             mascota.isEsterilizado() ||
@@ -155,28 +160,25 @@ public class MascotaDetalleActivity extends AppCompatActivity {
                             (mascota.getMedicacionActual() != null && !mascota.getMedicacionActual().isEmpty()
                     );
 
+                    android.content.Context context = MascotaDetalleActivity.this;
+
                     if (tieneDatos) {
-                        // MODO EDICIÓN (Gris)
                         layoutSinDatosMedicos.setVisibility(View.GONE);
                         layoutConDatosMedicos.setVisibility(View.VISIBLE);
                         btnEditarCartilla.setText("Editar");
 
-                        int colorGrisTexto = Color.parseColor("#555555");
-                        int colorGrisBorde = Color.parseColor("#DDDDDD");
+                        int colorGris = Color.parseColor("#555555");
+                        android.content.res.ColorStateList cslGris = android.content.res.ColorStateList.valueOf(colorGris);
 
-                        // Aplicamos todo como ColorStateList para evitar el crash
-                        btnEditarCartilla.setTextColor(android.content.res.ColorStateList.valueOf(colorGrisTexto));
-                        btnEditarCartilla.setStrokeColor(android.content.res.ColorStateList.valueOf(colorGrisBorde));
-                        btnEditarCartilla.setIconTint(android.content.res.ColorStateList.valueOf(colorGrisTexto));
-
+                        btnEditarCartilla.setTextColor(cslGris);
+                        btnEditarCartilla.setStrokeColor(android.content.res.ColorStateList.valueOf(Color.parseColor("#DDDDDD")));
+                        btnEditarCartilla.setIconTint(cslGris);
                     } else {
-                        // MODO AÑADIR (Color Acento)
                         layoutSinDatosMedicos.setVisibility(View.VISIBLE);
                         layoutConDatosMedicos.setVisibility(View.GONE);
                         btnEditarCartilla.setText("Añadir datos médicos");
 
-                        // IMPORTANTE: Resetear al color de la app para que no se quede gris
-                        int colorAcento = ContextCompat.getColor(MascotaDetalleActivity.this, R.color.color_acento_primario);
+                        int colorAcento = ContextCompat.getColor(context, R.color.color_acento_primario);
                         android.content.res.ColorStateList cslAcento = android.content.res.ColorStateList.valueOf(colorAcento);
 
                         btnEditarCartilla.setTextColor(cslAcento);
