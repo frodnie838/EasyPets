@@ -52,7 +52,7 @@ public class RegisterActivity extends AppCompatActivity {
     private EditText nombreEditText, apellidosEditText, nickEditText, emailEditText, passwordEditText, confirmPasswordEditText;
     private CheckBox termsCheckBox;
     private Button btnRegistrar, btnGoogle;
-    private TextView loginTextView;
+    private TextView loginTextView, tvTerminos;
 
     private FirebaseAuth mAuth;
     private DatabaseReference db;
@@ -81,12 +81,13 @@ public class RegisterActivity extends AppCompatActivity {
         btnRegistrar = findViewById(R.id.btnRegistrar);
         btnGoogle = findViewById(R.id.btnGoogle);
         loginTextView = findViewById(R.id.loginTextView);
+        tvTerminos = findViewById(R.id.tvTerminos);
 
         btnRegistrar.setEnabled(false);
         btnRegistrar.setAlpha(0.5f);
 
         // ✨ CONFIGURACIÓN DEL TEXTO CLICABLE EN EL CHECKBOX
-        configurarTextoTerminos(termsCheckBox);
+        configurarTextoTerminos(tvTerminos);
 
         termsCheckBox.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (isChecked) {
@@ -113,15 +114,13 @@ public class RegisterActivity extends AppCompatActivity {
     }
 
     // ✨ MÉTODO MAGIA: HACE EL TEXTO CLICABLE
-    private void configurarTextoTerminos(CheckBox cb) {
+    private void configurarTextoTerminos(TextView tv) {
         String textoCompleto = "Acepto los Términos y Condiciones";
         SpannableString spannableString = new SpannableString(textoCompleto);
 
         ClickableSpan clickableSpan = new ClickableSpan() {
             @Override
             public void onClick(@NonNull View widget) {
-                // Previene que se marque el checkbox al tocar las letras
-                cb.setChecked(!cb.isChecked());
                 mostrarDialogoTerminos();
             }
 
@@ -137,9 +136,9 @@ public class RegisterActivity extends AppCompatActivity {
         // Empieza en la letra 11 ("T") y acaba en la 33 ("s")
         spannableString.setSpan(clickableSpan, 11, 33, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
 
-        cb.setText(spannableString);
-        cb.setMovementMethod(LinkMovementMethod.getInstance());
-        cb.setHighlightColor(android.graphics.Color.TRANSPARENT); // Quita el fondo gris feo al tocar
+        tv.setText(spannableString);
+        tv.setMovementMethod(LinkMovementMethod.getInstance());
+        tv.setHighlightColor(android.graphics.Color.TRANSPARENT);
     }
 
     // ✨ DIÁLOGO DE TÉRMINOS
