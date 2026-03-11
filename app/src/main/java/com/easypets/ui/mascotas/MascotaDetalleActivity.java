@@ -152,13 +152,11 @@ public class MascotaDetalleActivity extends AppCompatActivity {
                     String patologias = mascota.getPatologias();
                     String medicacion = mascota.getMedicacionActual();
 
-                    // ✨ LA MAGIA QUE DECIDE QUÉ CAJA MOSTRAR
                     boolean tieneDatos = (mascota.getMicrochip() != null && !mascota.getMicrochip().isEmpty()) ||
                             mascota.isEsterilizado() ||
                             (mascota.getAlergias() != null && !mascota.getAlergias().isEmpty()) ||
                             (mascota.getPatologias() != null && !mascota.getPatologias().isEmpty()) ||
-                            (mascota.getMedicacionActual() != null && !mascota.getMedicacionActual().isEmpty()
-                    );
+                            (mascota.getMedicacionActual() != null && !mascota.getMedicacionActual().isEmpty());
 
                     android.content.Context context = MascotaDetalleActivity.this;
 

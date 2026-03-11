@@ -28,8 +28,7 @@ public class EditarCartillaActivity extends AppCompatActivity {
 
     private EditText etMicrochip, etAlergias, etPatologias, etMedicacion;
     private CheckBox cbEsterilizado;
-    private MaterialButton btnGuardar;
-    private ImageButton btnCancelar;
+    private MaterialButton btnGuardar, btnCancelar;
     private String idMascota;
     private DatabaseReference mascotaRef;
 
