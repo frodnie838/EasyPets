@@ -32,14 +32,15 @@ import com.google.firebase.database.ValueEventListener;
 
 public class MascotaDetalleActivity extends AppCompatActivity {
 
-    private TextView tvNombre, tvEspecie, tvRaza, tvPeso, tvSexo, tvColor, tvFechaNacimiento;
-    private MaterialButton btnEliminar, btnEditar;
+    private TextView tvNombre, tvEspecie, tvRaza, tvPeso, tvSexo, tvColor, tvFechaNacimiento, tvMicrochip, tvEsterilizado, tvAlergias, tvPatologias, tvMedicacion;
+    private MaterialButton btnEliminar, btnEditar, btnEditarCartilla;
     private ImageView ivDetalleFoto;
 
     private String idMascotaSeleccionada;
     private FirebaseUser user;
     private DatabaseReference mascotaRef;
     private ValueEventListener mascotaListener;
+    private android.widget.LinearLayout layoutSinDatosMedicos, layoutConDatosMedicos;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -65,6 +66,14 @@ public class MascotaDetalleActivity extends AppCompatActivity {
         btnEliminar = findViewById(R.id.btnEliminarMascota);
         btnEditar = findViewById(R.id.btnEditarMascota);
         ivDetalleFoto = findViewById(R.id.ivDetalleFoto);
+        tvMicrochip = findViewById(R.id.tvDetalleMicrochip);
+        tvEsterilizado = findViewById(R.id.tvDetalleEsterilizado);
+        tvAlergias = findViewById(R.id.tvDetalleAlergias);
+        tvPatologias = findViewById(R.id.tvDetallePatologias);
+        tvMedicacion = findViewById(R.id.tvDetalleMedicacion);
+        layoutSinDatosMedicos = findViewById(R.id.layoutSinDatosMedicos);
+        layoutConDatosMedicos = findViewById(R.id.layoutConDatosMedicos);
+        btnEditarCartilla = findViewById(R.id.btnEditarCartilla);
 
         // Click listener para la foto de detalle
         ivDetalleFoto.setOnClickListener(v -> {
@@ -77,8 +86,16 @@ public class MascotaDetalleActivity extends AppCompatActivity {
             iniciarListenerTiempoReal();
         }
 
+        // Click para editar los datos básicos
         btnEditar.setOnClickListener(v -> {
             Intent intent = new Intent(MascotaDetalleActivity.this, AgregarMascotaActivity.class);
+            intent.putExtra("idMascota", idMascotaSeleccionada);
+            startActivity(intent);
+        });
+
+        // ✨ Click para abrir la nueva pantalla de Cartilla Sanitaria
+        btnEditarCartilla.setOnClickListener(v -> {
+            Intent intent = new Intent(MascotaDetalleActivity.this, EditarCartillaActivity.class);
             intent.putExtra("idMascota", idMascotaSeleccionada);
             startActivity(intent);
         });
@@ -123,6 +140,49 @@ public class MascotaDetalleActivity extends AppCompatActivity {
                     tvColor.setText(mascota.getColor() != null ? mascota.getColor() : "Desconocido");
                     tvFechaNacimiento.setText(mascota.getFechaNacimiento() != null ? mascota.getFechaNacimiento() : "Desconocida");
                     tvPeso.setText(mascota.getPeso() + " kg");
+
+                    tvMicrochip.setText(mascota.getMicrochip() != null && !mascota.getMicrochip().isEmpty() ? mascota.getMicrochip() : "No registrado");
+                    tvEsterilizado.setText(mascota.isEsterilizado() ? "Sí" : "No");
+                    tvAlergias.setText(mascota.getAlergias() != null && !mascota.getAlergias().isEmpty() ? mascota.getAlergias() : "Ninguna");
+                    tvPatologias.setText(mascota.getPatologias() != null && !mascota.getPatologias().isEmpty() ? mascota.getPatologias() : "Ninguna");
+                    tvMedicacion.setText(mascota.getMedicacionActual() != null && !mascota.getMedicacionActual().isEmpty() ? mascota.getMedicacionActual() : "Ninguna");
+
+                    // ✨ LA MAGIA QUE DECIDE QUÉ CAJA MOSTRAR
+                    boolean tieneDatos = (mascota.getMicrochip() != null && !mascota.getMicrochip().isEmpty()) ||
+                            mascota.isEsterilizado() ||
+                            (mascota.getAlergias() != null && !mascota.getAlergias().isEmpty()) ||
+                            (mascota.getPatologias() != null && !mascota.getPatologias().isEmpty()) ||
+                            (mascota.getMedicacionActual() != null && !mascota.getMedicacionActual().isEmpty()
+                    );
+
+                    if (tieneDatos) {
+                        // MODO EDICIÓN (Gris)
+                        layoutSinDatosMedicos.setVisibility(View.GONE);
+                        layoutConDatosMedicos.setVisibility(View.VISIBLE);
+                        btnEditarCartilla.setText("Editar");
+
+                        int colorGrisTexto = Color.parseColor("#555555");
+                        int colorGrisBorde = Color.parseColor("#DDDDDD");
+
+                        // Aplicamos todo como ColorStateList para evitar el crash
+                        btnEditarCartilla.setTextColor(android.content.res.ColorStateList.valueOf(colorGrisTexto));
+                        btnEditarCartilla.setStrokeColor(android.content.res.ColorStateList.valueOf(colorGrisBorde));
+                        btnEditarCartilla.setIconTint(android.content.res.ColorStateList.valueOf(colorGrisTexto));
+
+                    } else {
+                        // MODO AÑADIR (Color Acento)
+                        layoutSinDatosMedicos.setVisibility(View.VISIBLE);
+                        layoutConDatosMedicos.setVisibility(View.GONE);
+                        btnEditarCartilla.setText("Añadir datos médicos");
+
+                        // IMPORTANTE: Resetear al color de la app para que no se quede gris
+                        int colorAcento = ContextCompat.getColor(MascotaDetalleActivity.this, R.color.color_acento_primario);
+                        android.content.res.ColorStateList cslAcento = android.content.res.ColorStateList.valueOf(colorAcento);
+
+                        btnEditarCartilla.setTextColor(cslAcento);
+                        btnEditarCartilla.setStrokeColor(cslAcento);
+                        btnEditarCartilla.setIconTint(cslAcento);
+                    }
 
                     if (mascota.getFotoPerfilUrl() != null && !mascota.getFotoPerfilUrl().isEmpty()) {
                         try {

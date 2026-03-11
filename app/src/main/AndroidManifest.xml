@@ -21,6 +21,10 @@
             android:exported="false"
             android:windowSoftInputMode="adjustResize"/>
         <activity
+            android:name=".ui.mascotas.EditarCartillaActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"/>
+        <activity
             android:name=".ui.auth.RegisterActivity"
             android:exported="false" />
         <activity
