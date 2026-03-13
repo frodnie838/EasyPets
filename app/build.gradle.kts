@@ -60,4 +60,9 @@ dependencies {
 
     //Calendario
     implementation("com.applandeo:material-calendar-view:1.9.0")
+
+    // Conectar la API
+    implementation("com.android.volley:volley:1.2.1")
+    // Cargar fotos de Internet en ImageView
+    implementation("com.github.bumptech.glide:glide:4.16.0")
 }
