@@ -27,7 +27,7 @@ import com.easypets.repositories.MascotaRepository;
 import com.easypets.ui.auth.LoginActivity;
 import com.easypets.ui.comunidad.EducacionFragment;
 import com.easypets.ui.servicios.ServiciosFragment;
-import com.easypets.ui.veterinarios.VeterinariosFragment;
+import com.easypets.ui.servicios.veterinarios.VeterinariosFragment;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.button.MaterialButton;
 import com.google.firebase.auth.FirebaseAuth;

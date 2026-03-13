@@ -20,6 +20,8 @@ import com.easypets.ui.mascotas.MascotasFragment;
 import com.easypets.ui.perfil.PerfilFragment;
 import com.easypets.R;
 import com.easypets.ui.servicios.ServiciosFragment;
+import com.easypets.ui.servicios.guarderias.GuarderiasFragment;
+import com.easypets.ui.servicios.veterinarios.VeterinariosFragment;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -160,7 +162,7 @@ public class MainActivity extends AppCompatActivity {
 
                     bottomNav.getMenu().findItem(R.id.nav_service).setChecked(true);
 
-                } else if (f instanceof com.easypets.ui.veterinarios.VeterinariosFragment) {
+                } else if (f instanceof VeterinariosFragment || f instanceof GuarderiasFragment) {
                     cardTopProfile.setVisibility(View.INVISIBLE);
                     btnTopBack.setVisibility(View.VISIBLE);
                     ivTopLogo.setVisibility(View.VISIBLE);

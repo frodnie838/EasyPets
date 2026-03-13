@@ -12,6 +12,7 @@ import androidx.cardview.widget.CardView;
 import androidx.fragment.app.Fragment;
 
 import com.easypets.R;
+import com.easypets.ui.servicios.veterinarios.VeterinariosFragment;
 
 public class ServiciosFragment extends Fragment { // Cambia el nombre si usas otro
 
@@ -37,14 +38,17 @@ public class ServiciosFragment extends Fragment { // Cambia el nombre si usas ot
         // 🐶 Clínicas Veterinarias
         cardVeterinarios.setOnClickListener(v -> {
             requireActivity().getSupportFragmentManager().beginTransaction()
-                    .replace(R.id.frame_container, new com.easypets.ui.veterinarios.VeterinariosFragment())
+                    .replace(R.id.frame_container, new VeterinariosFragment())
                     .addToBackStack(null)
                     .commit();
         });
 
         // 🏡 Guarderías
         cardGuarderias.setOnClickListener(v -> {
-            Toast.makeText(requireContext(), "Módulo Guarderías en construcción \uD83D\uDEA7", Toast.LENGTH_SHORT).show();
+            requireActivity().getSupportFragmentManager().beginTransaction()
+                    .replace(R.id.frame_container, new com.easypets.ui.servicios.guarderias.GuarderiasFragment())
+                    .addToBackStack(null) // Para que funcione el botón de ir hacia atrás
+                    .commit();
         });
 
         // 🛍️ Tiendas

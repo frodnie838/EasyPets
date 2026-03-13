@@ -1,4 +1,4 @@
-package com.easypets.ui.veterinarios;
+package com.easypets.ui.servicios.veterinarios;
 
 import android.location.Address;
 import android.location.Geocoder;

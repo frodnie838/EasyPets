@@ -110,7 +110,7 @@
                     android:id="@+id/tvMensajeVeterinarios"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Escribe tu ciudad para buscar clínicas veterinarias en el mapa libre."
+                    android:text="Escribe tu ciudad para buscar clínicas veterinarias cerca."
                     android:textAlignment="center"
                     android:textSize="16sp"
                     android:textColor="#757575"/>
