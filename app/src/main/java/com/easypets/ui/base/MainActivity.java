@@ -19,6 +19,7 @@ import com.easypets.ui.home.HomeFragment;
 import com.easypets.ui.mascotas.MascotasFragment;
 import com.easypets.ui.perfil.PerfilFragment;
 import com.easypets.R;
+import com.easypets.ui.servicios.ServiciosFragment;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -81,6 +82,8 @@ public class MainActivity extends AppCompatActivity {
                 selectedFragment = new MascotasFragment();
             } else if (itemId == R.id.nav_calendar) {
                 selectedFragment = new CalendarioFragment();
+            } else if (itemId == R.id.nav_service) {
+                selectedFragment = new ServiciosFragment();
             }
 
             if (selectedFragment != null) {
@@ -100,7 +103,6 @@ public class MainActivity extends AppCompatActivity {
                     .replace(R.id.frame_container, new HomeFragment())
                     .commit();
         }
-
         // ✨ EL ESCUCHADOR MÁGICO (AQUÍ CENTRALIZAMOS TODO EL DISEÑO VISUAL)
         getSupportFragmentManager().registerFragmentLifecycleCallbacks(new androidx.fragment.app.FragmentManager.FragmentLifecycleCallbacks() {
             @Override
@@ -150,6 +152,19 @@ public class MainActivity extends AppCompatActivity {
                     layoutTopSearch.setVisibility(View.GONE);
 
                     bottomNav.getMenu().findItem(R.id.nav_home).setChecked(true);
+                } else if (f instanceof ServiciosFragment) {
+                    cardTopProfile.setVisibility(View.VISIBLE);
+                    btnTopBack.setVisibility(View.GONE);
+                    ivTopLogo.setVisibility(View.VISIBLE);
+                    layoutTopSearch.setVisibility(View.GONE);
+
+                    bottomNav.getMenu().findItem(R.id.nav_service).setChecked(true);
+
+                } else if (f instanceof com.easypets.ui.veterinarios.VeterinariosFragment) {
+                    cardTopProfile.setVisibility(View.INVISIBLE);
+                    btnTopBack.setVisibility(View.VISIBLE);
+                    ivTopLogo.setVisibility(View.VISIBLE);
+                    layoutTopSearch.setVisibility(View.GONE);
                 }
             }
         }, true);

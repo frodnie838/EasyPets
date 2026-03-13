@@ -26,6 +26,7 @@ import com.easypets.repositories.EventoRepository;
 import com.easypets.repositories.MascotaRepository;
 import com.easypets.ui.auth.LoginActivity;
 import com.easypets.ui.comunidad.EducacionFragment;
+import com.easypets.ui.servicios.ServiciosFragment;
 import com.easypets.ui.veterinarios.VeterinariosFragment;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.button.MaterialButton;
@@ -197,7 +198,7 @@ public class HomeFragment extends Fragment {
         cardCalendario.setOnClickListener(v -> { cambiarTab(R.id.nav_calendar); });
         cardVeterinarios.setOnClickListener(v -> abrirFragmento(new VeterinariosFragment()));
         cardEducacion.setOnClickListener(v -> abrirFragmento(new EducacionFragment()));
-        cardTiendas.setOnClickListener(v -> Toast.makeText(getContext(), "Servicios cercanos próximamente", Toast.LENGTH_SHORT).show());
+        cardTiendas.setOnClickListener(v -> abrirFragmento(new ServiciosFragment()));
     }
 
     private void cambiarTab(int menuId) {

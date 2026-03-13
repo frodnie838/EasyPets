@@ -218,13 +218,18 @@ public class CalendarioFragment extends Fragment {
                             String[] partes = evt.getFecha().split("/");
                             if (partes.length == 3) {
                                 Calendar cal = Calendar.getInstance();
+
+                                cal.set(Calendar.HOUR_OF_DAY, 0);
+                                cal.set(Calendar.MINUTE, 0);
+                                cal.set(Calendar.SECOND, 0);
+                                cal.set(Calendar.MILLISECOND, 0);
+
                                 cal.set(Calendar.DAY_OF_MONTH, Integer.parseInt(partes[0]));
                                 cal.set(Calendar.MONTH, Integer.parseInt(partes[1]) - 1);
                                 cal.set(Calendar.YEAR, Integer.parseInt(partes[2]));
 
                                 CalendarDay calendarDay = new CalendarDay(cal);
                                 calendarDay.setImageResource(R.drawable.huella);
-
                                 calendarDay.setLabelColor(R.color.color_acento_primario);
 
                                 eventosCalendario.add(calendarDay);
@@ -235,7 +240,19 @@ public class CalendarioFragment extends Fragment {
                     }
                 }
 
+                // Cargamos los eventos
                 calendarView.setCalendarDays(eventosCalendario);
+
+                calendarView.post(() -> {
+                    try {
+                        List<Calendar> fechasSeleccionadas = calendarView.getSelectedDates();
+                        if (fechasSeleccionadas != null) {
+                            calendarView.setSelectedDates(fechasSeleccionadas);
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                });
             }
 
             @Override

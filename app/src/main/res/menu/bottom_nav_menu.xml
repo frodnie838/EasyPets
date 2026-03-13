@@ -19,7 +19,7 @@
         android:title="Calendario" />
 
     <item
-        android:id="@+id/nav_profile"
+        android:id="@+id/nav_service"
         android:icon="@drawable/servicios"
         android:title="Servicios" />
 </menu>
