@@ -72,7 +72,7 @@ public class GuarderiaAdapter extends RecyclerView.Adapter<GuarderiaAdapter.View
 
     @Override
     public int getItemCount() {
-        return 0;
+        return listaGuarderias.size();
     }
 
     public static class ViewHolder extends RecyclerView.ViewHolder {

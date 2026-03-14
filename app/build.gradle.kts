@@ -1,3 +1,6 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     alias(libs.plugins.android.application)
     id("com.google.gms.google-services")
@@ -5,8 +8,10 @@ plugins {
 
 android {
     namespace = "com.easypets"
-    compileSdk {
-        version = release(36)
+    compileSdk = 36
+
+    buildFeatures {
+        buildConfig = true
     }
 
     defaultConfig {
@@ -15,6 +20,17 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
+
+        // Leer la clave de local.properties de forma segura
+        val properties = Properties()
+        val propertiesFile = rootProject.file("local.properties")
+        if (propertiesFile.exists()) {
+            properties.load(FileInputStream(propertiesFile))
+        }
+        val apiKey = properties.getProperty("MAPS_API_KEY") ?: ""
+
+        // Creamos la variable que usaremos en Java
+        resValue("string", "MAPS_API_KEY", apiKey)
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -58,7 +74,7 @@ dependencies {
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
 
-    //Calendario
+    // Calendario
     implementation("com.applandeo:material-calendar-view:1.9.0")
 
     // Conectar la API
