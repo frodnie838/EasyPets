@@ -20,8 +20,14 @@ import com.easypets.ui.mascotas.MascotasFragment;
 import com.easypets.ui.perfil.PerfilFragment;
 import com.easypets.R;
 import com.easypets.ui.servicios.ServiciosFragment;
+import com.easypets.ui.servicios.adiestradores.AdiestradoresFragment;
+import com.easypets.ui.servicios.farmacias.FarmaciasFragment;
 import com.easypets.ui.servicios.guarderias.GuarderiasFragment;
+import com.easypets.ui.servicios.parques.ParquesFragment;
+import com.easypets.ui.servicios.paseadores.PaseadoresFragment;
 import com.easypets.ui.servicios.peluquerias.PeluqueriasFragment;
+import com.easypets.ui.servicios.protectoras.ProtectorasFragment;
+import com.easypets.ui.servicios.tiendas.TiendasFragment;
 import com.easypets.ui.servicios.veterinarios.VeterinariosFragment;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.firebase.auth.FirebaseAuth;
@@ -100,13 +106,35 @@ public class MainActivity extends AppCompatActivity {
             return true;
         });
 
+        // --- LÓGICA DEL BUSCADOR GLOBAL ---
+        android.widget.EditText etTopSearch = findViewById(R.id.etTopSearch);
+        com.easypets.ui.servicios.BusquedaViewModel busquedaViewModel =
+                new androidx.lifecycle.ViewModelProvider(this).get(com.easypets.ui.servicios.BusquedaViewModel.class);
+
+        etTopSearch.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH) {
+                String ciudad = etTopSearch.getText().toString().trim();
+                if (!ciudad.isEmpty()) {
+                    busquedaViewModel.buscarCiudad(ciudad);
+
+                    android.view.inputmethod.InputMethodManager imm =
+                            (android.view.inputmethod.InputMethodManager) getSystemService(android.content.Context.INPUT_METHOD_SERVICE);
+                    if (imm != null) {
+                        imm.hideSoftInputFromWindow(etTopSearch.getWindowToken(), 0);
+                    }
+                }
+                return true;
+            }
+            return false;
+        });
+
         // Cargar el fragmento por defecto al iniciar (Home)
         if (savedInstanceState == null) {
             getSupportFragmentManager().beginTransaction()
                     .replace(R.id.frame_container, new HomeFragment())
                     .commit();
         }
-        // ✨ EL ESCUCHADOR MÁGICO (AQUÍ CENTRALIZAMOS TODO EL DISEÑO VISUAL)
+
         getSupportFragmentManager().registerFragmentLifecycleCallbacks(new androidx.fragment.app.FragmentManager.FragmentLifecycleCallbacks() {
             @Override
             public void onFragmentResumed(@NonNull androidx.fragment.app.FragmentManager fm, @NonNull Fragment f) {
@@ -164,7 +192,7 @@ public class MainActivity extends AppCompatActivity {
 
                     bottomNav.getMenu().findItem(R.id.nav_service).setChecked(true);
 
-                } else if (f instanceof VeterinariosFragment || f instanceof GuarderiasFragment || f instanceof PeluqueriasFragment) {
+                } else if (f instanceof VeterinariosFragment || f instanceof ParquesFragment || f instanceof ProtectorasFragment || f instanceof PaseadoresFragment || f instanceof FarmaciasFragment || f instanceof AdiestradoresFragment || f instanceof TiendasFragment || f instanceof GuarderiasFragment || f instanceof PeluqueriasFragment) {
                     cardTopProfile.setVisibility(View.GONE);
                     btnTopBack.setVisibility(View.VISIBLE);
                     ivTopLogo.setVisibility(View.GONE);

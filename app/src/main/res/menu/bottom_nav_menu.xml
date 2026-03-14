@@ -20,6 +20,6 @@
 
     <item
         android:id="@+id/nav_service"
-        android:icon="@drawable/peluqueria"
+        android:icon="@drawable/servicios"
         android:title="Servicios" />
 </menu>

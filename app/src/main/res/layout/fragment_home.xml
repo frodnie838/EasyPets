@@ -137,7 +137,7 @@
                     android:orientation="vertical"
                     android:gravity="center"
                     android:padding="16dp">
-                    <ImageView android:layout_width="32dp" android:layout_height="32dp" android:src="@drawable/peluqueria" app:tint="@color/color_acento_primario" android:layout_marginBottom="8dp"/>
+                    <ImageView android:layout_width="32dp" android:layout_height="32dp" android:src="@drawable/servicios" app:tint="@color/color_acento_primario" android:layout_marginBottom="8dp"/>
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Servicios" android:textStyle="bold" android:textSize="13sp" android:textColor="@color/black"/>
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
