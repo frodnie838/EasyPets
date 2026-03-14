@@ -36,8 +36,6 @@ import java.util.List;
 
 public class VeterinariosFragment extends Fragment {
 
-    private EditText etCiudadBuscador;
-    private MaterialButton btnBuscarVeterinarios;
     private ProgressBar progressBarVeterinarios;
     private RecyclerView rvVeterinarios;
     private LinearLayout layoutSinVeterinarios;
@@ -51,8 +49,6 @@ public class VeterinariosFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_veterinarios, container, false);
 
-        etCiudadBuscador = view.findViewById(R.id.etCiudadBuscador);
-        btnBuscarVeterinarios = view.findViewById(R.id.btnBuscarVeterinarios);
         progressBarVeterinarios = view.findViewById(R.id.progressBarVeterinarios);
         rvVeterinarios = view.findViewById(R.id.rvVeterinarios);
         layoutSinVeterinarios = view.findViewById(R.id.layoutSinVeterinarios);
@@ -63,12 +59,9 @@ public class VeterinariosFragment extends Fragment {
         rvVeterinarios.setLayoutManager(new LinearLayoutManager(getContext()));
         rvVeterinarios.setAdapter(adapter);
 
-        btnBuscarVeterinarios.setOnClickListener(v -> {
-            String ciudad = etCiudadBuscador.getText().toString().trim();
-            if (ciudad.isEmpty()) {
-                Toast.makeText(getContext(), "Por favor, escribe el nombre de una ciudad", Toast.LENGTH_SHORT).show();
-                return;
-            }
+        // Escuchamos al mensajero global
+        com.easypets.ui.servicios.BusquedaViewModel viewModel = new androidx.lifecycle.ViewModelProvider(requireActivity()).get(com.easypets.ui.servicios.BusquedaViewModel.class);
+        viewModel.getCiudadBuscada().observe(getViewLifecycleOwner(), ciudad -> {
             buscarEnGoogle(ciudad);
         });
 
@@ -84,7 +77,9 @@ public class VeterinariosFragment extends Fragment {
                 menu.setGroupCheckable(0, true, true);
             }
         }
-
+        layoutSinVeterinarios.setVisibility(View.VISIBLE);
+        tvMensajeVeterinarios.setText("Busca una ciudad arriba para ver los veterinarios cercanos 🐾");
+        rvVeterinarios.setVisibility(View.GONE);
         return view;
     }
 
@@ -138,8 +133,15 @@ public class VeterinariosFragment extends Fragment {
                             double lat = location.getDouble("lat");
                             double lon = location.getDouble("lng");
 
-                            // Usamos el nuevo LocalServicio
-                            listaVeterinarios.add(new LocalServicio(nombre, direccion, imageUrl, rating, totalResenas, lat, lon));
+                            // Comprobamos si Google nos da el horario
+                            boolean abierto = false;
+                            boolean tieneHorario = false;
+                            if (place.has("opening_hours")) {
+                                tieneHorario = true;
+                                abierto = place.getJSONObject("opening_hours").optBoolean("open_now", false);
+                            }
+
+                            listaVeterinarios.add(new LocalServicio(nombre, direccion, imageUrl, rating, totalResenas, lat, lon, abierto, tieneHorario));
                         }
 
                         if (listaVeterinarios.isEmpty()) {

@@ -69,6 +69,15 @@
                 android:text="Dirección completa del local"
                 android:textColor="#555555"
                 android:textSize="14sp" />
+            <TextView
+                android:id="@+id/tvEstadoServicio"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="🟢 Abierto ahora"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnVerMapaServicio"
@@ -77,6 +86,8 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:text="Ver en Google Maps"
+                android:textColor="@color/color_acento_primario"
+                app:strokeColor="@color/color_acento_primario"
                 app:cornerRadius="8dp" />
 
         </LinearLayout>

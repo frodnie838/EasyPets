@@ -8,8 +8,10 @@ public class LocalServicio {
     private int totalResenas;
     private double latitud;
     private double longitud;
+    private boolean abiertoAhora;
+    private boolean tieneHorario;
 
-    public LocalServicio(String nombre, String direccion, String fotoUrl, double rating, int totalResenas, double latitud, double longitud) {
+    public LocalServicio(String nombre, String direccion, String fotoUrl, double rating, int totalResenas, double latitud, double longitud, boolean abiertoAhora, boolean tieneHorario) {
         this.nombre = nombre;
         this.direccion = direccion;
         this.fotoUrl = fotoUrl;
@@ -17,6 +19,8 @@ public class LocalServicio {
         this.totalResenas = totalResenas;
         this.latitud = latitud;
         this.longitud = longitud;
+        this.abiertoAhora = abiertoAhora;
+        this.tieneHorario = tieneHorario;
     }
 
     public String getNombre() { return nombre; }
@@ -26,4 +30,6 @@ public class LocalServicio {
     public int getTotalResenas() { return totalResenas; }
     public double getLatitud() { return latitud; }
     public double getLongitud() { return longitud; }
+    public boolean isAbiertoAhora() { return abiertoAhora; }
+    public boolean isTieneHorario() { return tieneHorario; }
 }

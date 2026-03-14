@@ -123,6 +123,14 @@ public class MainActivity extends AppCompatActivity {
                         bottomNav.getMenu().getItem(i).setChecked(false);
                     }
 
+                }else if (f instanceof HomeFragment) {
+                        cardTopProfile.setVisibility(View.VISIBLE);
+                        btnTopBack.setVisibility(View.GONE);
+                        ivTopLogo.setVisibility(View.VISIBLE);
+                        layoutTopSearch.setVisibility(View.GONE);
+
+                        bottomNav.getMenu().findItem(R.id.nav_home).setChecked(true);
+
                 } else if (f instanceof EducacionFragment) {
                     cardTopProfile.setVisibility(View.VISIBLE);
                     btnTopBack.setVisibility(View.GONE);
@@ -139,7 +147,7 @@ public class MainActivity extends AppCompatActivity {
 
                     bottomNav.getMenu().findItem(R.id.nav_calendar).setChecked(true);
 
-                } else if (f instanceof MascotasFragment) {
+                } else if (f instanceof MascotasFragment ) {
                     cardTopProfile.setVisibility(View.VISIBLE);
                     btnTopBack.setVisibility(View.GONE);
                     ivTopLogo.setVisibility(View.VISIBLE);
@@ -147,13 +155,6 @@ public class MainActivity extends AppCompatActivity {
 
                     bottomNav.getMenu().findItem(R.id.nav_pets).setChecked(true);
 
-                } else if (f instanceof HomeFragment) {
-                    cardTopProfile.setVisibility(View.VISIBLE);
-                    btnTopBack.setVisibility(View.GONE);
-                    ivTopLogo.setVisibility(View.VISIBLE);
-                    layoutTopSearch.setVisibility(View.GONE);
-
-                    bottomNav.getMenu().findItem(R.id.nav_home).setChecked(true);
                 } else if (f instanceof ServiciosFragment) {
                     cardTopProfile.setVisibility(View.VISIBLE);
                     btnTopBack.setVisibility(View.GONE);
@@ -163,10 +164,13 @@ public class MainActivity extends AppCompatActivity {
                     bottomNav.getMenu().findItem(R.id.nav_service).setChecked(true);
 
                 } else if (f instanceof VeterinariosFragment || f instanceof GuarderiasFragment) {
-                    cardTopProfile.setVisibility(View.INVISIBLE);
+                    cardTopProfile.setVisibility(View.GONE);
                     btnTopBack.setVisibility(View.VISIBLE);
-                    ivTopLogo.setVisibility(View.VISIBLE);
-                    layoutTopSearch.setVisibility(View.GONE);
+                    ivTopLogo.setVisibility(View.GONE);
+                    layoutTopSearch.setVisibility(View.VISIBLE);
+
+                    bottomNav.getMenu().findItem(R.id.nav_service).setChecked(true);
+
                 }
             }
         }, true);

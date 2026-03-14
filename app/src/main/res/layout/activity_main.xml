@@ -60,6 +60,13 @@
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintBottom_toBottomOf="parent"/>
 
+        <androidx.constraintlayout.widget.Barrier
+            android:id="@+id/barrierTopLeft"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:barrierDirection="end"
+            app:constraint_referenced_ids="cardTopProfile,btnTopBack" />
+
         <LinearLayout
             android:id="@+id/layoutTopSearch"
             android:layout_width="0dp"
@@ -69,8 +76,8 @@
             android:gravity="center_vertical"
             android:paddingHorizontal="12dp"
             android:visibility="gone"
-            app:layout_constraintStart_toEndOf="@id/cardTopProfile"
-            app:layout_constraintEnd_toStartOf="@id/btnTopNotificaciones"
+            app:layout_constraintStart_toEndOf="@+id/barrierTopLeft"
+            app:layout_constraintEnd_toStartOf="@+id/btnTopNotificaciones"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintBottom_toBottomOf="parent">
 
