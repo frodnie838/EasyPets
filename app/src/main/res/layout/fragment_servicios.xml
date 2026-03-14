@@ -217,7 +217,7 @@
                 </androidx.cardview.widget.CardView>
 
                 <androidx.cardview.widget.CardView
-                    android:id="@+id/cardTiendas"
+                    android:id="@+id/cardPeluquerias"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
@@ -238,7 +238,7 @@
                         <ImageView
                             android:layout_width="40dp"
                             android:layout_height="40dp"
-                            android:src="@drawable/servicios"
+                            android:src="@drawable/peluqueria"
                             app:tint="@color/color_acento_primario"
                             android:layout_marginBottom="12dp" />
 
@@ -262,7 +262,7 @@
             </LinearLayout>
 
             <androidx.cardview.widget.CardView
-                android:id="@+id/cardAdiestramiento"
+                android:id="@+id/cardTiendas"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:foreground="?attr/selectableItemBackground"

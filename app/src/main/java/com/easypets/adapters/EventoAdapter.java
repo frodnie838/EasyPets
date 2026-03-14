@@ -1,7 +1,6 @@
 package com.easypets.adapters;
 
 import android.content.Context;
-import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -137,7 +136,7 @@ public class EventoAdapter extends RecyclerView.Adapter<EventoAdapter.EventoView
         if ("Veterinario".equals(evento.getTipo())) {
             holder.ivIcono.setImageResource(R.drawable.veterinario);
         } else if ("Peluquería".equals(evento.getTipo())) {
-            holder.ivIcono.setImageResource(R.drawable.servicios);
+            holder.ivIcono.setImageResource(R.drawable.peluqueria);
         } else if ("Guardería".equals(evento.getTipo())) {
             holder.ivIcono.setImageResource(R.drawable.guarderia);
         } else {
