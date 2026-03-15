@@ -22,7 +22,8 @@
             android:layout_width="32dp"
             android:layout_height="32dp"
             app:cardCornerRadius="16dp"
-            app:cardElevation="4dp" android:clickable="true"
+            app:cardElevation="4dp"
+            android:clickable="true"
             android:focusable="true"
             android:foreground="?attr/selectableItemBackgroundBorderless"
             app:layout_constraintStart_toStartOf="parent"
@@ -38,6 +39,7 @@
                 app:tint="@color/color_acento_primario"/>
 
         </androidx.cardview.widget.CardView>
+
         <ImageButton
             android:id="@+id/btnTopBack"
             android:layout_width="32dp"
@@ -77,7 +79,7 @@
             android:paddingHorizontal="12dp"
             android:visibility="gone"
             app:layout_constraintStart_toEndOf="@+id/barrierTopLeft"
-            app:layout_constraintEnd_toStartOf="@+id/btnTopNotificaciones"
+            app:layout_constraintEnd_toStartOf="@+id/layoutCampanita"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintBottom_toBottomOf="parent">
 
@@ -101,16 +103,40 @@
                 android:imeOptions="actionSearch"/>
         </LinearLayout>
 
-        <ImageButton
-            android:id="@+id/btnTopNotificaciones"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
-            android:src="@drawable/ic_notifications_outline"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            app:tint="@color/color_acento_primario"
+        <FrameLayout
+            android:id="@+id/layoutCampanita"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackgroundBorderless"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintBottom_toBottomOf="parent"/>
+            app:layout_constraintBottom_toBottomOf="parent">
+
+            <ImageView
+                android:id="@+id/btnTopNotificaciones"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_notifications_outline"
+                app:tint="@color/color_acento_primario"/>
+
+            <TextView
+                android:id="@+id/tvBadgeNotificaciones"
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:layout_gravity="top|end"
+                android:layout_marginTop="8dp"
+                android:layout_marginEnd="6dp"
+                android:background="@drawable/bg_badge_red"
+                android:textColor="@android:color/white"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:gravity="center"
+                android:visibility="gone"
+                android:text="0"/>
+        </FrameLayout>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

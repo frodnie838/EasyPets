@@ -9,6 +9,7 @@ import android.widget.ImageView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
 import androidx.fragment.app.Fragment;
@@ -37,6 +38,7 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
+import com.google.firebase.messaging.FirebaseMessaging;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -48,6 +50,7 @@ public class MainActivity extends AppCompatActivity {
     private android.widget.ImageButton btnTopBack;
     private android.widget.LinearLayout layoutTopSearch;
     private android.widget.EditText etTopSearch;
+    private java.util.List<com.easypets.models.Notificacion> listaNotificaciones = new java.util.ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -62,6 +65,9 @@ public class MainActivity extends AppCompatActivity {
         layoutTopSearch = findViewById(R.id.layoutTopSearch);
         etTopSearch = findViewById(R.id.etTopSearch);
         ivTopLogo = findViewById(R.id.ivTopLogo);
+
+        activarBuzonDeNotificaciones();
+        guardarTokenFCM();
 
         btnTopBack.setOnClickListener(v -> {
             getOnBackPressedDispatcher().onBackPressed();
@@ -268,5 +274,211 @@ public class MainActivity extends AppCompatActivity {
                 public void onCancelled(@NonNull DatabaseError error) {}
             });
         }
+    }
+    // 1. Escuchar el buzón constantemente
+    private void activarBuzonDeNotificaciones() {
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser == null) return;
+
+        DatabaseReference buzonRef = FirebaseDatabase.getInstance().getReference()
+                .child("notificaciones").child(currentUser.getUid());
+
+        // Usamos ValueEventListener para leer toda la lista de golpe
+        buzonRef.addValueEventListener(new com.google.firebase.database.ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                listaNotificaciones.clear();
+
+                for (DataSnapshot ds : snapshot.getChildren()) {
+                    String id = ds.getKey();
+                    String titulo = ds.child("titulo").getValue(String.class);
+                    String mensaje = ds.child("mensaje").getValue(String.class);
+                    Boolean mostrada = ds.child("mostrada").getValue(Boolean.class);
+
+                    // Leemos los datos ocultos (usamos un fallback por si hay notificaciones antiguas sin estos datos)
+                    String tipo = ds.child("tipo").getValue(String.class);
+                    String hiloId = ds.child("hiloId").getValue(String.class);
+                    String hiloTitulo = ds.child("hiloTitulo").getValue(String.class);
+                    String hiloDescripcion = ds.child("hiloDescripcion").getValue(String.class);
+                    String hiloAutor = ds.child("hiloAutor").getValue(String.class);
+                    Long hiloTimestamp = ds.child("hiloTimestamp").getValue(Long.class);
+                    if (hiloTimestamp == null) hiloTimestamp = 0L;
+
+                    if (mostrada == null || !mostrada) {
+                        lanzarNotificacionForo(titulo, mensaje);
+                        ds.getRef().child("mostrada").setValue(true);
+                    }
+
+                    // Guardamos la notificación completa en nuestra lista
+                    listaNotificaciones.add(0, new com.easypets.models.Notificacion(
+                            id, titulo, mensaje, tipo, hiloId, hiloTitulo, hiloDescripcion, hiloAutor, hiloTimestamp));
+                }
+
+                // Actualizamos el número rojo de la campanita
+                actualizarCampanitaUI();
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {}
+        });
+
+        // Configurar el click en la campanita
+        android.widget.FrameLayout layoutCampanita = findViewById(R.id.layoutCampanita);
+        layoutCampanita.setOnClickListener(v -> mostrarDesplegableNotificaciones());
+    }
+
+    private void actualizarCampanitaUI() {
+        android.widget.TextView tvBadge = findViewById(R.id.tvBadgeNotificaciones);
+        android.widget.ImageView btnCampana = findViewById(R.id.btnTopNotificaciones); // Capturamos la campanita
+
+        if (listaNotificaciones.isEmpty()) {
+            // No hay notificaciones
+            tvBadge.setVisibility(android.view.View.GONE);
+            btnCampana.setImageResource(R.drawable.ic_notifications_outline); // Icono vacío
+        } else {
+            // Hay notificaciones
+            tvBadge.setVisibility(android.view.View.VISIBLE);
+            tvBadge.setText(String.valueOf(listaNotificaciones.size()));
+            btnCampana.setImageResource(R.drawable.ic_notifications_filled); // Icono rellenado
+        }
+    }
+
+    // 2. El Desplegable Flotante
+    private void mostrarDesplegableNotificaciones() {
+        android.view.View popupView = getLayoutInflater().inflate(R.layout.layout_popup_notificaciones, null);
+
+        // Creamos la ventana flotante
+        android.widget.PopupWindow popupWindow = new android.widget.PopupWindow(popupView,
+                dpToPx(280), android.view.ViewGroup.LayoutParams.WRAP_CONTENT, true);
+
+        popupWindow.setElevation(15f);
+        popupWindow.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(androidx.core.content.ContextCompat.getColor(this, R.color.fondo_base)));
+
+        android.widget.ListView lvNotificaciones = popupView.findViewById(R.id.lvNotificaciones);
+        android.widget.TextView tvSinNotificaciones = popupView.findViewById(R.id.tvSinNotificaciones);
+
+        if (listaNotificaciones.isEmpty()) {
+            lvNotificaciones.setVisibility(android.view.View.GONE);
+            tvSinNotificaciones.setVisibility(android.view.View.VISIBLE);
+        } else {
+            // ✨ Adaptador actualizado usando tu nueva tarjeta personalizada ✨
+            android.widget.ArrayAdapter<com.easypets.models.Notificacion> adapter = new android.widget.ArrayAdapter<com.easypets.models.Notificacion>(this, R.layout.item_notificacion, listaNotificaciones) {
+                @NonNull
+                @Override
+                public android.view.View getView(int position, @Nullable android.view.View convertView, @NonNull android.view.ViewGroup parent) {
+
+                    // Inflamos la tarjeta si aún no existe
+                    if (convertView == null) {
+                        convertView = getLayoutInflater().inflate(R.layout.item_notificacion, parent, false);
+                    }
+
+                    // Vinculamos los textos de nuestra nueva tarjeta
+                    android.widget.TextView tvTitulo = convertView.findViewById(R.id.tvNotificacionTitulo);
+                    android.widget.TextView tvMensaje = convertView.findViewById(R.id.tvNotificacionMensaje);
+
+                    com.easypets.models.Notificacion notif = listaNotificaciones.get(position);
+
+                    // Ponemos los datos
+                    tvTitulo.setText(notif.titulo);
+                    tvMensaje.setText(notif.mensaje);
+
+                    return convertView;
+                }
+            };
+            lvNotificaciones.setAdapter(adapter);
+
+            // ¿Qué pasa al pulsar una notificación?
+            lvNotificaciones.setOnItemClickListener((parent, view, position, id) -> {
+                com.easypets.models.Notificacion n = listaNotificaciones.get(position);
+
+                // 1. La eliminamos de Firebase
+                FirebaseDatabase.getInstance().getReference().child("notificaciones")
+                        .child(FirebaseAuth.getInstance().getCurrentUser().getUid())
+                        .child(n.id).removeValue();
+
+                // 2. Cerramos el desplegable
+                popupWindow.dismiss();
+
+                // LÓGICA DE NAVEGACIÓN (DEEP LINKING)
+                if ("foro_respuesta".equals(n.tipo) && n.hiloId != null) {
+                    // Preparamos los datos del hilo
+                    android.os.Bundle args = new android.os.Bundle();
+                    args.putString("hiloId", n.hiloId);
+                    args.putString("titulo", n.hiloTitulo);
+                    args.putString("descripcion", n.hiloDescripcion);
+                    args.putString("idAutor", n.hiloAutor);
+                    args.putLong("timestamp", n.hiloTimestamp);
+
+                    // Creamos el fragmento y le pasamos los datos
+                    com.easypets.ui.comunidad.HiloDetalleFragment fragment = new com.easypets.ui.comunidad.HiloDetalleFragment();
+                    fragment.setArguments(args);
+
+                    // Marcamos el botón de la comunidad en la barra inferior (opcional para que quede bonito)
+                    bottomNav.setSelectedItemId(R.id.nav_comunidad);
+
+                    // Hacemos el salto de pantalla
+                    getSupportFragmentManager().beginTransaction()
+                            .replace(R.id.frame_container, fragment)
+                            .addToBackStack(null)
+                            .commit();
+                }
+            });
+        }
+
+        // Mostrar el desplegable anclado justo debajo de la campanita
+        android.widget.FrameLayout layoutCampanita = findViewById(R.id.layoutCampanita);
+        popupWindow.showAsDropDown(layoutCampanita, -dpToPx(240), 10);
+    }
+
+    // Convertidor de medidas de pantalla
+    private int dpToPx(int dp) {
+        float density = getResources().getDisplayMetrics().density;
+        return Math.round((float) dp * density);
+    }
+    private void lanzarNotificacionForo(String titulo, String mensaje) {
+        String channelId = "easypets_foro";
+        android.content.Intent intent = new android.content.Intent(this, MainActivity.class);
+        intent.addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        android.app.PendingIntent pendingIntent = android.app.PendingIntent.getActivity(this, 0, intent, android.app.PendingIntent.FLAG_ONE_SHOT | android.app.PendingIntent.FLAG_IMMUTABLE);
+
+        android.net.Uri defaultSoundUri = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_NOTIFICATION);
+        androidx.core.app.NotificationCompat.Builder builder = new androidx.core.app.NotificationCompat.Builder(this, channelId)
+                .setSmallIcon(R.drawable.logo_sin_fondo)
+                .setContentTitle(titulo)
+                .setContentText(mensaje)
+                .setAutoCancel(true)
+                .setSound(defaultSoundUri)
+                .setContentIntent(pendingIntent)
+                .setPriority(androidx.core.app.NotificationCompat.PRIORITY_HIGH);
+
+        android.app.NotificationManager notificationManager = (android.app.NotificationManager) getSystemService(android.content.Context.NOTIFICATION_SERVICE);
+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            android.app.NotificationChannel channel = new android.app.NotificationChannel(channelId, "Notificaciones de la Comunidad", android.app.NotificationManager.IMPORTANCE_HIGH);
+            notificationManager.createNotificationChannel(channel);
+        }
+
+        notificationManager.notify((int) System.currentTimeMillis(), builder.build());
+    }
+    private void guardarTokenFCM() {
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser == null) return;
+
+        FirebaseMessaging.getInstance().getToken()
+                .addOnCompleteListener(task -> {
+                    if (!task.isSuccessful()) {
+                        android.util.Log.w("FCM", "No se pudo obtener el token FCM", task.getException());
+                        return;
+                    }
+
+                    // Conseguimos el Token del móvil
+                    String token = task.getResult();
+
+                    // Lo guardamos en la base de datos dentro del perfil del usuario
+                    FirebaseDatabase.getInstance().getReference("usuarios")
+                            .child(currentUser.getUid())
+                            .child("fcmToken")
+                            .setValue(token);
+                });
     }
 }

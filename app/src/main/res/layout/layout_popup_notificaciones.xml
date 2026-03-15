@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="250dp"
+    android:layout_height="wrap_content"
+    android:maxHeight="350dp"
+    android:orientation="vertical"
+    android:background="@color/fondo_base"
+    android:padding="8dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Tus Notificaciones"
+        android:textStyle="bold"
+        android:textSize="16sp"
+        android:textColor="@color/color_acento_primario"
+        android:padding="8dp"/>
+
+    <ListView
+        android:id="@+id/lvNotificaciones"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:divider="@android:color/transparent"
+        android:dividerHeight="8dp" />
+
+    <TextView
+        android:id="@+id/tvSinNotificaciones"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="No tienes notificaciones nuevas."
+        android:textSize="14sp"
+        android:textColor="#888888"
+        android:gravity="center"
+        android:padding="16dp"
+        android:visibility="gone"/>
+</LinearLayout>

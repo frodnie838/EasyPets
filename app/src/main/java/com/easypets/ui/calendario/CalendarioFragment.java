@@ -262,22 +262,18 @@ public class CalendarioFragment extends Fragment {
         });
     }
 
-    // Método actualizado con AlarmManager para PRECISIÓN EXACTA
+    // Método definitivo y agresivo para Alarmas Exactas
     private void programarNotificacion(long tiempoEventoMillis, String titulo, String mensaje, long milisegundosAntes) {
         long tiempoActual = System.currentTimeMillis();
         long tiempoAlarma = tiempoEventoMillis - milisegundosAntes;
 
-        // Solo programamos si el momento de la alarma es en el futuro
         if (tiempoAlarma > tiempoActual) {
-
             android.app.AlarmManager alarmManager = (android.app.AlarmManager) requireContext().getSystemService(Context.ALARM_SERVICE);
             Intent intent = new Intent(requireContext(), com.easypets.services.NotificacionReceiver.class);
             intent.putExtra("titulo", titulo);
             intent.putExtra("mensaje", mensaje);
 
-            // Usamos un ID único basado en el tiempo para que las alarmas no se pisen entre ellas
             int idAlarma = (int) (tiempoAlarma % Integer.MAX_VALUE);
-
             android.app.PendingIntent pendingIntent = android.app.PendingIntent.getBroadcast(
                     requireContext(),
                     idAlarma,
@@ -285,26 +281,16 @@ public class CalendarioFragment extends Fragment {
                     android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE
             );
 
-            // Validamos permisos para versiones modernas (Android 12+)
-            try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    if (alarmManager.canScheduleExactAlarms()) {
-                        // Tenemos permiso, alarma exacta que despierta al móvil
-                        alarmManager.setExactAndAllowWhileIdle(android.app.AlarmManager.RTC_WAKEUP, tiempoAlarma, pendingIntent);
-                    } else {
-                        // No tenemos permiso exacto, ponemos una alarma normal (inexacta)
-                        alarmManager.set(android.app.AlarmManager.RTC_WAKEUP, tiempoAlarma, pendingIntent);
-                    }
-                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    alarmManager.setExactAndAllowWhileIdle(android.app.AlarmManager.RTC_WAKEUP, tiempoAlarma, pendingIntent);
-                } else {
-                    alarmManager.setExact(android.app.AlarmManager.RTC_WAKEUP, tiempoAlarma, pendingIntent);
-                }
-            } catch (SecurityException e) {
-                // Si algo falla por seguridad, caemos en la alarma normal
-                alarmManager.set(android.app.AlarmManager.RTC_WAKEUP, tiempoAlarma, pendingIntent);
-                e.printStackTrace();
+            // Al tener el permiso USE_EXACT_ALARM en el Manifest, podemos forzar el setExactAndAllowWhileIdle
+            // sin que Android nos lance una SecurityException.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                // Despierta el dispositivo incluso en Doze Mode (Ahorro de batería extremo)
+                alarmManager.setExactAndAllowWhileIdle(android.app.AlarmManager.RTC_WAKEUP, tiempoAlarma, pendingIntent);
+            } else {
+                alarmManager.setExact(android.app.AlarmManager.RTC_WAKEUP, tiempoAlarma, pendingIntent);
             }
+
+            Log.d("ALARMAS", "Alarma EXACTA programada para: " + new java.util.Date(tiempoAlarma).toString());
         }
     }
 

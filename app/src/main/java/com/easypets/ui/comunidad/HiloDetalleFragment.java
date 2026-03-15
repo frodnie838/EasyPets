@@ -92,6 +92,7 @@ public class HiloDetalleFragment extends Fragment {
 
         currentUser = FirebaseAuth.getInstance().getCurrentUser();
         respuestasRef = FirebaseDatabase.getInstance().getReference("foro_respuestas").child(hiloId);
+
         if (currentUser == null) {
             etNuevaRespuesta.setEnabled(false); // Bloqueamos escritura
             etNuevaRespuesta.setHint("Inicia sesión para participar"); // Cambiamos el mensaje
@@ -100,6 +101,7 @@ public class HiloDetalleFragment extends Fragment {
             etNuevaRespuesta.setEnabled(true);
             etNuevaRespuesta.setHint("Escribe una respuesta...");
         }
+
         listaRespuestas = new ArrayList<>();
         adapter = new RespuestaAdapter(listaRespuestas, new RespuestaAdapter.OnRespuestaAccionListener() {
             @Override
@@ -181,7 +183,7 @@ public class HiloDetalleFragment extends Fragment {
         if (respuestaAEditar != null) {
             // --- MODO EDICIÓN ---
             respuestaAEditar.setTexto(texto);
-            respuestaAEditar.setEditado(true); // Marcamos como editado
+            respuestaAEditar.setEditado(true);
 
             respuestasRef.child(respuestaAEditar.getId()).setValue(respuestaAEditar)
                     .addOnSuccessListener(aVoid -> {
@@ -195,7 +197,6 @@ public class HiloDetalleFragment extends Fragment {
         } else {
             // --- MODO NUEVA RESPUESTA ---
             String idRespuesta = respuestasRef.push().getKey();
-            // Añadimos el 'false' al final para el nuevo campo 'editado' del constructor
             RespuestaForo nuevaRespuesta = new RespuestaForo(idRespuesta, texto,
                     currentUser.getUid(), "", System.currentTimeMillis(), false);
 
@@ -203,6 +204,8 @@ public class HiloDetalleFragment extends Fragment {
                 respuestasRef.child(idRespuesta).setValue(nuevaRespuesta)
                         .addOnSuccessListener(aVoid -> {
                             limpiarPostEnvio();
+                            // ✨ NUEVO: Enviar la notificación al dueño del hilo
+                            enviarNotificacionAlDueño();
                         })
                         .addOnFailureListener(e -> {
                             Toast.makeText(getContext(), "Error al enviar", Toast.LENGTH_SHORT).show();
@@ -216,9 +219,10 @@ public class HiloDetalleFragment extends Fragment {
     private void limpiarPostEnvio() {
         respuestaAEditar = null;
         etNuevaRespuesta.setText("");
-        btnEnviarRespuesta.setImageResource(android.R.drawable.ic_menu_send); // Volver al icono de enviar
-        actualizarEstadoBoton(false); // Deshabilitar porque el texto está vacío
+        btnEnviarRespuesta.setImageResource(android.R.drawable.ic_menu_send);
+        actualizarEstadoBoton(false);
     }
+
     private void cargarDatosAutorPrincipal() {
         if (idAutor == null) return;
 
@@ -268,16 +272,16 @@ public class HiloDetalleFragment extends Fragment {
             } catch (Exception e) { e.printStackTrace(); }
         }).start();
     }
+
     private void actualizarEstadoBoton(boolean habilitado) {
         btnEnviarRespuesta.setEnabled(habilitado);
         if (habilitado) {
-            // Activo
             btnEnviarRespuesta.setColorFilter(androidx.core.content.ContextCompat.getColor(requireContext(), R.color.color_acento_primario));
         } else {
-            // Desactivado
             btnEnviarRespuesta.setColorFilter(androidx.core.content.ContextCompat.getColor(requireContext(), R.color.grey));
         }
     }
+
     private void confirmarBorrado(RespuestaForo respuesta) {
         new androidx.appcompat.app.AlertDialog.Builder(requireContext())
                 .setTitle("Eliminar respuesta")
@@ -300,5 +304,56 @@ public class HiloDetalleFragment extends Fragment {
                 })
                 .setNegativeButton("Cancelar", null)
                 .show();
+    }
+
+    // ✨ NUEVO MÉTODO: Envía la notificación silenciosa por Firebase al dueño del hilo
+    private void enviarNotificacionAlDueño() {
+        if (idAutor == null || currentUser == null) return;
+
+        // No enviamos notificación si nos respondemos a nosotros mismos
+        if (idAutor.equals(currentUser.getUid())) return;
+
+        DatabaseReference buzonRef = FirebaseDatabase.getInstance().getReference()
+                .child("notificaciones")
+                .child(idAutor);
+
+        String idNotificacion = buzonRef.push().getKey();
+
+        // Buscamos nuestro propio nombre para enviarlo en la notificación
+        FirebaseDatabase.getInstance().getReference("usuarios").child(currentUser.getUid())
+                .addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        String miNombre = "Alguien";
+                        if (snapshot.exists()) {
+                            String nick = snapshot.child("nick").getValue(String.class);
+                            if (nick != null && !nick.isEmpty()) {
+                                miNombre = "@" + nick;
+                            } else {
+                                String nombre = snapshot.child("nombre").getValue(String.class);
+                                if (nombre != null) miNombre = nombre;
+                            }
+                        }
+
+                        // Creamos la "carta" con los datos visibles
+                        java.util.HashMap<String, Object> carta = new java.util.HashMap<>();
+                        carta.put("titulo", "Nueva respuesta en tu hilo \uD83D\uDCAC");
+                        carta.put("mensaje", miNombre + " ha comentado en: " + titulo);
+                        carta.put("mostrada", false);
+
+                        // ✨ NUEVO: Añadimos los datos ocultos para la navegación
+                        carta.put("tipo", "foro_respuesta");
+                        carta.put("hiloId", hiloId);
+                        carta.put("hiloTitulo", titulo);
+                        carta.put("hiloDescripcion", descripcion);
+                        carta.put("hiloAutor", idAutor);
+                        carta.put("hiloTimestamp", timestampCreacion);
+
+                        if (idNotificacion != null) {
+                            buzonRef.child(idNotificacion).setValue(carta);
+                        }
+                    }
+                    @Override public void onCancelled(@NonNull DatabaseError error) {}
+                });
     }
 }
