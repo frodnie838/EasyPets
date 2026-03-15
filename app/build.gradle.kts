@@ -61,6 +61,7 @@ dependencies {
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-database")
+    implementation("com.google.firebase:firebase-messaging:25.0.1")
 
     // Google Sign In
     implementation("com.google.android.gms:play-services-auth:21.0.0")
@@ -81,4 +82,6 @@ dependencies {
     implementation("com.android.volley:volley:1.2.1")
     // Cargar fotos de Internet en ImageView
     implementation("com.github.bumptech.glide:glide:4.16.0")
+    // Librería para programar tareas en segundo plano (Recordatorios)
+    implementation("androidx.work:work-runtime:2.9.0")
 }

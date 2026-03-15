@@ -8,7 +8,9 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.Drawable;
+import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -30,9 +32,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 // ✨ IMPORTS DE LA NUEVA LIBRERÍA DE CALENDARIO ACTUALIZADOS A LA VERSIÓN 1.9.0
 import com.applandeo.materialcalendarview.CalendarView;
-import com.applandeo.materialcalendarview.EventDay;
 import com.applandeo.materialcalendarview.CalendarDay; // ✨ NUEVO
-import com.applandeo.materialcalendarview.listeners.OnCalendarDayClickListener; // ✨ NUEVO
 import com.applandeo.materialcalendarview.exceptions.OutOfDateRangeException;
 
 import com.easypets.R;
@@ -56,8 +56,10 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
@@ -260,6 +262,52 @@ public class CalendarioFragment extends Fragment {
         });
     }
 
+    // Método actualizado con AlarmManager para PRECISIÓN EXACTA
+    private void programarNotificacion(long tiempoEventoMillis, String titulo, String mensaje, long milisegundosAntes) {
+        long tiempoActual = System.currentTimeMillis();
+        long tiempoAlarma = tiempoEventoMillis - milisegundosAntes;
+
+        // Solo programamos si el momento de la alarma es en el futuro
+        if (tiempoAlarma > tiempoActual) {
+
+            android.app.AlarmManager alarmManager = (android.app.AlarmManager) requireContext().getSystemService(Context.ALARM_SERVICE);
+            Intent intent = new Intent(requireContext(), com.easypets.services.NotificacionReceiver.class);
+            intent.putExtra("titulo", titulo);
+            intent.putExtra("mensaje", mensaje);
+
+            // Usamos un ID único basado en el tiempo para que las alarmas no se pisen entre ellas
+            int idAlarma = (int) (tiempoAlarma % Integer.MAX_VALUE);
+
+            android.app.PendingIntent pendingIntent = android.app.PendingIntent.getBroadcast(
+                    requireContext(),
+                    idAlarma,
+                    intent,
+                    android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE
+            );
+
+            // Validamos permisos para versiones modernas (Android 12+)
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    if (alarmManager.canScheduleExactAlarms()) {
+                        // Tenemos permiso, alarma exacta que despierta al móvil
+                        alarmManager.setExactAndAllowWhileIdle(android.app.AlarmManager.RTC_WAKEUP, tiempoAlarma, pendingIntent);
+                    } else {
+                        // No tenemos permiso exacto, ponemos una alarma normal (inexacta)
+                        alarmManager.set(android.app.AlarmManager.RTC_WAKEUP, tiempoAlarma, pendingIntent);
+                    }
+                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    alarmManager.setExactAndAllowWhileIdle(android.app.AlarmManager.RTC_WAKEUP, tiempoAlarma, pendingIntent);
+                } else {
+                    alarmManager.setExact(android.app.AlarmManager.RTC_WAKEUP, tiempoAlarma, pendingIntent);
+                }
+            } catch (SecurityException e) {
+                // Si algo falla por seguridad, caemos en la alarma normal
+                alarmManager.set(android.app.AlarmManager.RTC_WAKEUP, tiempoAlarma, pendingIntent);
+                e.printStackTrace();
+            }
+        }
+    }
+
     private void configurarSwipe(Context context) {
         ItemTouchHelper.SimpleCallback simpleCallback = new ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT) {
             @Override
@@ -402,8 +450,13 @@ public class CalendarioFragment extends Fragment {
         MaterialButton btnGuardar = dialogView.findViewById(R.id.btnGuardarDialog);
         MaterialButton btnCancelar = dialogView.findViewById(R.id.btnCancelarDialog);
 
+        // ✨ NUEVO: Enlazamos el Switch de notificaciones
+        com.google.android.material.switchmaterial.SwitchMaterial switchNoti = dialogView.findViewById(R.id.switchNotificacion);
+
         spinnerMascotas.setAdapter(new ArrayAdapter<>(requireContext(), android.R.layout.simple_dropdown_item_1line, nombresMascotas));
-        String[] opcionesTipo = {"Nota", "Veterinario", "Peluquería", "Guardería"};
+
+        // He añadido más opciones al Spinner para cubrir tus casos de uso
+        String[] opcionesTipo = {"Nota", "Veterinario", "Vacuna", "Peluquería", "Guardería", "Paseo", "Medicación", "Comida"};
         spinnerTipo.setAdapter(new ArrayAdapter<>(requireContext(), android.R.layout.simple_dropdown_item_1line, opcionesTipo));
 
         if (eventoExistente != null) {
@@ -474,12 +527,57 @@ public class CalendarioFragment extends Fragment {
                 }
             }
 
+            String fechaSeleccionada = btnFecha.getText().toString();
+            String horaSeleccionada = btnHora.getText().toString();
+            String tipoEvento = spinnerTipo.getText().toString();
+
+            // ✨ LÓGICA DE NOTIFICACIONES INTELIGENTES ✨
+            if (switchNoti.isChecked()) {
+                try {
+                    // 1. Convertir la fecha y la hora a Milisegundos
+                    SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
+
+                    // Si el usuario no puso hora, asumimos por defecto las 09:00 AM
+                    String fechaYHora = fechaSeleccionada + " " + (horaSeleccionada.equals("Hora (Opcional)") ? "09:00" : horaSeleccionada);
+                    Date dateEvento = sdf.parse(fechaYHora);
+
+                    if (dateEvento != null) {
+                        long tiempoEventoMillis = dateEvento.getTime();
+
+                        long UN_DIA = 24L * 60L * 60L * 1000L;
+                        long UNA_HORA = 60L * 60L * 1000L;
+                        long DIEZ_MINUTOS = 10L * 60L * 1000L;
+
+                        // 2. Evaluar el Tipo de Evento
+                        if (tipoEvento.equalsIgnoreCase("Veterinario") || tipoEvento.equalsIgnoreCase("Vacuna") || tipoEvento.equalsIgnoreCase("Peluquería")) {
+                            // Citas importantes: Aviso 24h antes y 1h antes
+                            programarNotificacion(tiempoEventoMillis, "Cita mañana: " + titulo, "Recuerda prepararlo todo para mañana.", UN_DIA);
+                            programarNotificacion(tiempoEventoMillis, "¡Cita en 1 hora!", "Prepárate para salir: " + titulo, UNA_HORA);
+                            Log.d("NOTIFICACIONES", "Programadas 2 alertas (24h y 1h) para: " + titulo);
+
+                        } else if (tipoEvento.equalsIgnoreCase("Paseo") || tipoEvento.equalsIgnoreCase("Medicación") || tipoEvento.equalsIgnoreCase("Comida")) {
+                            // Rutina exacta: Aviso en el momento
+                            programarNotificacion(tiempoEventoMillis, "¡Es la hora! ⏰", "Toca: " + titulo, 0L);
+                            Log.d("NOTIFICACIONES", "Programada 1 alerta exacta para: " + titulo);
+
+                        } else {
+                            // Otros eventos (Notas, Guardería...): Aviso 10 min antes por cortesía
+                            programarNotificacion(tiempoEventoMillis, "Próximo evento: " + titulo, "Empieza en 10 minutos.", DIEZ_MINUTOS);
+                            Log.d("NOTIFICACIONES", "Programada alerta genérica (-10m) para: " + titulo);
+                        }
+                    }
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                    Log.e("NOTIFICACIONES", "Error calculando la fecha de la notificación");
+                }
+            }
+
             Evento e = new Evento(
                     eventoExistente != null ? eventoExistente.getId() : null,
                     titulo,
-                    btnFecha.getText().toString(),
-                    btnHora.getText().toString().equals("Hora (Opcional)") ? "" : btnHora.getText().toString(),
-                    spinnerTipo.getText().toString(),
+                    fechaSeleccionada,
+                    horaSeleccionada.equals("Hora (Opcional)") ? "" : horaSeleccionada,
+                    tipoEvento,
                     idMascota
             );
 
@@ -490,6 +588,13 @@ public class CalendarioFragment extends Fragment {
                     public void onExito() {
                         dialog.dismiss();
                         cargarEventosDeFecha(userC.getUid(), calendarioActual.get(Calendar.DAY_OF_MONTH), calendarioActual.get(Calendar.MONTH), calendarioActual.get(Calendar.YEAR));
+
+                        // Opcional: Avisar al usuario de que la alarma se ha guardado
+                        if(switchNoti.isChecked()) {
+                            Toast.makeText(getContext(), "Evento guardado con recordatorio 🔔", Toast.LENGTH_SHORT).show();
+                        } else {
+                            Toast.makeText(getContext(), "Evento guardado (Sin alerta)", Toast.LENGTH_SHORT).show();
+                        }
                     }
                     @Override
                     public void onError(String error) {
