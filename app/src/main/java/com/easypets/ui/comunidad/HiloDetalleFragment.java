@@ -204,8 +204,8 @@ public class HiloDetalleFragment extends Fragment {
                 respuestasRef.child(idRespuesta).setValue(nuevaRespuesta)
                         .addOnSuccessListener(aVoid -> {
                             limpiarPostEnvio();
-                            // ✨ NUEVO: Enviar la notificación al dueño del hilo
-                            enviarNotificacionAlDueño();
+                            // ✨ PASAMOS EL TEXTO A LA NOTIFICACIÓN ✨
+                            enviarNotificacionAlDueño(texto);
                         })
                         .addOnFailureListener(e -> {
                             Toast.makeText(getContext(), "Error al enviar", Toast.LENGTH_SHORT).show();
@@ -306,8 +306,8 @@ public class HiloDetalleFragment extends Fragment {
                 .show();
     }
 
-    // ✨ NUEVO MÉTODO: Envía la notificación silenciosa por Firebase al dueño del hilo
-    private void enviarNotificacionAlDueño() {
+    // ✨ RECIBE EL TEXTO DEL COMENTARIO PARA RECORTARLO ✨
+    private void enviarNotificacionAlDueño(String textoComentario) {
         if (idAutor == null || currentUser == null) return;
 
         // No enviamos notificación si nos respondemos a nosotros mismos
@@ -318,6 +318,13 @@ public class HiloDetalleFragment extends Fragment {
                 .child(idAutor);
 
         String idNotificacion = buzonRef.push().getKey();
+
+        // Recortamos el comentario a un máximo de 50 caracteres para la notificación
+        String fragmento = textoComentario;
+        if (fragmento.length() > 50) {
+            fragmento = fragmento.substring(0, 50) + "...";
+        }
+        final String fragmentoFinal = fragmento; // Variable final para usar dentro del EventListener
 
         // Buscamos nuestro propio nombre para enviarlo en la notificación
         FirebaseDatabase.getInstance().getReference("usuarios").child(currentUser.getUid())
@@ -335,13 +342,13 @@ public class HiloDetalleFragment extends Fragment {
                             }
                         }
 
-                        // Creamos la "carta" con los datos visibles
+                        // Creamos la "carta" con los datos dinámicos actualizados
                         java.util.HashMap<String, Object> carta = new java.util.HashMap<>();
-                        carta.put("titulo", "Nueva respuesta en tu hilo \uD83D\uDCAC");
-                        carta.put("mensaje", miNombre + " ha comentado en: " + titulo);
+                        carta.put("titulo", miNombre + " ha comentado \uD83D\uDCAC");
+                        carta.put("mensaje", "\"" + fragmentoFinal + "\""); // Metemos el texto entre comillas
                         carta.put("mostrada", false);
 
-                        // ✨ NUEVO: Añadimos los datos ocultos para la navegación
+                        // Añadimos los datos ocultos para la navegación (Deep Linking)
                         carta.put("tipo", "foro_respuesta");
                         carta.put("hiloId", hiloId);
                         carta.put("hiloTitulo", titulo);
