@@ -273,7 +273,6 @@ public class CalendarioFragment extends Fragment {
             intent.putExtra("titulo", titulo);
             intent.putExtra("mensaje", mensaje);
 
-            // ✨ NUEVO: Le pasamos el ID del usuario a la alarma para que sepa dónde guardar el mensaje
             if (mAuth.getCurrentUser() != null) {
                 intent.putExtra("uid", mAuth.getCurrentUser().getUid());
             }
@@ -438,13 +437,11 @@ public class CalendarioFragment extends Fragment {
         MaterialButton btnGuardar = dialogView.findViewById(R.id.btnGuardarDialog);
         MaterialButton btnCancelar = dialogView.findViewById(R.id.btnCancelarDialog);
 
-        // ✨ NUEVO: Enlazamos el Switch de notificaciones
         com.google.android.material.switchmaterial.SwitchMaterial switchNoti = dialogView.findViewById(R.id.switchNotificacion);
 
         spinnerMascotas.setAdapter(new ArrayAdapter<>(requireContext(), android.R.layout.simple_dropdown_item_1line, nombresMascotas));
 
-        // He añadido más opciones al Spinner para cubrir tus casos de uso
-        String[] opcionesTipo = {"Nota", "Veterinario", "Vacuna", "Peluquería", "Guardería", "Paseo", "Medicación", "Comida"};
+        String[] opcionesTipo = com.easypets.models.TipoEvento.obtenerTodosLosNombres();
         spinnerTipo.setAdapter(new ArrayAdapter<>(requireContext(), android.R.layout.simple_dropdown_item_1line, opcionesTipo));
 
         if (eventoExistente != null) {
@@ -519,39 +516,63 @@ public class CalendarioFragment extends Fragment {
             String horaSeleccionada = btnHora.getText().toString();
             String tipoEvento = spinnerTipo.getText().toString();
 
-            // ✨ LÓGICA DE NOTIFICACIONES INTELIGENTES ✨
+            // LÓGICA DE NOTIFICACIONES INTELIGENTES Y PERSONALIZADAS
             if (switchNoti.isChecked()) {
                 try {
-                    // 1. Convertir la fecha y la hora a Milisegundos
                     SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
-
-                    // Si el usuario no puso hora, asumimos por defecto las 09:00 AM
                     String fechaYHora = fechaSeleccionada + " " + (horaSeleccionada.equals("Hora (Opcional)") ? "09:00" : horaSeleccionada);
                     Date dateEvento = sdf.parse(fechaYHora);
 
                     if (dateEvento != null) {
                         long tiempoEventoMillis = dateEvento.getTime();
 
+                        // Constantes de tiempo en milisegundos
                         long UN_DIA = 24L * 60L * 60L * 1000L;
+                        long DOS_HORAS = 2L * 60L * 60L * 1000L;
                         long UNA_HORA = 60L * 60L * 1000L;
-                        long DIEZ_MINUTOS = 10L * 60L * 1000L;
+                        long QUINCE_MIN = 15L * 60L * 1000L;
 
-                        // 2. Evaluar el Tipo de Evento
-                        if (tipoEvento.equalsIgnoreCase("Veterinario") || tipoEvento.equalsIgnoreCase("Vacuna") || tipoEvento.equalsIgnoreCase("Peluquería")) {
-                            // Citas importantes: Aviso 24h antes y 1h antes
-                            programarNotificacion(tiempoEventoMillis, "Cita mañana: " + titulo, "Recuerda prepararlo todo para mañana.", UN_DIA);
-                            programarNotificacion(tiempoEventoMillis, "¡Cita en 1 hora!", "Prepárate para salir: " + titulo, UNA_HORA);
-                            Log.d("NOTIFICACIONES", "Programadas 2 alertas (24h y 1h) para: " + titulo);
+                        boolean esGeneral = mascotaTxt.equals("General") || mascotaTxt.isEmpty();
 
-                        } else if (tipoEvento.equalsIgnoreCase("Paseo") || tipoEvento.equalsIgnoreCase("Medicación") || tipoEvento.equalsIgnoreCase("Comida")) {
-                            // Rutina exacta: Aviso en el momento
-                            programarNotificacion(tiempoEventoMillis, "¡Es la hora! ⏰", "Toca: " + titulo, 0L);
-                            Log.d("NOTIFICACIONES", "Programada 1 alerta exacta para: " + titulo);
+                        String deMascota = esGeneral ? "" : " de " + mascotaTxt;
+                        String paraMascota = esGeneral ? "" : " para " + mascotaTxt;
+                        String conMascota = esGeneral ? "" : " con " + mascotaTxt;
+                        String aMascota = esGeneral ? "" : " a " + mascotaTxt;
 
-                        } else {
-                            // Otros eventos (Notas, Guardería...): Aviso 10 min antes por cortesía
-                            programarNotificacion(tiempoEventoMillis, "Próximo evento: " + titulo, "Empieza en 10 minutos.", DIEZ_MINUTOS);
-                            Log.d("NOTIFICACIONES", "Programada alerta genérica (-10m) para: " + titulo);
+                        // Clasificamos usando nuestro Enum seguro
+                        com.easypets.models.TipoEvento tipoEnum = com.easypets.models.TipoEvento.desdeString(tipoEvento);
+
+                        switch (tipoEnum) {
+                            case VETERINARIO:
+                                programarNotificacion(tiempoEventoMillis, "🩺 Mañana: " + titulo, "Recuerda la cita médica" + deMascota + ".", UN_DIA);
+                                programarNotificacion(tiempoEventoMillis, "🚨 ¡Cita Veterinaria hoy!", "Tienes cita en 2 horas" + paraMascota + ": " + titulo, DOS_HORAS);
+                                break;
+
+                            case PELUQUERIA:
+                            case GUARDERIA:
+                                programarNotificacion(tiempoEventoMillis, "✂️ Mañana: " + titulo, "Recuerda la cita" + deMascota + ".", UN_DIA);
+                                programarNotificacion(tiempoEventoMillis, "⏰ ¡Cita en 1 hora!", "Prepárate para salir" + conMascota + ": " + titulo, UNA_HORA);
+                                break;
+
+                            case PASEO:
+                                programarNotificacion(tiempoEventoMillis, "🦮 ¡Hora del paseo!", "Ve cogiendo la correa" + deMascota + ".", QUINCE_MIN);
+                                break;
+
+                            case MEDICACION:
+                                // Para el título usamos una variable rápida
+                                String tituloMed = esGeneral ? "💊 ¡Hora de su medicina!" : "💊 ¡Medicina para " + mascotaTxt + "!";
+                                programarNotificacion(tiempoEventoMillis, tituloMed, "Toca administrar: " + titulo, 0L);
+                                break;
+
+                            case COMIDA:
+                                programarNotificacion(tiempoEventoMillis, "🦴 ¡Hora de comer!", "Toca servir la comida" + aMascota + ".", 0L);
+                                break;
+
+                            case NOTA:
+                            default:
+                                String tituloNota = esGeneral ? "📌 Recordatorio" : "📌 Recordatorio para " + mascotaTxt;
+                                programarNotificacion(tiempoEventoMillis, tituloNota, titulo, 0L);
+                                break;
                         }
                     }
                 } catch (Exception ex) {
