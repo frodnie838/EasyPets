@@ -273,6 +273,11 @@ public class CalendarioFragment extends Fragment {
             intent.putExtra("titulo", titulo);
             intent.putExtra("mensaje", mensaje);
 
+            // ✨ NUEVO: Le pasamos el ID del usuario a la alarma para que sepa dónde guardar el mensaje
+            if (mAuth.getCurrentUser() != null) {
+                intent.putExtra("uid", mAuth.getCurrentUser().getUid());
+            }
+
             int idAlarma = (int) (tiempoAlarma % Integer.MAX_VALUE);
             android.app.PendingIntent pendingIntent = android.app.PendingIntent.getBroadcast(
                     requireContext(),
@@ -281,10 +286,7 @@ public class CalendarioFragment extends Fragment {
                     android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE
             );
 
-            // Al tener el permiso USE_EXACT_ALARM en el Manifest, podemos forzar el setExactAndAllowWhileIdle
-            // sin que Android nos lance una SecurityException.
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                // Despierta el dispositivo incluso en Doze Mode (Ahorro de batería extremo)
                 alarmManager.setExactAndAllowWhileIdle(android.app.AlarmManager.RTC_WAKEUP, tiempoAlarma, pendingIntent);
             } else {
                 alarmManager.setExact(android.app.AlarmManager.RTC_WAKEUP, tiempoAlarma, pendingIntent);

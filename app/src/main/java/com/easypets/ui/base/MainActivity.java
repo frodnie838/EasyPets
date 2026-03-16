@@ -56,6 +56,7 @@ public class MainActivity extends AppCompatActivity {
     private java.util.List<com.easypets.models.Notificacion> listaNotificaciones = new java.util.ArrayList<>();
 
     private boolean primeraCargaNotificaciones = true;
+    private java.util.HashSet<String> notificacionesProcesadas = new java.util.HashSet<>();
 
     /**
      * Inicializa la vista, los componentes de la interfaz y los oyentes de navegación.
@@ -135,10 +136,16 @@ public class MainActivity extends AppCompatActivity {
             return false;
         });
 
+        // ✨ MAGIA DE NAVEGACIÓN: Cargar el fragmento por defecto o el que pida la notificación (Deep Linking)
         if (savedInstanceState == null) {
-            getSupportFragmentManager().beginTransaction()
-                    .replace(R.id.frame_container, new HomeFragment())
-                    .commit();
+            // Comprobamos si venimos de la notificación del calendario
+            if (getIntent() != null && "calendario".equals(getIntent().getStringExtra("abrirFragment"))) {
+                bottomNav.setSelectedItemId(R.id.nav_calendar);
+            } else {
+                getSupportFragmentManager().beginTransaction()
+                        .replace(R.id.frame_container, new HomeFragment())
+                        .commit();
+            }
         }
 
         getSupportFragmentManager().registerFragmentLifecycleCallbacks(new androidx.fragment.app.FragmentManager.FragmentLifecycleCallbacks() {
@@ -287,9 +294,14 @@ public class MainActivity extends AppCompatActivity {
                     if (hiloTimestamp == null) hiloTimestamp = 0L;
 
                     if (mostrada == null || !mostrada) {
-                        if (!primeraCargaNotificaciones) {
-                            lanzarNotificacionForo(titulo, mensaje);
+                        if (!primeraCargaNotificaciones && !notificacionesProcesadas.contains(id)) {
+                            // Ojo: Esto es solo para las de la Comunidad.
+                            // Las del calendario ya suenan por NotificacionReceiver.
+                            if (!"evento_calendario".equals(tipo)) {
+                                lanzarNotificacionForo(titulo, mensaje);
+                            }
                         }
+                        notificacionesProcesadas.add(id);
                         ds.getRef().child("mostrada").setValue(true);
                     }
 
@@ -376,6 +388,7 @@ public class MainActivity extends AppCompatActivity {
 
                 popupWindow.dismiss();
 
+                // LÓGICA DE NAVEGACIÓN (DEEP LINKING)
                 if ("foro_respuesta".equals(n.tipo) && n.hiloId != null) {
                     android.os.Bundle args = new android.os.Bundle();
                     args.putString("hiloId", n.hiloId);
@@ -393,6 +406,10 @@ public class MainActivity extends AppCompatActivity {
                             .replace(R.id.frame_container, fragment)
                             .addToBackStack(null)
                             .commit();
+
+                    // ✨ NUEVO: Si la notificación es del calendario, cambiamos la pestaña
+                } else if ("evento_calendario".equals(n.tipo)) {
+                    bottomNav.setSelectedItemId(R.id.nav_calendar);
                 }
             });
         }
