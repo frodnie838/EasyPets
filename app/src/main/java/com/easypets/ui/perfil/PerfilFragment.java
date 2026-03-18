@@ -121,12 +121,11 @@ public class PerfilFragment extends Fragment {
                 if (snapshot.exists()) {
                     nombreActual = snapshot.child("nombre").getValue(String.class);
                     apellidosActuales = snapshot.child("apellidos").getValue(String.class);
-                    nickActual = snapshot.child("nick").getValue(String.class); // ✨ Leemos el Nick
+                    nickActual = snapshot.child("nick").getValue(String.class);
 
                     String nombreCompleto = (nombreActual != null ? nombreActual : "") + " " + (apellidosActuales != null ? apellidosActuales : "");
                     tvNombre.setText(nombreCompleto.trim().isEmpty() ? "Usuario EasyPets" : nombreCompleto.trim());
 
-                    // Mostramos el Nick
                     if (nickActual != null && !nickActual.trim().isEmpty()) {
                         tvNick.setText("@" + nickActual);
                         tvNick.setVisibility(View.VISIBLE);
@@ -138,7 +137,11 @@ public class PerfilFragment extends Fragment {
                     fotoBase64Actual = snapshot.child("fotoPerfil").getValue(String.class);
 
                     if (fotoBase64Actual != null && !fotoBase64Actual.isEmpty()) {
-                        cargarFotoDesdeBase64(fotoBase64Actual, ivFotoPerfil);
+                        if (fotoBase64Actual.startsWith("http")) {
+                            cargarFotoGoogle(fotoBase64Actual, ivFotoPerfil);
+                        } else {
+                            cargarFotoDesdeBase64(fotoBase64Actual, ivFotoPerfil);
+                        }
                     } else if (currentUser.getPhotoUrl() != null) {
                         cargarFotoGoogle(currentUser.getPhotoUrl().toString(), ivFotoPerfil);
                     }
@@ -174,7 +177,11 @@ public class PerfilFragment extends Fragment {
         fotoBase64Temporal = (fotoBase64Actual != null) ? fotoBase64Actual : "";
 
         if (!fotoBase64Temporal.isEmpty()) {
-            cargarFotoDesdeBase64(fotoBase64Temporal, ivFotoDialogoTemporal);
+            if (fotoBase64Temporal.startsWith("http")) {
+                cargarFotoGoogle(fotoBase64Temporal, ivFotoDialogoTemporal);
+            } else {
+                cargarFotoDesdeBase64(fotoBase64Temporal, ivFotoDialogoTemporal);
+            }
         } else if (mAuth.getCurrentUser() != null && mAuth.getCurrentUser().getPhotoUrl() != null) {
             cargarFotoGoogle(mAuth.getCurrentUser().getPhotoUrl().toString(), ivFotoDialogoTemporal);
         }

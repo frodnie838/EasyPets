@@ -244,16 +244,22 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void onDataChange(@NonNull DataSnapshot snapshot) {
                     if (snapshot.exists()) {
-                        String fotoBase64Actual = snapshot.child("fotoPerfil").getValue(String.class);
+                        String fotoActual = snapshot.child("fotoPerfil").getValue(String.class);
 
-                        if (fotoBase64Actual != null && !fotoBase64Actual.isEmpty()) {
-                            try {
-                                byte[] decodedString = Base64.decode(fotoBase64Actual, Base64.DEFAULT);
-                                Bitmap bitmap = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
-                                ivTopProfile.setImageBitmap(bitmap);
-                                ivTopProfile.setImageTintList(null);
-                            } catch (Exception e) {
-                                e.printStackTrace();
+                        if (fotoActual != null && !fotoActual.isEmpty()) {
+
+                            if (fotoActual.startsWith("http")) {
+                                cargarFotoGoogleEnCabecera(fotoActual);
+                            } else {
+                                try {
+                                    // Decodificamos el Base64 normal
+                                    byte[] decodedString = Base64.decode(fotoActual, Base64.DEFAULT);
+                                    Bitmap bitmap = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
+                                    ivTopProfile.setImageBitmap(bitmap);
+                                    ivTopProfile.setImageTintList(null);
+                                } catch (Exception e) {
+                                    e.printStackTrace();
+                                }
                             }
                         }
                     }
@@ -262,6 +268,24 @@ public class MainActivity extends AppCompatActivity {
                 public void onCancelled(@NonNull DatabaseError error) {}
             });
         }
+    }
+
+    private void cargarFotoGoogleEnCabecera(String urlImagen) {
+        new Thread(() -> {
+            try {
+                // Descargamos la imagen en un hilo secundario para no congelar la app
+                java.io.InputStream in = new java.net.URL(urlImagen).openStream();
+                android.graphics.Bitmap foto = android.graphics.BitmapFactory.decodeStream(in);
+
+                // Volvemos al hilo principal para pintar la foto en la pantalla
+                runOnUiThread(() -> {
+                    ivTopProfile.setImageBitmap(foto);
+                    ivTopProfile.setImageTintList(null);
+                });
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }).start();
     }
 
     /**
