@@ -871,7 +871,6 @@ public class EducacionFragment extends Fragment {
             String texto = etNuevoComentario.getText().toString().trim();
             if (texto.isEmpty()) return;
 
-            // 2. Lógica para enviar un nuevo comentario
             String comentarioId = publicacionComentariosRef.push().getKey();
             com.easypets.models.ComentarioMascota nuevoComentario = new com.easypets.models.ComentarioMascota(
                     comentarioId,
@@ -884,6 +883,8 @@ public class EducacionFragment extends Fragment {
 
             publicacionComentariosRef.child(comentarioId).setValue(nuevoComentario).addOnSuccessListener(aVoid -> {
                 etNuevoComentario.setText("");
+                galeriaRef.child(publicacion.getId()).child("comentariosCount")
+                        .setValue(publicacion.getComentariosCount() + 1);
             });
         });
 

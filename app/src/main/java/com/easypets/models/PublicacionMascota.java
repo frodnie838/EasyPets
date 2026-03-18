@@ -12,6 +12,7 @@ public class PublicacionMascota {
     private String fotoBase64;
     private long timestamp;
     private Map<String, Boolean> likes;
+    private int comentariosCount; // ✨ NUEVO CONTADOR
 
     public PublicacionMascota() {
         likes = new HashMap<>();
@@ -26,6 +27,7 @@ public class PublicacionMascota {
         this.fotoBase64 = fotoBase64;
         this.timestamp = timestamp;
         this.likes = new HashMap<>();
+        this.comentariosCount = 0;
     }
 
     public String getId() { return id; }
@@ -37,4 +39,6 @@ public class PublicacionMascota {
     public long getTimestamp() { return timestamp; }
     public Map<String, Boolean> getLikes() { return likes; }
     public void setLikes(Map<String, Boolean> likes) { this.likes = likes; }
+    public int getComentariosCount() { return comentariosCount; }
+    public void setComentariosCount(int comentariosCount) { this.comentariosCount = comentariosCount; }
 }

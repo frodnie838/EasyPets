@@ -27,7 +27,7 @@ public class GaleriaAdapter extends RecyclerView.Adapter<GaleriaAdapter.ViewHold
 
     public interface OnGaleriaClickListener {
         void onLikeClick(PublicacionMascota publicacion);
-        void onComentarClick(PublicacionMascota publicacion); // ✨ NUEVO
+        void onComentarClick(PublicacionMascota publicacion);
         void onOpcionesClick(PublicacionMascota publicacion, View anchorView);
     }
 
@@ -66,6 +66,7 @@ public class GaleriaAdapter extends RecyclerView.Adapter<GaleriaAdapter.ViewHold
 
         int totalLikes = (publicacion.getLikes() != null) ? publicacion.getLikes().size() : 0;
         holder.tvLikesCount.setText(String.valueOf(totalLikes));
+        holder.tvComentariosCount.setText(String.valueOf(publicacion.getComentariosCount()));
 
         boolean leHeDadoLike = miUid != null && publicacion.getLikes() != null && publicacion.getLikes().containsKey(miUid);
         if (leHeDadoLike) {
@@ -83,7 +84,7 @@ public class GaleriaAdapter extends RecyclerView.Adapter<GaleriaAdapter.ViewHold
         }
 
         holder.btnLike.setOnClickListener(v -> listener.onLikeClick(publicacion));
-        holder.btnComentar.setOnClickListener(v -> listener.onComentarClick(publicacion)); // ✨ NUEVO
+        holder.btnComentar.setOnClickListener(v -> listener.onComentarClick(publicacion));
         holder.btnOpciones.setOnClickListener(v -> listener.onOpcionesClick(publicacion, v));
     }
 
@@ -93,7 +94,7 @@ public class GaleriaAdapter extends RecyclerView.Adapter<GaleriaAdapter.ViewHold
     }
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
-        TextView tvNombreMascota, tvAutor, tvDescripcion, tvLikesCount;
+        TextView tvNombreMascota, tvAutor, tvDescripcion, tvLikesCount, tvComentariosCount;
         ImageView ivFoto;
         ImageButton btnLike, btnComentar, btnOpciones;
 
@@ -107,6 +108,7 @@ public class GaleriaAdapter extends RecyclerView.Adapter<GaleriaAdapter.ViewHold
             btnLike = itemView.findViewById(R.id.btnLikeGaleria);
             btnComentar = itemView.findViewById(R.id.btnComentarGaleria);
             btnOpciones = itemView.findViewById(R.id.btnOpcionesGaleria);
+            tvComentariosCount = itemView.findViewById(R.id.tvComentariosCountGaleria);
         }
     }
 }
