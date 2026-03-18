@@ -17,6 +17,7 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -32,8 +33,10 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.easypets.R;
 import com.easypets.adapters.ArticuloAdapter;
 import com.easypets.adapters.ForoAdapter;
+import com.easypets.adapters.GaleriaAdapter; // ✨ IMPORTANTE
 import com.easypets.models.Articulo;
 import com.easypets.models.HiloForo;
+import com.easypets.models.PublicacionMascota; // ✨ IMPORTANTE
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.chip.ChipGroup;
@@ -64,22 +67,25 @@ public class EducacionFragment extends Fragment {
     private RecyclerView rvContenido;
     private TabLayout tabLayout;
     private FloatingActionButton fabAgregar;
-    private ChipGroup chipGroupMisPublicaciones;
+
+    private ChipGroup chipGroupMisPublicaciones, chipGroupComunidad;
+
     private ProgressBar pbCargando;
     private EditText etBuscador;
 
-    // ✨ Escuchador del buscador
     private TextWatcher buscadorWatcher;
 
     private ArticuloAdapter articuloAdapter;
     private ForoAdapter foroAdapter;
+    private GaleriaAdapter galeriaAdapter; // ✨ ADAPTADOR DE LA GALERÍA
 
     private List<Articulo> listaArticulos;
     private List<Articulo> listaArticulosOriginal;
     private List<HiloForo> listaHilos;
     private List<HiloForo> listaHilosOriginal;
+    private List<PublicacionMascota> listaGaleria; // ✨ LISTA DE MASCOTAS
 
-    private DatabaseReference comunidadRef, oficialesRef, usuariosRef, foroRef;
+    private DatabaseReference comunidadRef, oficialesRef, usuariosRef, foroRef, galeriaRef; // ✨ REFERENCIA A LA GALERÍA
     private static FirebaseUser currentUser;
     private ValueEventListener contenidoListener;
     private Query activeQuery;
@@ -102,9 +108,9 @@ public class EducacionFragment extends Fragment {
         tabLayout = view.findViewById(R.id.tabLayoutEducacion);
         fabAgregar = view.findViewById(R.id.fabAgregarArticulo);
         chipGroupMisPublicaciones = view.findViewById(R.id.chipGroupMisPublicaciones);
+        chipGroupComunidad = view.findViewById(R.id.chipGroupComunidad);
         pbCargando = view.findViewById(R.id.pbCargando);
 
-        // ✨ CONECTAR CON EL BUSCADOR DE LA CABECERA (MainActivity)
         if (getActivity() != null) {
             etBuscador = getActivity().findViewById(R.id.etTopSearch);
         }
@@ -115,11 +121,13 @@ public class EducacionFragment extends Fragment {
         oficialesRef = db.getReference("articulos_oficiales");
         usuariosRef = db.getReference("usuarios");
         foroRef = db.getReference("foro_hilos");
+        galeriaRef = db.getReference("mascotas_comunidad"); // ✨ INICIALIZADA
 
         listaArticulos = new ArrayList<>();
         listaArticulosOriginal = new ArrayList<>();
         listaHilos = new ArrayList<>();
         listaHilosOriginal = new ArrayList<>();
+        listaGaleria = new ArrayList<>(); // ✨ INICIALIZADA
 
         articuloAdapter = new ArticuloAdapter(listaArticulos, new ArticuloAdapter.OnArticuloClickListener() {
             @Override public void onArticuloClick(Articulo articulo) { mostrarArticuloCompleto(articulo); }
@@ -150,11 +158,44 @@ public class EducacionFragment extends Fragment {
             @Override public void onBorrarClick(HiloForo hilo) { confirmarBorradoHilo(hilo); }
         });
 
+        galeriaAdapter = new GaleriaAdapter(listaGaleria, new GaleriaAdapter.OnGaleriaClickListener() {
+            @Override
+            public void onLikeClick(PublicacionMascota publicacion) {
+                // Bloqueo para Modo Invitado
+                if (currentUser == null) {
+                    Toast.makeText(getContext(), "Regístrate para dar Me gusta ❤️", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                DatabaseReference likeRef = galeriaRef.child(publicacion.getId()).child("likes").child(currentUser.getUid());
+                if (publicacion.getLikes() != null && publicacion.getLikes().containsKey(currentUser.getUid())) {
+                    likeRef.removeValue(); // Quitar Like
+                } else {
+                    likeRef.setValue(true); // Dar Like
+                }
+            }
+
+            @Override
+            public void onComentarClick(PublicacionMascota publicacion) {
+                // Bloqueo para Modo Invitado
+                if (currentUser == null) {
+                    Toast.makeText(getContext(), "Regístrate para comentar 💬", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                Toast.makeText(getContext(), "Próximamente podrás comentar", Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onOpcionesClick(PublicacionMascota publicacion, View anchorView) {
+                confirmarBorradoMascota(publicacion);
+            }
+        });
+
         rvContenido.setLayoutManager(new LinearLayoutManager(getContext()));
         obtenerDatosUsuario();
         configurarPestanas();
 
-        // ✨ LISTENER DEL BUSCADOR (CREADO Y ASIGNADO)
         if (etBuscador != null) {
             buscadorWatcher = new TextWatcher() {
                 @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -181,6 +222,13 @@ public class EducacionFragment extends Fragment {
                                 else mostrarDialogoCrearHilo();
                             })
                             .show();
+                } else if (titulo.equals("Comunidad")) {
+                    int selectedChipId = chipGroupComunidad.getCheckedChipId();
+                    if (selectedChipId == R.id.chipComunidadMascotas) {
+                        mostrarDialogoSubirMascota();
+                    } else {
+                        mostrarDialogoCrearArticulo();
+                    }
                 } else {
                     mostrarDialogoCrearArticulo();
                 }
@@ -198,6 +246,7 @@ public class EducacionFragment extends Fragment {
                             if (ivVistaPreviaDialogo != null) {
                                 ivVistaPreviaDialogo.setImageBitmap(resized);
                                 ivVistaPreviaDialogo.setVisibility(View.VISIBLE);
+                                ivVistaPreviaDialogo.setPadding(0, 0, 0, 0);
                             }
                             ByteArrayOutputStream baos = new ByteArrayOutputStream();
                             resized.compress(Bitmap.CompressFormat.JPEG, 70, baos);
@@ -231,23 +280,30 @@ public class EducacionFragment extends Fragment {
 
                 listaArticulos.clear();
                 listaHilos.clear();
+                listaGaleria.clear();
                 articuloAdapter.notifyDataSetChanged();
                 foroAdapter.notifyDataSetChanged();
+                galeriaAdapter.notifyDataSetChanged();
 
                 if (titulo.equals("Mis Publicaciones")) {
                     chipGroupMisPublicaciones.setVisibility(View.VISIBLE);
+                    chipGroupComunidad.setVisibility(View.GONE);
                     actualizarListaMisPublicaciones();
+
+                } else if (titulo.equals("Comunidad")) {
+                    chipGroupMisPublicaciones.setVisibility(View.GONE);
+                    chipGroupComunidad.setVisibility(View.VISIBLE);
+                    actualizarListaComunidad();
+
                 } else {
                     chipGroupMisPublicaciones.setVisibility(View.GONE);
+                    chipGroupComunidad.setVisibility(View.GONE);
                     articuloAdapter.setMostrarOpciones(false);
                     foroAdapter.setMostrarOpciones(false);
 
                     if (titulo.equals("Oficiales")) {
                         rvContenido.setAdapter(articuloAdapter);
                         cargarArticulos(oficialesRef, "");
-                    } else if (titulo.equals("Comunidad")) {
-                        rvContenido.setAdapter(articuloAdapter);
-                        cargarArticulos(comunidadRef, "");
                     } else if (titulo.equals("Foro")) {
                         rvContenido.setAdapter(foroAdapter);
                         cargarHilos(foroRef);
@@ -264,6 +320,13 @@ public class EducacionFragment extends Fragment {
             if (!checkedIds.isEmpty()) {
                 if (etBuscador != null) etBuscador.setText("");
                 actualizarListaMisPublicaciones();
+            }
+        });
+
+        chipGroupComunidad.setOnCheckedStateChangeListener((group, checkedIds) -> {
+            if (!checkedIds.isEmpty()) {
+                if (etBuscador != null) etBuscador.setText("");
+                actualizarListaComunidad();
             }
         });
 
@@ -286,6 +349,21 @@ public class EducacionFragment extends Fragment {
             foroAdapter.setMostrarOpciones(true);
             rvContenido.setAdapter(foroAdapter);
             cargarHilos(foroRef.orderByChild("idAutor").equalTo(currentUser.getUid()));
+        }
+    }
+
+    private void actualizarListaComunidad() {
+        detenerListener();
+        int selectedChipId = chipGroupComunidad.getCheckedChipId();
+        articuloAdapter.setMostrarOpciones(false);
+
+        if (selectedChipId == R.id.chipComunidadArticulos) {
+            rvContenido.setAdapter(articuloAdapter);
+            cargarArticulos(comunidadRef, "");
+
+        } else if (selectedChipId == R.id.chipComunidadMascotas) {
+            rvContenido.setAdapter(galeriaAdapter);
+            cargarGaleria();
         }
     }
 
@@ -319,6 +397,31 @@ public class EducacionFragment extends Fragment {
             }
             foroAdapter.notifyDataSetChanged();
         }
+    }
+
+    // ✨ Método que descarga las fotos desde Firebase
+    private void cargarGaleria() {
+        listaGaleria.clear();
+        galeriaAdapter.notifyDataSetChanged();
+        pbCargando.setVisibility(View.VISIBLE);
+
+        activeQuery = galeriaRef.orderByChild("timestamp");
+        contenidoListener = new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                listaGaleria.clear();
+                for (DataSnapshot data : snapshot.getChildren()) {
+                    PublicacionMascota p = data.getValue(PublicacionMascota.class);
+                    if (p != null) listaGaleria.add(p);
+                }
+                // Le damos la vuelta a la lista para que las fotos más nuevas salgan arriba
+                Collections.reverse(listaGaleria);
+                galeriaAdapter.notifyDataSetChanged();
+                pbCargando.setVisibility(View.GONE);
+            }
+            @Override public void onCancelled(@NonNull DatabaseError error) { pbCargando.setVisibility(View.GONE); }
+        };
+        activeQuery.addValueEventListener(contenidoListener);
     }
 
     private void cargarArticulos(Query query, String mensajeVacio) {
@@ -393,8 +496,6 @@ public class EducacionFragment extends Fragment {
 
         if (titulo.equals("Oficiales")) {
             fabAgregar.setVisibility("admin".equals(rolUsuario) ? View.VISIBLE : View.GONE);
-        } else if (titulo.equals("Comunidad")) {
-            fabAgregar.setVisibility(View.GONE);
         } else {
             fabAgregar.setVisibility(currentUser != null ? View.VISIBLE : View.GONE);
         }
@@ -412,7 +513,6 @@ public class EducacionFragment extends Fragment {
         super.onDestroyView();
         detenerListener();
 
-        // ✨ LIMPIEZA DEL BUSCADOR AL SALIR (Evita Bugs y Lentitud)
         if (etBuscador != null && buscadorWatcher != null) {
             etBuscador.removeTextChangedListener(buscadorWatcher);
         }
@@ -542,6 +642,103 @@ public class EducacionFragment extends Fragment {
                 .show();
     }
 
+    // ✨ Eliminar tu propia foto de la galería
+    private void confirmarBorradoMascota(PublicacionMascota pub) {
+        new AlertDialog.Builder(requireContext())
+                .setTitle("¿Eliminar foto?")
+                .setMessage("Esta acción no se puede deshacer.")
+                .setPositiveButton("Eliminar", (d, w) -> {
+                    galeriaRef.child(pub.getId()).removeValue();
+                    Toast.makeText(getContext(), "Publicación eliminada", Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Cancelar", null)
+                .show();
+    }
+
+    private void mostrarDialogoSubirMascota() {
+        if (currentUser == null) return;
+
+        View view = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_subir_mascota, null);
+        AlertDialog dialog = new AlertDialog.Builder(requireContext()).setView(view).create();
+
+        Spinner spinner = view.findViewById(R.id.spinnerMascotas);
+        ImageView ivPreview = view.findViewById(R.id.ivDialogVistaPreviaMascota);
+        TextInputEditText etDesc = view.findViewById(R.id.etDialogDescMascota);
+        MaterialButton btnPublicar = view.findViewById(R.id.btnGuardarMascota);
+
+        List<com.easypets.models.Mascota> misMascotas = new ArrayList<>();
+        List<String> nombresMascotas = new ArrayList<>();
+
+        // 1. Cargar las mascotas del usuario desde Firebase
+        FirebaseDatabase.getInstance().getReference("mascotas").child(currentUser.getUid())
+                .addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        for (DataSnapshot ds : snapshot.getChildren()) {
+                            com.easypets.models.Mascota m = ds.getValue(com.easypets.models.Mascota.class);
+                            if (m != null) {
+                                misMascotas.add(m);
+                                nombresMascotas.add(m.getNombre());
+                            }
+                        }
+
+                        if (misMascotas.isEmpty()) {
+                            Toast.makeText(getContext(), "Primero debes registrar una mascota en 'Mis Mascotas'", Toast.LENGTH_LONG).show();
+                            dialog.dismiss();
+                            return;
+                        }
+
+                        android.widget.ArrayAdapter<String> adapter = new android.widget.ArrayAdapter<>(getContext(), android.R.layout.simple_spinner_item, nombresMascotas);
+                        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                        spinner.setAdapter(adapter);
+                    }
+                    @Override public void onCancelled(@NonNull DatabaseError error) {}
+                });
+
+        // 2. Al seleccionar una mascota en el Spinner, mostramos su foto
+        spinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                com.easypets.models.Mascota seleccionada = misMascotas.get(position);
+                if (seleccionada.getFotoPerfilUrl() != null && !seleccionada.getFotoPerfilUrl().isEmpty()) {
+                    byte[] decodedString = Base64.decode(seleccionada.getFotoPerfilUrl(), Base64.DEFAULT);
+                    ivPreview.setImageBitmap(BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length));
+                    ivPreview.setPadding(0, 0, 0, 0);
+                }
+            }
+            @Override public void onNothingSelected(android.widget.AdapterView<?> parent) {}
+        });
+
+        // 3. Al publicar, usamos los datos de la mascota seleccionada
+        btnPublicar.setOnClickListener(v -> {
+            int pos = spinner.getSelectedItemPosition();
+            if (pos == -1) return;
+
+            com.easypets.models.Mascota m = misMascotas.get(pos);
+            String desc = etDesc.getText().toString().trim();
+
+            String pubId = galeriaRef.push().getKey();
+            PublicacionMascota nuevaPub = new PublicacionMascota(
+                    pubId,
+                    currentUser.getUid(),
+                    "@" + miNick,
+                    m.getNombre(),
+                    desc,
+                    m.getFotoPerfilUrl(),
+                    System.currentTimeMillis()
+            );
+
+            galeriaRef.child(pubId).setValue(nuevaPub).addOnSuccessListener(aVoid -> {
+                Toast.makeText(getContext(), "¡" + m.getNombre() + " ya está en la comunidad!", Toast.LENGTH_SHORT).show();
+                dialog.dismiss();
+            });
+        });
+
+        view.findViewById(R.id.btnCancelarMascota).setOnClickListener(v -> dialog.dismiss());
+        if (dialog.getWindow() != null) dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        dialog.show();
+    }
+
     private void mostrarDialogoCrearArticulo() {
         boolean esOficial = (tabLayout.getSelectedTabPosition() == 0);
         imagenSeleccionadaBase64 = "";
@@ -550,6 +747,9 @@ public class EducacionFragment extends Fragment {
         AlertDialog dialog = new AlertDialog.Builder(requireContext()).setView(view).create();
 
         ivVistaPreviaDialogo = view.findViewById(R.id.ivDialogVistaPrevia);
+        // Si venimos de mascotas, restauramos el padding para la vista previa del artículo
+        ivVistaPreviaDialogo.setPadding(50, 50, 50, 50);
+
         TextInputEditText etTitulo = view.findViewById(R.id.etDialogTitulo);
         TextInputEditText etDesc = view.findViewById(R.id.etDialogDescripcion);
         TextInputEditText etCont = view.findViewById(R.id.etDialogContenido);
@@ -590,7 +790,6 @@ public class EducacionFragment extends Fragment {
         View view = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_agregar_articulo, null);
         AlertDialog dialog = new AlertDialog.Builder(requireContext()).setView(view).create();
 
-        // Referencias
         TextView tvTitle = view.findViewById(R.id.tvDialogTitle);
         TextInputEditText etTitulo = view.findViewById(R.id.etDialogTitulo);
         TextInputEditText etDescripcion = view.findViewById(R.id.etDialogDescripcion);
@@ -598,10 +797,10 @@ public class EducacionFragment extends Fragment {
         TextInputEditText etUrl = view.findViewById(R.id.etDialogUrl);
         MaterialButton btnImagen = view.findViewById(R.id.btnDialogImagen);
         ivVistaPreviaDialogo = view.findViewById(R.id.ivDialogVistaPrevia);
+        ivVistaPreviaDialogo.setPadding(0, 0, 0, 0);
         MaterialButton btnGuardar = view.findViewById(R.id.btnGuardarDialog);
         MaterialButton btnCancelar = view.findViewById(R.id.btnCancelarDialog);
 
-        // Setear datos actuales
         tvTitle.setText("Editar Mi Artículo");
         etTitulo.setText(articulo.getTitulo());
         etDescripcion.setText(articulo.getDescripcionCorta());
