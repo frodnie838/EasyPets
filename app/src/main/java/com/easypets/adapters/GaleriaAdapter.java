@@ -24,6 +24,7 @@ public class GaleriaAdapter extends RecyclerView.Adapter<GaleriaAdapter.ViewHold
     private List<PublicacionMascota> listaPublicaciones;
     private String miUid;
     private OnGaleriaClickListener listener;
+    private boolean mostrarOpciones = false;
 
     public interface OnGaleriaClickListener {
         void onLikeClick(PublicacionMascota publicacion);
@@ -37,6 +38,11 @@ public class GaleriaAdapter extends RecyclerView.Adapter<GaleriaAdapter.ViewHold
         if (FirebaseAuth.getInstance().getCurrentUser() != null) {
             miUid = FirebaseAuth.getInstance().getCurrentUser().getUid();
         }
+    }
+
+    public void setMostrarOpciones(boolean mostrarOpciones) {
+        this.mostrarOpciones = mostrarOpciones;
+        notifyDataSetChanged();
     }
 
     @NonNull
@@ -77,7 +83,7 @@ public class GaleriaAdapter extends RecyclerView.Adapter<GaleriaAdapter.ViewHold
             holder.btnLike.setColorFilter(android.graphics.Color.parseColor("#757575"));
         }
 
-        if (miUid != null && miUid.equals(publicacion.getIdAutor())) {
+        if (mostrarOpciones && miUid != null && miUid.equals(publicacion.getIdAutor())) {
             holder.btnOpciones.setVisibility(View.VISIBLE);
         } else {
             holder.btnOpciones.setVisibility(View.GONE);
@@ -104,11 +110,11 @@ public class GaleriaAdapter extends RecyclerView.Adapter<GaleriaAdapter.ViewHold
             tvAutor = itemView.findViewById(R.id.tvAutorGaleria);
             tvDescripcion = itemView.findViewById(R.id.tvDescripcionGaleria);
             tvLikesCount = itemView.findViewById(R.id.tvLikesCountGaleria);
+            tvComentariosCount = itemView.findViewById(R.id.tvComentariosCountGaleria);
             ivFoto = itemView.findViewById(R.id.ivFotoGaleria);
             btnLike = itemView.findViewById(R.id.btnLikeGaleria);
             btnComentar = itemView.findViewById(R.id.btnComentarGaleria);
             btnOpciones = itemView.findViewById(R.id.btnOpcionesGaleria);
-            tvComentariosCount = itemView.findViewById(R.id.tvComentariosCountGaleria);
         }
     }
 }

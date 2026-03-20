@@ -195,7 +195,6 @@ public class HiloDetalleFragment extends Fragment {
                         actualizarEstadoBoton(true);
                     });
         } else {
-            // --- MODO NUEVA RESPUESTA ---
             String idRespuesta = respuestasRef.push().getKey();
             RespuestaForo nuevaRespuesta = new RespuestaForo(idRespuesta, texto,
                     currentUser.getUid(), "", System.currentTimeMillis(), false);
@@ -204,8 +203,15 @@ public class HiloDetalleFragment extends Fragment {
                 respuestasRef.child(idRespuesta).setValue(nuevaRespuesta)
                         .addOnSuccessListener(aVoid -> {
                             limpiarPostEnvio();
-                            // ✨ PASAMOS EL TEXTO A LA NOTIFICACIÓN ✨
+                            // Pasamos el texto a la notificación del dueño
                             enviarNotificacionAlDueño(texto);
+
+                            // Buscar @menciones en el texto y notificar a los mencionados
+                            java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("@(\\w+)").matcher(texto);
+                            while (matcher.find()) {
+                                String nickMencionado = matcher.group(1); // Coge la palabra sin el @
+                                notificarMencion(nickMencionado);
+                            }
                         })
                         .addOnFailureListener(e -> {
                             Toast.makeText(getContext(), "Error al enviar", Toast.LENGTH_SHORT).show();
@@ -306,7 +312,7 @@ public class HiloDetalleFragment extends Fragment {
                 .show();
     }
 
-    // ✨ RECIBE EL TEXTO DEL COMENTARIO PARA RECORTARLO ✨
+    // RECIBE EL TEXTO DEL COMENTARIO PARA RECORTARLO
     private void enviarNotificacionAlDueño(String textoComentario) {
         if (idAutor == null || currentUser == null) return;
 
@@ -358,6 +364,57 @@ public class HiloDetalleFragment extends Fragment {
 
                         if (idNotificacion != null) {
                             buzonRef.child(idNotificacion).setValue(carta);
+                        }
+                    }
+                    @Override public void onCancelled(@NonNull DatabaseError error) {}
+                });
+    }
+    // MÉTODO PARA ENVIAR LA NOTIFICACIÓN DE MENCIÓN EN EL FORO
+    private void notificarMencion(String nickMencionado) {
+        if (currentUser == null) return;
+
+        // Buscamos en la base de datos qué usuario tiene ese Nick
+        FirebaseDatabase.getInstance().getReference("usuarios")
+                .orderByChild("nick").equalTo(nickMencionado)
+                .addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        if (snapshot.exists()) {
+                            for (DataSnapshot userSnapshot : snapshot.getChildren()) {
+                                String idUsuarioMencionado = userSnapshot.getKey();
+
+                                // No te autodenotifiques si te mencionas a ti mismo
+                                if (idUsuarioMencionado != null && !idUsuarioMencionado.equals(currentUser.getUid())) {
+                                    DatabaseReference notifRef = FirebaseDatabase.getInstance().getReference("notificaciones").child(idUsuarioMencionado);
+                                    String idNotif = notifRef.push().getKey();
+
+                                    // Buscamos nuestro propio nick para ponerlo en el mensaje
+                                    FirebaseDatabase.getInstance().getReference("usuarios").child(currentUser.getUid())
+                                            .addListenerForSingleValueEvent(new ValueEventListener() {
+                                                @Override
+                                                public void onDataChange(@NonNull DataSnapshot miSnapshot) {
+                                                    String miNick = "Alguien";
+                                                    if (miSnapshot.exists() && miSnapshot.hasChild("nick")) {
+                                                        miNick = miSnapshot.child("nick").getValue(String.class);
+                                                    }
+
+                                                    com.easypets.models.Notificacion notificacion = new com.easypets.models.Notificacion(
+                                                            idNotif,
+                                                            "Mención en el foro",
+                                                            "@" + miNick + " te ha mencionado en el hilo: " + titulo,
+                                                            "foro_respuesta",
+                                                            hiloId,
+                                                            titulo,
+                                                            descripcion,
+                                                            idAutor,
+                                                            timestampCreacion
+                                                    );
+                                                    notifRef.child(idNotif).setValue(notificacion);
+                                                }
+                                                @Override public void onCancelled(@NonNull DatabaseError error) {}
+                                            });
+                                }
+                            }
                         }
                     }
                     @Override public void onCancelled(@NonNull DatabaseError error) {}

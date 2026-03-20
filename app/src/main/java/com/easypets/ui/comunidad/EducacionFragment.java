@@ -32,11 +32,11 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.easypets.R;
 import com.easypets.adapters.ArticuloAdapter;
-import com.easypets.adapters.ComentarioMascotaAdapter; // ✨ IMPORTANTE
+import com.easypets.adapters.ComentarioMascotaAdapter;
 import com.easypets.adapters.ForoAdapter;
 import com.easypets.adapters.GaleriaAdapter;
 import com.easypets.models.Articulo;
-import com.easypets.models.ComentarioMascota; // ✨ IMPORTANTE
+import com.easypets.models.ComentarioMascota;
 import com.easypets.models.HiloForo;
 import com.easypets.models.PublicacionMascota;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
@@ -95,9 +95,11 @@ public class EducacionFragment extends Fragment {
     private String rolUsuario = "usuario";
     private String miNick = "Usuario";
     private String miFotoPerfil = "";
+
     private String imagenSeleccionadaBase64 = "";
     private ImageView ivVistaPreviaDialogo;
     private ActivityResultLauncher<Intent> galeriaLauncher;
+    private LinearLayout layoutEmptyState;
 
     private static int tabGuardada = 0;
 
@@ -112,6 +114,7 @@ public class EducacionFragment extends Fragment {
         chipGroupMisPublicaciones = view.findViewById(R.id.chipGroupMisPublicaciones);
         chipGroupComunidad = view.findViewById(R.id.chipGroupComunidad);
         pbCargando = view.findViewById(R.id.pbCargando);
+        layoutEmptyState = view.findViewById(R.id.layoutEmptyState);
 
         if (getActivity() != null) {
             etBuscador = getActivity().findViewById(R.id.etTopSearch);
@@ -124,7 +127,7 @@ public class EducacionFragment extends Fragment {
         usuariosRef = db.getReference("usuarios");
         foroRef = db.getReference("foro_hilos");
         galeriaRef = db.getReference("mascotas_comunidad");
-        comentariosMascotasRef = db.getReference("mascotas_comentarios"); // ✨ INICIALIZADA
+        comentariosMascotasRef = db.getReference("mascotas_comentarios");
 
         listaArticulos = new ArrayList<>();
         listaArticulosOriginal = new ArrayList<>();
@@ -188,7 +191,14 @@ public class EducacionFragment extends Fragment {
 
             @Override
             public void onOpcionesClick(PublicacionMascota publicacion, View anchorView) {
-                confirmarBorradoMascota(publicacion);
+                CharSequence[] opciones = {"Editar descripción", "Eliminar publicación"};
+                new AlertDialog.Builder(requireContext())
+                        .setTitle("Opciones")
+                        .setItems(opciones, (dialog, which) -> {
+                            if (which == 0) mostrarDialogoEditarMascota(publicacion);
+                            else confirmarBorradoMascota(publicacion);
+                        })
+                        .show();
             }
         });
 
@@ -214,22 +224,15 @@ public class EducacionFragment extends Fragment {
                 if (titulo.equals("Foro")) {
                     mostrarDialogoCrearHilo();
                 } else if (titulo.equals("Mis Publicaciones")) {
-                    CharSequence[] opciones = {"Escribir un Artículo", "Abrir un Hilo en el Foro"};
-                    new AlertDialog.Builder(requireContext())
-                            .setTitle("¿Qué deseas publicar?")
-                            .setItems(opciones, (dialog, which) -> {
-                                if (which == 0) mostrarDialogoCrearArticulo();
-                                else mostrarDialogoCrearHilo();
-                            })
-                            .show();
-                } else if (titulo.equals("Comunidad")) {
-                    int selectedChipId = chipGroupComunidad.getCheckedChipId();
-                    if (selectedChipId == R.id.chipComunidadMascotas) {
-                        mostrarDialogoSubirMascota();
-                    } else {
+                    int selectedChipId = chipGroupMisPublicaciones.getCheckedChipId();
+                    if (selectedChipId == R.id.chipMisArticulos) {
                         mostrarDialogoCrearArticulo();
+                    } else if (selectedChipId == R.id.chipMisHilos) {
+                        mostrarDialogoCrearHilo();
+                    } else if (selectedChipId == R.id.chipMisMascotas) {
+                        mostrarDialogoSubirMascota();
                     }
-                } else {
+                } else if (titulo.equals("Oficiales")) {
                     mostrarDialogoCrearArticulo();
                 }
             }
@@ -300,6 +303,7 @@ public class EducacionFragment extends Fragment {
                     chipGroupComunidad.setVisibility(View.GONE);
                     articuloAdapter.setMostrarOpciones(false);
                     foroAdapter.setMostrarOpciones(false);
+                    galeriaAdapter.setMostrarOpciones(false);
 
                     if (titulo.equals("Oficiales")) {
                         rvContenido.setAdapter(articuloAdapter);
@@ -337,6 +341,11 @@ public class EducacionFragment extends Fragment {
     }
 
     private void actualizarListaMisPublicaciones() {
+        TabLayout.Tab tab = tabLayout.getTabAt(tabLayout.getSelectedTabPosition());
+        if (tab == null || tab.getText() == null || !tab.getText().toString().equals("Mis Publicaciones")) {
+            return;
+        }
+
         detenerListener();
         if (currentUser == null) return;
         int selectedChipId = chipGroupMisPublicaciones.getCheckedChipId();
@@ -349,18 +358,27 @@ public class EducacionFragment extends Fragment {
             foroAdapter.setMostrarOpciones(true);
             rvContenido.setAdapter(foroAdapter);
             cargarHilos(foroRef.orderByChild("idAutor").equalTo(currentUser.getUid()));
+        } else if (selectedChipId == R.id.chipMisMascotas) {
+            galeriaAdapter.setMostrarOpciones(true);
+            rvContenido.setAdapter(galeriaAdapter);
+            cargarMisMascotas();
         }
     }
 
     private void actualizarListaComunidad() {
+        TabLayout.Tab tab = tabLayout.getTabAt(tabLayout.getSelectedTabPosition());
+        if (tab == null || tab.getText() == null || !tab.getText().toString().equals("Comunidad")) {
+            return;
+        }
+
         detenerListener();
         int selectedChipId = chipGroupComunidad.getCheckedChipId();
         articuloAdapter.setMostrarOpciones(false);
+        galeriaAdapter.setMostrarOpciones(false);
 
         if (selectedChipId == R.id.chipComunidadArticulos) {
             rvContenido.setAdapter(articuloAdapter);
             cargarArticulos(comunidadRef, "");
-
         } else if (selectedChipId == R.id.chipComunidadMascotas) {
             rvContenido.setAdapter(galeriaAdapter);
             cargarGaleria();
@@ -416,6 +434,32 @@ public class EducacionFragment extends Fragment {
                 Collections.reverse(listaGaleria);
                 galeriaAdapter.notifyDataSetChanged();
                 pbCargando.setVisibility(View.GONE);
+            }
+            @Override public void onCancelled(@NonNull DatabaseError error) { pbCargando.setVisibility(View.GONE); }
+        };
+        activeQuery.addValueEventListener(contenidoListener);
+    }
+
+    private void cargarMisMascotas() {
+        listaGaleria.clear();
+        galeriaAdapter.notifyDataSetChanged();
+        pbCargando.setVisibility(View.VISIBLE);
+
+        activeQuery = galeriaRef.orderByChild("idAutor").equalTo(currentUser.getUid());
+        contenidoListener = new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                listaGaleria.clear();
+                for (DataSnapshot data : snapshot.getChildren()) {
+                    PublicacionMascota p = data.getValue(PublicacionMascota.class);
+                    if (p != null) listaGaleria.add(p);
+                }
+                // Como filtramos por autor, la base de datos no lo ordena por fecha. Lo hacemos nosotros:
+                Collections.sort(listaGaleria, (p1, p2) -> Long.compare(p2.getTimestamp(), p1.getTimestamp()));
+
+                galeriaAdapter.notifyDataSetChanged();
+                pbCargando.setVisibility(View.GONE);
+                comprobarEmptyState(listaGaleria.isEmpty());
             }
             @Override public void onCancelled(@NonNull DatabaseError error) { pbCargando.setVisibility(View.GONE); }
         };
@@ -495,6 +539,8 @@ public class EducacionFragment extends Fragment {
 
         if (titulo.equals("Oficiales")) {
             fabAgregar.setVisibility("admin".equals(rolUsuario) ? View.VISIBLE : View.GONE);
+        } else if (titulo.equals("Comunidad")) {
+            fabAgregar.setVisibility(View.GONE);
         } else {
             fabAgregar.setVisibility(currentUser != null ? View.VISIBLE : View.GONE);
         }
@@ -647,7 +693,33 @@ public class EducacionFragment extends Fragment {
                 .setMessage("Esta acción no se puede deshacer.")
                 .setPositiveButton("Eliminar", (d, w) -> {
                     galeriaRef.child(pub.getId()).removeValue();
+                    // Al borrar la foto, borramos sus comentarios para mantener Firebase limpio
+                    comentariosMascotasRef.child(pub.getId()).removeValue();
                     Toast.makeText(getContext(), "Publicación eliminada", Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Cancelar", null)
+                .show();
+    }
+
+    private void mostrarDialogoEditarMascota(PublicacionMascota pub) {
+        EditText input = new EditText(requireContext());
+        input.setText(pub.getDescripcion());
+        input.setHint("Escribe una nueva descripción...");
+        input.setBackgroundResource(R.drawable.bg_search_bar_top);
+        input.setPadding(30, 30, 30, 30);
+
+        LinearLayout layout = new LinearLayout(requireContext());
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(50, 40, 50, 10);
+        layout.addView(input);
+
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Editar descripción")
+                .setView(layout)
+                .setPositiveButton("Guardar", (dialog, which) -> {
+                    String nuevaDesc = input.getText().toString().trim();
+                    galeriaRef.child(pub.getId()).child("descripcion").setValue(nuevaDesc)
+                            .addOnSuccessListener(aVoid -> Toast.makeText(getContext(), "Descripción actualizada", Toast.LENGTH_SHORT).show());
                 })
                 .setNegativeButton("Cancelar", null)
                 .show();
@@ -872,7 +944,7 @@ public class EducacionFragment extends Fragment {
             if (texto.isEmpty()) return;
 
             String comentarioId = publicacionComentariosRef.push().getKey();
-            com.easypets.models.ComentarioMascota nuevoComentario = new com.easypets.models.ComentarioMascota(
+            ComentarioMascota nuevoComentario = new ComentarioMascota(
                     comentarioId,
                     currentUser.getUid(),
                     "@" + miNick,
@@ -883,8 +955,15 @@ public class EducacionFragment extends Fragment {
 
             publicacionComentariosRef.child(comentarioId).setValue(nuevoComentario).addOnSuccessListener(aVoid -> {
                 etNuevoComentario.setText("");
+
                 galeriaRef.child(publicacion.getId()).child("comentariosCount")
                         .setValue(publicacion.getComentariosCount() + 1);
+
+                java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("@(\\w+)").matcher(texto);
+                while (matcher.find()) {
+                    String nickMencionado = matcher.group(1);
+                    notificarMencion(nickMencionado, publicacion.getNombreMascota());
+                }
             });
         });
 
@@ -897,5 +976,48 @@ public class EducacionFragment extends Fragment {
         }
 
         bottomSheetDialog.show();
+    }
+    // MÉTODO PARA ENVIAR LA NOTIFICACIÓN DE MENCIÓN
+    private void notificarMencion(String nickMencionado, String nombreMascota) {
+        // Buscamos en la base de datos qué usuario tiene ese Nick
+        usuariosRef.orderByChild("nick").equalTo(nickMencionado).addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                if (snapshot.exists()) {
+                    for (DataSnapshot userSnapshot : snapshot.getChildren()) {
+                        String idUsuarioMencionado = userSnapshot.getKey();
+
+                        if (idUsuarioMencionado != null && !idUsuarioMencionado.equals(currentUser.getUid())) {
+                            DatabaseReference notifRef = FirebaseDatabase.getInstance().getReference("notificaciones").child(idUsuarioMencionado);
+                            String idNotif = notifRef.push().getKey();
+
+                            // Creamos la notificación
+                            com.easypets.models.Notificacion notificacion = new com.easypets.models.Notificacion(
+                                    idNotif,                                      // 1. id
+                                    "Mención en comentario",                      // 2. titulo
+                                    "@" + miNick + " te ha mencionado en una foto de " + nombreMascota, // 3. mensaje
+                                    "comunidad",                                  // 4. tipo
+                                    "",                                           // 5. hiloId (vacío porque no es un hilo)
+                                    "",                                           // 6. hiloTitulo (vacío)
+                                    "",                                           // 7. hiloDescripcion (vacío)
+                                    "",                                           // 8. hiloAutor (vacío)
+                                    System.currentTimeMillis()                    // 9. hiloTimestamp (El long al final)
+                            );
+                            notifRef.child(idNotif).setValue(notificacion);
+                        }
+                    }
+                }
+            }
+            @Override public void onCancelled(@NonNull DatabaseError error) {}
+        });
+    }
+    private void comprobarEmptyState(boolean estaVacio) {
+        if (estaVacio) {
+            rvContenido.setVisibility(View.GONE);
+            layoutEmptyState.setVisibility(View.VISIBLE);
+        } else {
+            rvContenido.setVisibility(View.VISIBLE);
+            layoutEmptyState.setVisibility(View.GONE);
+        }
     }
 }

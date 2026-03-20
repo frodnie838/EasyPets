@@ -50,7 +50,20 @@ public class RespuestaAdapter extends RecyclerView.Adapter<RespuestaAdapter.Resp
     public void onBindViewHolder(@NonNull RespuestaViewHolder holder, int position) {
         RespuestaForo respuesta = respuestas.get(position);
 
-        holder.tvTexto.setText(respuesta.getTexto());
+        String texto = respuesta.getTexto();
+        android.text.SpannableString spannable = new android.text.SpannableString(texto);
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("@\\w+"); // Busca palabras que empiecen por @
+        java.util.regex.Matcher matcher = pattern.matcher(texto);
+
+        // Obtenemos el color primario de tu app
+        int colorPrimario = androidx.core.content.ContextCompat.getColor(holder.itemView.getContext(), R.color.color_acento_primario);
+
+        while (matcher.find()) {
+            // Ponemos el color y negrita a la mención
+            spannable.setSpan(new android.text.style.ForegroundColorSpan(colorPrimario), matcher.start(), matcher.end(), android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            spannable.setSpan(new android.text.style.StyleSpan(android.graphics.Typeface.BOLD), matcher.start(), matcher.end(), android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+        holder.tvTexto.setText(spannable);
         CharSequence tiempo = android.text.format.DateUtils.getRelativeTimeSpanString(
                 respuesta.getTimestampCreacion(), System.currentTimeMillis(), android.text.format.DateUtils.MINUTE_IN_MILLIS);
         holder.tvFecha.setText(" • " + tiempo);
