@@ -57,6 +57,8 @@ public class MainActivity extends AppCompatActivity {
 
     private boolean primeraCargaNotificaciones = true;
     private java.util.HashSet<String> notificacionesProcesadas = new java.util.HashSet<>();
+    private DatabaseReference buzonRef;
+    private ValueEventListener notificacionesListener;
 
     /**
      * Inicializa la vista, los componentes de la interfaz y los oyentes de navegación.
@@ -136,9 +138,7 @@ public class MainActivity extends AppCompatActivity {
             return false;
         });
 
-        // ✨ MAGIA DE NAVEGACIÓN: Cargar el fragmento por defecto o el que pida la notificación (Deep Linking)
         if (savedInstanceState == null) {
-            // Comprobamos si venimos de la notificación del calendario
             if (getIntent() != null && "calendario".equals(getIntent().getStringExtra("abrirFragment"))) {
                 bottomNav.setSelectedItemId(R.id.nav_calendar);
             } else {
@@ -232,9 +232,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    /**
-     * Descarga y decodifica la foto de perfil del usuario desde Firebase para mostrarla en la cabecera.
-     */
     private void cargarFotoDePerfilEnCabecera() {
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
         if (currentUser != null) {
@@ -247,12 +244,10 @@ public class MainActivity extends AppCompatActivity {
                         String fotoActual = snapshot.child("fotoPerfil").getValue(String.class);
 
                         if (fotoActual != null && !fotoActual.isEmpty()) {
-
                             if (fotoActual.startsWith("http")) {
                                 cargarFotoGoogleEnCabecera(fotoActual);
                             } else {
                                 try {
-                                    // Decodificamos el Base64 normal
                                     byte[] decodedString = Base64.decode(fotoActual, Base64.DEFAULT);
                                     Bitmap bitmap = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
                                     ivTopProfile.setImageBitmap(bitmap);
@@ -273,11 +268,9 @@ public class MainActivity extends AppCompatActivity {
     private void cargarFotoGoogleEnCabecera(String urlImagen) {
         new Thread(() -> {
             try {
-                // Descargamos la imagen en un hilo secundario para no congelar la app
                 java.io.InputStream in = new java.net.URL(urlImagen).openStream();
                 android.graphics.Bitmap foto = android.graphics.BitmapFactory.decodeStream(in);
 
-                // Volvemos al hilo principal para pintar la foto en la pantalla
                 runOnUiThread(() -> {
                     ivTopProfile.setImageBitmap(foto);
                     ivTopProfile.setImageTintList(null);
@@ -288,17 +281,18 @@ public class MainActivity extends AppCompatActivity {
         }).start();
     }
 
-    /**
-     * Sincroniza en tiempo real la lista de notificaciones desde Firebase y gestiona su estado de lectura.
-     */
     private void activarBuzonDeNotificaciones() {
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
         if (currentUser == null) return;
 
-        DatabaseReference buzonRef = FirebaseDatabase.getInstance().getReference()
+        buzonRef = FirebaseDatabase.getInstance().getReference()
                 .child("notificaciones").child(currentUser.getUid());
 
-        buzonRef.addValueEventListener(new com.google.firebase.database.ValueEventListener() {
+        if (notificacionesListener != null) {
+            buzonRef.removeEventListener(notificacionesListener);
+        }
+
+        notificacionesListener = new com.google.firebase.database.ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 listaNotificaciones.clear();
@@ -319,10 +313,8 @@ public class MainActivity extends AppCompatActivity {
 
                     if (mostrada == null || !mostrada) {
                         if (!primeraCargaNotificaciones && !notificacionesProcesadas.contains(id)) {
-                            // Ojo: Esto es solo para las de la Comunidad.
-                            // Las del calendario ya suenan por NotificacionReceiver.
                             if (!"evento_calendario".equals(tipo)) {
-                                lanzarNotificacionForo(titulo, mensaje);
+                                //lanzarNotificacionForo(titulo, mensaje);
                             }
                         }
                         notificacionesProcesadas.add(id);
@@ -339,15 +331,15 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {}
-        });
+        };
+
+        // Enchufamos el nuevo oyente
+        buzonRef.addValueEventListener(notificacionesListener);
 
         android.widget.FrameLayout layoutCampanita = findViewById(R.id.layoutCampanita);
         layoutCampanita.setOnClickListener(v -> mostrarDesplegableNotificaciones());
     }
 
-    /**
-     * Actualiza el diseño de la campana (icono vacío/relleno) y el contador de notificaciones pendientes.
-     */
     private void actualizarCampanitaUI() {
         android.widget.TextView tvBadge = findViewById(R.id.tvBadgeNotificaciones);
         android.widget.ImageView btnCampana = findViewById(R.id.btnTopNotificaciones);
@@ -362,9 +354,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    /**
-     * Muestra una ventana emergente (Popup) con el listado de notificaciones al pulsar la campanita.
-     */
     private void mostrarDesplegableNotificaciones() {
         android.view.View popupView = getLayoutInflater().inflate(R.layout.layout_popup_notificaciones, null);
 
@@ -403,9 +392,11 @@ public class MainActivity extends AppCompatActivity {
             };
             lvNotificaciones.setAdapter(adapter);
 
+            // EVENTO DE CLIC EN LA NOTIFICACIÓN
             lvNotificaciones.setOnItemClickListener((parent, view, position, id) -> {
                 com.easypets.models.Notificacion n = listaNotificaciones.get(position);
 
+                // Borramos la notificación de la base de datos
                 FirebaseDatabase.getInstance().getReference().child("notificaciones")
                         .child(FirebaseAuth.getInstance().getCurrentUser().getUid())
                         .child(n.id).removeValue();
@@ -414,6 +405,9 @@ public class MainActivity extends AppCompatActivity {
 
                 // LÓGICA DE NAVEGACIÓN (DEEP LINKING)
                 if ("foro_respuesta".equals(n.tipo) && n.hiloId != null) {
+
+                    bottomNav.getMenu().findItem(R.id.nav_comunidad).setChecked(true);
+
                     android.os.Bundle args = new android.os.Bundle();
                     args.putString("hiloId", n.hiloId);
                     args.putString("titulo", n.hiloTitulo);
@@ -424,16 +418,34 @@ public class MainActivity extends AppCompatActivity {
                     com.easypets.ui.comunidad.HiloDetalleFragment fragment = new com.easypets.ui.comunidad.HiloDetalleFragment();
                     fragment.setArguments(args);
 
-                    bottomNav.setSelectedItemId(R.id.nav_comunidad);
-
                     getSupportFragmentManager().beginTransaction()
                             .replace(R.id.frame_container, fragment)
                             .addToBackStack(null)
                             .commit();
 
-                    // ✨ NUEVO: Si la notificación es del calendario, cambiamos la pestaña
                 } else if ("evento_calendario".equals(n.tipo)) {
                     bottomNav.setSelectedItemId(R.id.nav_calendar);
+
+                } else if ("comunidad".equals(n.tipo)) {
+                    bottomNav.getMenu().findItem(R.id.nav_comunidad).setChecked(true);
+
+                    if (n.hiloId != null && !n.hiloId.trim().isEmpty()) {
+                        android.os.Bundle args = new android.os.Bundle();
+                        args.putString("abrirPublicacionId", n.hiloId);
+
+                        com.easypets.ui.comunidad.EducacionFragment fragment = new com.easypets.ui.comunidad.EducacionFragment();
+                        fragment.setArguments(args);
+
+                        getSupportFragmentManager().beginTransaction()
+                                .replace(R.id.frame_container, fragment)
+                                .addToBackStack(null)
+                                .commit();
+                    } else {
+                        getSupportFragmentManager().beginTransaction()
+                                .replace(R.id.frame_container, new com.easypets.ui.comunidad.EducacionFragment())
+                                .addToBackStack(null)
+                                .commit();
+                    }
                 }
             });
         }
@@ -442,17 +454,11 @@ public class MainActivity extends AppCompatActivity {
         popupWindow.showAsDropDown(layoutCampanita, -dpToPx(240), 10);
     }
 
-    /**
-     * Convierte unidades DP (Density-independent Pixels) a píxeles absolutos.
-     */
     private int dpToPx(int dp) {
         float density = getResources().getDisplayMetrics().density;
         return Math.round((float) dp * density);
     }
 
-    /**
-     * Construye y dispara una notificación local nativa de Android en el sistema operativo.
-     */
     private void lanzarNotificacionForo(String titulo, String mensaje) {
         String channelId = "easypets_foro";
         android.content.Intent intent = new android.content.Intent(this, MainActivity.class);
@@ -479,9 +485,6 @@ public class MainActivity extends AppCompatActivity {
         notificationManager.notify((int) System.currentTimeMillis(), builder.build());
     }
 
-    /**
-     * Obtiene el token de registro FCM del dispositivo y lo guarda en Firebase para recibir notificaciones Push.
-     */
     private void guardarTokenFCM() {
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
         if (currentUser == null) return;
@@ -500,5 +503,12 @@ public class MainActivity extends AppCompatActivity {
                             .child("fcmToken")
                             .setValue(token);
                 });
+    }
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (buzonRef != null && notificacionesListener != null) {
+            buzonRef.removeEventListener(notificacionesListener);
+        }
     }
 }

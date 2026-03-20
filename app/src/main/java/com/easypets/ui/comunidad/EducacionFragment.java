@@ -261,6 +261,30 @@ public class EducacionFragment extends Fragment {
                 }
         );
 
+        if (getArguments() != null && getArguments().containsKey("abrirPublicacionId")) {
+            String pubId = getArguments().getString("abrirPublicacionId");
+
+            if (pubId != null && !pubId.trim().isEmpty()) {
+
+                TabLayout.Tab tabComunidad = tabLayout.getTabAt(1);
+                if (tabComunidad != null) {
+                    tabComunidad.select();
+                }
+
+                chipGroupComunidad.check(R.id.chipComunidadMascotas);
+
+                galeriaRef.child(pubId).addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        PublicacionMascota pub = snapshot.getValue(PublicacionMascota.class);
+                        if (pub != null && isAdded()) {
+                            mostrarBottomSheetComentarios(pub);
+                        }
+                    }
+                    @Override public void onCancelled(@NonNull DatabaseError error) {}
+                });
+            }
+        }
         return view;
     }
 
@@ -962,7 +986,7 @@ public class EducacionFragment extends Fragment {
                 java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("@(\\w+)").matcher(texto);
                 while (matcher.find()) {
                     String nickMencionado = matcher.group(1);
-                    notificarMencion(nickMencionado, publicacion.getNombreMascota());
+                    notificarMencion(nickMencionado, publicacion);
                 }
             });
         });
@@ -978,8 +1002,7 @@ public class EducacionFragment extends Fragment {
         bottomSheetDialog.show();
     }
     // MÉTODO PARA ENVIAR LA NOTIFICACIÓN DE MENCIÓN
-    private void notificarMencion(String nickMencionado, String nombreMascota) {
-        // Buscamos en la base de datos qué usuario tiene ese Nick
+    private void notificarMencion(String nickMencionado, PublicacionMascota publicacion) {
         usuariosRef.orderByChild("nick").equalTo(nickMencionado).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
@@ -991,17 +1014,16 @@ public class EducacionFragment extends Fragment {
                             DatabaseReference notifRef = FirebaseDatabase.getInstance().getReference("notificaciones").child(idUsuarioMencionado);
                             String idNotif = notifRef.push().getKey();
 
-                            // Creamos la notificación
                             com.easypets.models.Notificacion notificacion = new com.easypets.models.Notificacion(
-                                    idNotif,                                      // 1. id
-                                    "Mención en comentario",                      // 2. titulo
-                                    "@" + miNick + " te ha mencionado en una foto de " + nombreMascota, // 3. mensaje
-                                    "comunidad",                                  // 4. tipo
-                                    "",                                           // 5. hiloId (vacío porque no es un hilo)
-                                    "",                                           // 6. hiloTitulo (vacío)
-                                    "",                                           // 7. hiloDescripcion (vacío)
-                                    "",                                           // 8. hiloAutor (vacío)
-                                    System.currentTimeMillis()                    // 9. hiloTimestamp (El long al final)
+                                    idNotif,
+                                    "Mención en comentario",
+                                    "@" + miNick + " te ha mencionado en una foto de " + publicacion.getNombreMascota(),
+                                    "comunidad",
+                                    publicacion.getId(),
+                                    "",
+                                    "",
+                                    "",
+                                    System.currentTimeMillis()
                             );
                             notifRef.child(idNotif).setValue(notificacion);
                         }
