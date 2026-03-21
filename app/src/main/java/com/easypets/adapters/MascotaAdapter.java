@@ -55,16 +55,33 @@ public class MascotaAdapter extends RecyclerView.Adapter<MascotaAdapter.MascotaV
             }
         });
 
+        // ✨ LÓGICA HÍBRIDA CORREGIDA PARA EL ADAPTADOR
         if (mascota.getFotoPerfilUrl() != null && !mascota.getFotoPerfilUrl().isEmpty()) {
-            try {
-                byte[] decodedString = Base64.decode(mascota.getFotoPerfilUrl(), Base64.DEFAULT);
-                Bitmap decodedByte = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
-                holder.ivFotoMascota.setImageBitmap(decodedByte);
+            if (mascota.getFotoPerfilUrl().startsWith("http")) {
+                // Foto de Firebase Storage (Nueva)
+                com.bumptech.glide.Glide.with(holder.itemView.getContext())
+                        .load(mascota.getFotoPerfilUrl())
+                        .centerCrop()
+                        .into(holder.ivFotoMascota);
+
+                // Limpiamos los estilos de la huella por defecto
                 holder.ivFotoMascota.setPadding(0, 0, 0, 0);
                 holder.ivFotoMascota.setImageTintList(null);
                 holder.ivFotoMascota.setScaleType(ImageView.ScaleType.CENTER_CROP);
-            } catch (Exception e) {
-                ponerHuellaPorDefecto(holder);
+            } else {
+                // Foto en Base64 (Antigua)
+                try {
+                    byte[] decodedString = Base64.decode(mascota.getFotoPerfilUrl(), Base64.DEFAULT);
+                    Bitmap decodedByte = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
+                    holder.ivFotoMascota.setImageBitmap(decodedByte);
+
+                    // Limpiamos los estilos de la huella por defecto
+                    holder.ivFotoMascota.setPadding(0, 0, 0, 0);
+                    holder.ivFotoMascota.setImageTintList(null);
+                    holder.ivFotoMascota.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                } catch (Exception e) {
+                    ponerHuellaPorDefecto(holder);
+                }
             }
         } else {
             ponerHuellaPorDefecto(holder);

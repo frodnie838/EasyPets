@@ -1,7 +1,6 @@
 package com.easypets.ui.mascotas;
 
 import android.app.DatePickerDialog;
-import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
@@ -27,9 +26,9 @@ import com.easypets.models.Mascota;
 import com.easypets.repositories.MascotaRepository;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
 
-import java.io.ByteArrayOutputStream;
-import java.io.InputStream;
 import java.util.Calendar;
 
 public class AgregarMascotaActivity extends AppCompatActivity {
@@ -45,44 +44,17 @@ public class AgregarMascotaActivity extends AppCompatActivity {
     private MascotaRepository mascotaRepository;
     private String idMascotaAEditar = null;
 
-    // ✨ AQUÍ GUARDAMOS LA FOTO CONVERTIDA A TEXTO ✨
     private String fotoBase64 = "";
+    private Uri uriImagenSeleccionada = null; // ✨ NUEVO: Variable para Firebase Storage
 
-    // ✨ EL LANZADOR DE LA GALERÍA Y COMPRESOR DE IMAGEN ✨
-    // ✨ NUEVO SISTEMA: Photo Picker de Android (No requiere permisos) ✨
     private final ActivityResultLauncher<androidx.activity.result.PickVisualMediaRequest> photoPickerLauncher = registerForActivityResult(
             new ActivityResultContracts.PickVisualMedia(), uri -> {
                 if (uri != null) {
-                    try {
-                        // 1. Leer imagen de la galería
-                        InputStream inputStream = getContentResolver().openInputStream(uri);
-                        Bitmap bitmapOriginal = BitmapFactory.decodeStream(inputStream);
-
-                        // 2. Reducir tamaño a 400x400 (MUY IMPORTANTE para Firebase)
-                        int maxResolucion = 400;
-                        int ancho = bitmapOriginal.getWidth();
-                        int alto = bitmapOriginal.getHeight();
-                        float ratio = (float) ancho / alto;
-                        if (ancho > alto) { ancho = maxResolucion; alto = (int) (ancho / ratio); }
-                        else { alto = maxResolucion; ancho = (int) (alto * ratio); }
-                        Bitmap bitmapReducido = Bitmap.createScaledBitmap(bitmapOriginal, ancho, alto, true);
-
-                        // 3. Mostrar en la pantalla
-                        ivFotoMascota.setImageBitmap(bitmapReducido);
-                        ivFotoMascota.setPadding(0, 0, 0, 0);
-
-                        // ✨ AQUÍ ESTÁ LA LÍNEA MÁGICA PARA QUITAR EL FILTRO VERDE ✨
-                        ivFotoMascota.setImageTintList(null);
-
-                        // 4. Convertir a Texto Base64
-                        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                        bitmapReducido.compress(Bitmap.CompressFormat.JPEG, 70, baos); // Calidad 70%
-                        byte[] bytesImagen = baos.toByteArray();
-                        fotoBase64 = Base64.encodeToString(bytesImagen, Base64.DEFAULT);
-
-                    } catch (Exception e) {
-                        Toast.makeText(this, "Error al procesar la imagen", Toast.LENGTH_SHORT).show();
-                    }
+                    uriImagenSeleccionada = uri;
+                    com.bumptech.glide.Glide.with(this).load(uri).into(ivFotoMascota);
+                    ivFotoMascota.setPadding(0, 0, 0, 0);
+                    ivFotoMascota.setImageTintList(null);
+                    fotoBase64 = ""; // Limpiamos el texto antiguo si eligen foto nueva
                 }
             }
     );
@@ -94,7 +66,6 @@ public class AgregarMascotaActivity extends AppCompatActivity {
 
         mascotaRepository = new MascotaRepository();
 
-        // Vincular vistas
         tvTitulo = findViewById(R.id.tvTituloAgregarMascota);
         etNombre = findViewById(R.id.etNombreMascota);
         dropdownEspecie = findViewById(R.id.dropdownEspecie);
@@ -109,27 +80,21 @@ public class AgregarMascotaActivity extends AppCompatActivity {
         btnCancelar = findViewById(R.id.btnCancelarMascota);
         ivFotoMascota = findViewById(R.id.ivFotoMascota);
 
-        // Desplegable de Especies
         String[] especies = getResources().getStringArray(R.array.lista_especies);
         ArrayAdapter<String> adapterEspecies = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, especies);
         dropdownEspecie.setAdapter(adapterEspecies);
 
-        // Calendario
         etFechaNacimiento.setOnClickListener(v -> mostrarCalendario());
 
-        // Botones
         btnCancelar.setOnClickListener(v -> finish());
         btnGuardar.setOnClickListener(v -> guardarOActualizarMascota());
 
-        // Al tocar la foto, abrir la galería
         findViewById(R.id.cardFotoMascota).setOnClickListener(v -> {
-            // Lanzamos el nuevo Photo Picker filtrando solo por imágenes
             photoPickerLauncher.launch(new androidx.activity.result.PickVisualMediaRequest.Builder()
                     .setMediaType(ActivityResultContracts.PickVisualMedia.ImageOnly.INSTANCE)
                     .build());
         });
 
-        // Comprobamos si venimos a Editar
         idMascotaAEditar = getIntent().getStringExtra("idMascota");
         if (idMascotaAEditar != null) {
             prepararModoEdicion();
@@ -148,7 +113,6 @@ public class AgregarMascotaActivity extends AppCompatActivity {
             public void onResultado(Mascota mascota) {
                 if (mascota.getNombre() != null) etNombre.setText(mascota.getNombre());
                 if (mascota.getEspecie() != null) dropdownEspecie.setText(mascota.getEspecie(), false);
-
                 etRaza.setText(mascota.getRaza() != null && !mascota.getRaza().equals("Desconocida") ? mascota.getRaza() : "");
                 etColor.setText(mascota.getColor() != null && !mascota.getColor().equals("Desconocido") ? mascota.getColor() : "");
                 etPeso.setText(mascota.getPeso() != null && !mascota.getPeso().equals("0") ? mascota.getPeso() : "");
@@ -159,20 +123,19 @@ public class AgregarMascotaActivity extends AppCompatActivity {
                     else if (mascota.getSexo().equals("Hembra")) rbHembra.setChecked(true);
                 }
 
-                // ✨ RECUPERAR FOTO DE LA BASE DE DATOS Y DECODIFICARLA ✨
                 if (mascota.getFotoPerfilUrl() != null && !mascota.getFotoPerfilUrl().isEmpty()) {
-                    fotoBase64 = mascota.getFotoPerfilUrl(); // La guardamos por si el usuario actualiza sin cambiar de foto
-                    try {
-                        byte[] decodedString = Base64.decode(fotoBase64, Base64.DEFAULT);
-                        Bitmap decodedByte = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
-                        ivFotoMascota.setImageBitmap(decodedByte);
-                        ivFotoMascota.setPadding(0, 0, 0, 0); // Quitar el padding de la huella
-
-                        // ✨ AQUÍ ESTÁ LA LÍNEA PARA QUITAR EL FILTRO AL EDITAR ✨
-                        ivFotoMascota.setImageTintList(null);
-                    } catch (Exception e) {
-                        e.printStackTrace();
+                    fotoBase64 = mascota.getFotoPerfilUrl();
+                    if (fotoBase64.startsWith("http")) {
+                        com.bumptech.glide.Glide.with(AgregarMascotaActivity.this).load(fotoBase64).into(ivFotoMascota);
+                    } else {
+                        try {
+                            byte[] decodedString = Base64.decode(fotoBase64, Base64.DEFAULT);
+                            Bitmap decodedByte = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
+                            ivFotoMascota.setImageBitmap(decodedByte);
+                        } catch (Exception e) {}
                     }
+                    ivFotoMascota.setPadding(0, 0, 0, 0);
+                    ivFotoMascota.setImageTintList(null);
                 }
             }
 
@@ -206,12 +169,16 @@ public class AgregarMascotaActivity extends AppCompatActivity {
         String pesoStr = etPeso.getText().toString().trim();
         String fechaNacimiento = etFechaNacimiento.getText().toString().trim();
 
-        String sexo = "";
+        // ✨ SOLUCIÓN: Usamos una variable temporal para descubrir el sexo...
+        String sexoTemporal = "";
         int selectedId = rgSexo.getCheckedRadioButtonId();
         if (selectedId != -1) {
             RadioButton rbSeleccionado = findViewById(selectedId);
-            sexo = rbSeleccionado.getText().toString();
+            sexoTemporal = rbSeleccionado.getText().toString();
         }
+
+        // ✨ ...y luego lo guardamos en una variable "final" para que Java nos deje usarla en la Lambda
+        final String sexo = sexoTemporal;
 
         if (TextUtils.isEmpty(nombre)) { etNombre.setError("Obligatorio"); return; }
         if (TextUtils.isEmpty(especie)) { dropdownEspecie.setError("Obligatorio"); return; }
@@ -220,42 +187,59 @@ public class AgregarMascotaActivity extends AppCompatActivity {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user == null) return;
 
+        btnGuardar.setEnabled(false);
+        btnGuardar.setText("Subiendo datos...");
+
+        if (uriImagenSeleccionada != null) {
+            StorageReference ref = FirebaseStorage.getInstance().getReference("mascotas").child(user.getUid() + "_" + System.currentTimeMillis() + ".jpg");
+            ref.putFile(uriImagenSeleccionada).addOnSuccessListener(taskSnapshot -> {
+                ref.getDownloadUrl().addOnSuccessListener(url -> {
+                    fotoBase64 = url.toString();
+                    ejecutarGuardadoFinal(user.getUid(), nombre, especie, raza, sexo, fechaNacimiento, color, pesoStr);
+                });
+            }).addOnFailureListener(e -> {
+                Toast.makeText(this, "Error al subir la imagen", Toast.LENGTH_SHORT).show();
+                btnGuardar.setEnabled(true);
+                btnGuardar.setText("Guardar Mascota");
+            });
+        } else {
+            ejecutarGuardadoFinal(user.getUid(), nombre, especie, raza, sexo, fechaNacimiento, color, pesoStr);
+        }
+    }
+
+    private void ejecutarGuardadoFinal(String uid, String nombre, String especie, String raza, String sexo, String fechaNacimiento, String color, String pesoStr) {
+
+        // ✨ ORDEN 100% CORREGIDO BASADO EN TU ARCHIVO MASCOTA.JAVA
         Mascota mascotaListaParaSubir = new Mascota(
-                idMascotaAEditar,
-                nombre,
-                especie,
-                raza.isEmpty() ? "Desconocida" : raza,
-                sexo,
-                fechaNacimiento.isEmpty() ? "Desconocida" : fechaNacimiento,
-                color.isEmpty() ? "Desconocido" : color,
-                pesoStr.isEmpty() ? "0" : pesoStr,
-                "",
-                false,
-                "",
-                fotoBase64, // Pasamos la foto en texto
-                System.currentTimeMillis()
+                idMascotaAEditar,                                            // 1. id
+                nombre,                                                      // 2. nombre
+                especie,                                                     // 3. especie
+                raza.isEmpty() ? "Desconocida" : raza,                       // 4. raza
+                sexo,                                                        // 5. sexo
+                fechaNacimiento.isEmpty() ? "Desconocida" : fechaNacimiento, // 6. fechaNacimiento
+                color.isEmpty() ? "Desconocido" : color,                     // 7. color
+                pesoStr.isEmpty() ? "0" : pesoStr,                           // 8. peso
+                "",                                                          // 9. microchip
+                false,                                                       // 10. esterilizado
+                "",                                                          // 11. patologias
+                fotoBase64,                                                  // 12. fotoPerfilUrl
+                System.currentTimeMillis()                                   // 13. timestamp
         );
 
         if (idMascotaAEditar == null) {
-            mascotaRepository.guardarMascota(user.getUid(), mascotaListaParaSubir, new MascotaRepository.AccionCallback() {
-                @Override
-                public void onExito() {
-                    finish();
-                }
-                @Override
-                public void onError(String error) {
+            mascotaRepository.guardarMascota(uid, mascotaListaParaSubir, new MascotaRepository.AccionCallback() {
+                @Override public void onExito() { finish(); }
+                @Override public void onError(String error) {
                     Toast.makeText(AgregarMascotaActivity.this, "Error: " + error, Toast.LENGTH_LONG).show();
+                    btnGuardar.setEnabled(true);
                 }
             });
         } else {
-            mascotaRepository.actualizarMascota(user.getUid(), mascotaListaParaSubir, new MascotaRepository.AccionCallback() {
-                @Override
-                public void onExito() {
-                    finish();
-                }
-                @Override
-                public void onError(String error) {
+            mascotaRepository.actualizarMascota(uid, mascotaListaParaSubir, new MascotaRepository.AccionCallback() {
+                @Override public void onExito() { finish(); }
+                @Override public void onError(String error) {
                     Toast.makeText(AgregarMascotaActivity.this, "Error al actualizar: " + error, Toast.LENGTH_LONG).show();
+                    btnGuardar.setEnabled(true);
                 }
             });
         }

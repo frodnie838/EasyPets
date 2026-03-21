@@ -184,16 +184,33 @@ public class MascotaDetalleActivity extends AppCompatActivity {
                         btnEditarCartilla.setIconTint(cslAcento);
                     }
 
+                    // ✨ LÓGICA HÍBRIDA PARA EL DETALLE DE LA MASCOTA
                     if (mascota.getFotoPerfilUrl() != null && !mascota.getFotoPerfilUrl().isEmpty()) {
-                        try {
-                            byte[] decodedString = Base64.decode(mascota.getFotoPerfilUrl(), Base64.DEFAULT);
-                            Bitmap decodedByte = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
-                            ivDetalleFoto.setImageBitmap(decodedByte);
+                        if (mascota.getFotoPerfilUrl().startsWith("http")) {
+                            // Foto de Firebase Storage (Nueva)
+                            com.bumptech.glide.Glide.with(MascotaDetalleActivity.this)
+                                    .load(mascota.getFotoPerfilUrl())
+                                    .centerCrop()
+                                    .into(ivDetalleFoto);
+
+                            // Limpiamos los estilos de la huella
                             ivDetalleFoto.setPadding(0, 0, 0, 0);
                             ivDetalleFoto.setImageTintList(null);
                             ivDetalleFoto.setScaleType(ImageView.ScaleType.CENTER_CROP);
-                        } catch (Exception e) {
-                            ponerHuellaPorDefectoDetalle();
+                        } else {
+                            // Foto en Base64 (Antigua)
+                            try {
+                                byte[] decodedString = Base64.decode(mascota.getFotoPerfilUrl(), Base64.DEFAULT);
+                                Bitmap decodedByte = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
+                                ivDetalleFoto.setImageBitmap(decodedByte);
+
+                                // Limpiamos los estilos de la huella
+                                ivDetalleFoto.setPadding(0, 0, 0, 0);
+                                ivDetalleFoto.setImageTintList(null);
+                                ivDetalleFoto.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                            } catch (Exception e) {
+                                ponerHuellaPorDefectoDetalle();
+                            }
                         }
                     } else {
                         ponerHuellaPorDefectoDetalle();

@@ -3,6 +3,7 @@ package com.easypets.ui.perfil;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.net.Uri;
 import android.os.Bundle;
 import android.util.Base64;
 import android.view.LayoutInflater;
@@ -36,9 +37,9 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
 
-import java.io.ByteArrayOutputStream;
-import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -55,13 +56,21 @@ public class PerfilFragment extends Fragment {
     private String apellidosActuales = "";
     private String nickActual = "";
     private String fotoBase64Actual = "";
+
     private String fotoBase64Temporal = "";
+    private Uri uriImagenPerfil = null; // ✨ NUEVO: Variable para Storage
     private ImageView ivFotoDialogoTemporal;
 
     private final ActivityResultLauncher<androidx.activity.result.PickVisualMediaRequest> photoPickerLauncher = registerForActivityResult(
             new ActivityResultContracts.PickVisualMedia(), uri -> {
                 if (uri != null) {
-                    procesarFotoTemporal(uri);
+                    uriImagenPerfil = uri;
+                    if (ivFotoDialogoTemporal != null) {
+                        com.bumptech.glide.Glide.with(requireContext()).load(uri).into(ivFotoDialogoTemporal);
+                        ivFotoDialogoTemporal.setPadding(0, 0, 0, 0);
+                        ivFotoDialogoTemporal.setImageTintList(null);
+                    }
+                    fotoBase64Temporal = ""; // Limpiamos el texto antiguo
                 }
             }
     );
@@ -103,22 +112,19 @@ public class PerfilFragment extends Fragment {
         }
 
         ivFotoPerfil.setOnClickListener(v -> {
-            if (ivFotoPerfil.getDrawable() != null) {
-                mostrarFotoGrande();
-            }
+            if (ivFotoPerfil.getDrawable() != null) mostrarFotoGrande();
         });
         btnCerrarSesion.setOnClickListener(v -> cerrarSesion());
     }
 
     private void configurarPerfilUsuario(FirebaseUser currentUser) {
         tvCorreo.setText(currentUser.getEmail());
-
         userRef = FirebaseDatabase.getInstance().getReference().child("usuarios").child(currentUser.getUid());
 
         userRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
-                if (snapshot.exists()) {
+                if (snapshot.exists() && isAdded()) {
                     nombreActual = snapshot.child("nombre").getValue(String.class);
                     apellidosActuales = snapshot.child("apellidos").getValue(String.class);
                     nickActual = snapshot.child("nick").getValue(String.class);
@@ -138,29 +144,30 @@ public class PerfilFragment extends Fragment {
 
                     if (fotoBase64Actual != null && !fotoBase64Actual.isEmpty()) {
                         if (fotoBase64Actual.startsWith("http")) {
-                            cargarFotoGoogle(fotoBase64Actual, ivFotoPerfil);
+                            com.bumptech.glide.Glide.with(requireContext()).load(fotoBase64Actual).into(ivFotoPerfil);
+                            ivFotoPerfil.setPadding(0, 0, 0, 0);
+                            ivFotoPerfil.setImageTintList(null);
                         } else {
                             cargarFotoDesdeBase64(fotoBase64Actual, ivFotoPerfil);
                         }
                     } else if (currentUser.getPhotoUrl() != null) {
-                        cargarFotoGoogle(currentUser.getPhotoUrl().toString(), ivFotoPerfil);
+                        com.bumptech.glide.Glide.with(requireContext()).load(currentUser.getPhotoUrl()).into(ivFotoPerfil);
+                        ivFotoPerfil.setPadding(0, 0, 0, 0);
+                        ivFotoPerfil.setImageTintList(null);
                     }
                 }
             }
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {}
+            @Override public void onCancelled(@NonNull DatabaseError error) {}
         });
 
         btnEditarPerfil.setOnClickListener(v -> mostrarDialogoEditar());
-        btnAjustes.setOnClickListener(v -> {
-            Intent intent = new Intent(getActivity(), com.easypets.ui.perfil.AjustesActivity.class);
-            startActivity(intent);
-        });
+        btnAjustes.setOnClickListener(v -> startActivity(new Intent(getActivity(), AjustesActivity.class)));
     }
 
     private void mostrarDialogoEditar() {
         if (getContext() == null) return;
 
+        uriImagenPerfil = null; // Reiniciar
         AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
         View dialogView = LayoutInflater.from(getContext()).inflate(R.layout.dialog_editar_cuenta, null);
         builder.setView(dialogView);
@@ -178,12 +185,16 @@ public class PerfilFragment extends Fragment {
 
         if (!fotoBase64Temporal.isEmpty()) {
             if (fotoBase64Temporal.startsWith("http")) {
-                cargarFotoGoogle(fotoBase64Temporal, ivFotoDialogoTemporal);
+                com.bumptech.glide.Glide.with(requireContext()).load(fotoBase64Temporal).into(ivFotoDialogoTemporal);
+                ivFotoDialogoTemporal.setPadding(0, 0, 0, 0);
+                ivFotoDialogoTemporal.setImageTintList(null);
             } else {
                 cargarFotoDesdeBase64(fotoBase64Temporal, ivFotoDialogoTemporal);
             }
         } else if (mAuth.getCurrentUser() != null && mAuth.getCurrentUser().getPhotoUrl() != null) {
-            cargarFotoGoogle(mAuth.getCurrentUser().getPhotoUrl().toString(), ivFotoDialogoTemporal);
+            com.bumptech.glide.Glide.with(requireContext()).load(mAuth.getCurrentUser().getPhotoUrl()).into(ivFotoDialogoTemporal);
+            ivFotoDialogoTemporal.setPadding(0, 0, 0, 0);
+            ivFotoDialogoTemporal.setImageTintList(null);
         }
 
         dialogView.findViewById(R.id.cardDialogFoto).setOnClickListener(v -> {
@@ -201,51 +212,31 @@ public class PerfilFragment extends Fragment {
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
             String nuevoNombre = etNombre.getText().toString().trim();
             String nuevosApellidos = etApellidos.getText().toString().trim();
+            String nuevoNick = etNick.getText().toString().trim().replace("@", "").replace(" ", "_");
 
-            // Limpiamos el nick: quitamos espacios y arrobas accidentales
-            String nuevoNick = etNick.getText().toString().trim()
-                    .replace("@", "")
-                    .replace(" ", "_");
+            if (nuevoNombre.isEmpty()) { etNombre.setError("El nombre es obligatorio"); return; }
+            if (nuevoNick.isEmpty()) { etNick.setError("El nick es obligatorio"); return; }
 
-            if (nuevoNombre.isEmpty()) {
-                etNombre.setError("El nombre es obligatorio");
-                etNombre.requestFocus();
-                return;
-            }
-
-            if (nuevoNick.isEmpty()) {
-                etNick.setError("El nick es obligatorio");
-                etNick.requestFocus();
-                return;
-            }
-
-            // Bloqueamos el botón mientras Firebase comprueba para evitar doble clic
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(false);
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setText("Guardando...");
 
-            // Si el nick es el mismo que ya tenía, guardamos directamente
             if (nuevoNick.equals(nickActual)) {
-                guardarCambiosPerfil(nuevoNombre, nuevosApellidos, nuevoNick, dialog);
+                subirFotoYGuardarPerfil(nuevoNombre, nuevosApellidos, nuevoNick, dialog);
             } else {
-                // Comprobamos si el nick ya está pillado por OTRO usuario
                 DatabaseReference usuariosRef = FirebaseDatabase.getInstance().getReference("usuarios");
                 usuariosRef.orderByChild("nick").equalTo(nuevoNick).addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot snapshot) {
                         if (snapshot.exists()) {
-                            // ¡Vaya! El nick ya existe
-                            etNick.setError("Este nick ya está en uso. Elige otro.");
-                            etNick.requestFocus();
-                            // Volvemos a activar el botón para que pruebe otro
+                            etNick.setError("Este nick ya está en uso.");
                             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(true);
+                            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setText("Guardar");
                         } else {
-                            // El nick está libre, ¡guardamos!
-                            guardarCambiosPerfil(nuevoNombre, nuevosApellidos, nuevoNick, dialog);
+                            subirFotoYGuardarPerfil(nuevoNombre, nuevosApellidos, nuevoNick, dialog);
                         }
                     }
-
                     @Override
                     public void onCancelled(@NonNull DatabaseError error) {
-                        Toast.makeText(getContext(), "Error al comprobar el nick", Toast.LENGTH_SHORT).show();
                         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(true);
                     }
                 });
@@ -253,32 +244,41 @@ public class PerfilFragment extends Fragment {
         });
     }
 
-    private void procesarFotoTemporal(android.net.Uri uri) {
-        if (getContext() == null) return;
-        try {
-            InputStream inputStream = getContext().getContentResolver().openInputStream(uri);
-            Bitmap bitmapOriginal = BitmapFactory.decodeStream(inputStream);
-
-            int maxResolucion = 400;
-            int ancho = bitmapOriginal.getWidth();
-            int alto = bitmapOriginal.getHeight();
-            float ratio = (float) ancho / alto;
-            if (ancho > alto) { ancho = maxResolucion; alto = (int) (ancho / ratio); }
-            else { alto = maxResolucion; ancho = (int) (alto * ratio); }
-            Bitmap bitmapReducido = Bitmap.createScaledBitmap(bitmapOriginal, ancho, alto, true);
-
-            if (ivFotoDialogoTemporal != null) {
-                ivFotoDialogoTemporal.setImageBitmap(bitmapReducido);
-                ivFotoDialogoTemporal.setPadding(0, 0, 0, 0);
-                ivFotoDialogoTemporal.setImageTintList(null);
-            }
-
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            bitmapReducido.compress(Bitmap.CompressFormat.JPEG, 70, baos);
-            fotoBase64Temporal = Base64.encodeToString(baos.toByteArray(), Base64.DEFAULT);
-        } catch (Exception e) {
-            Toast.makeText(getContext(), "Error al procesar la imagen", Toast.LENGTH_SHORT).show();
+    private void subirFotoYGuardarPerfil(String nombre, String apellidos, String nick, AlertDialog dialog) {
+        if (uriImagenPerfil != null && mAuth.getCurrentUser() != null) {
+            StorageReference ref = FirebaseStorage.getInstance().getReference("perfiles").child(mAuth.getCurrentUser().getUid() + ".jpg");
+            ref.putFile(uriImagenPerfil).addOnSuccessListener(taskSnapshot -> {
+                ref.getDownloadUrl().addOnSuccessListener(uri -> {
+                    fotoBase64Temporal = uri.toString();
+                    guardarCambiosPerfilDB(nombre, apellidos, nick, dialog);
+                });
+            }).addOnFailureListener(e -> {
+                Toast.makeText(getContext(), "Error subiendo foto", Toast.LENGTH_SHORT).show();
+                dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(true);
+                dialog.getButton(AlertDialog.BUTTON_POSITIVE).setText("Guardar");
+            });
+        } else {
+            guardarCambiosPerfilDB(nombre, apellidos, nick, dialog);
         }
+    }
+
+    private void guardarCambiosPerfilDB(String nombre, String apellidos, String nick, AlertDialog dialog) {
+        Map<String, Object> actualizaciones = new HashMap<>();
+        actualizaciones.put("nombre", nombre);
+        actualizaciones.put("apellidos", apellidos);
+        actualizaciones.put("nick", nick);
+
+        if (fotoBase64Temporal != null && !fotoBase64Temporal.isEmpty()) {
+            actualizaciones.put("fotoPerfil", fotoBase64Temporal);
+        }
+
+        userRef.updateChildren(actualizaciones).addOnSuccessListener(aVoid -> {
+            Toast.makeText(getContext(), "Cuenta actualizada", Toast.LENGTH_SHORT).show();
+            dialog.dismiss();
+        }).addOnFailureListener(e -> {
+            Toast.makeText(getContext(), "Error al guardar", Toast.LENGTH_SHORT).show();
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(true);
+        });
     }
 
     private void cargarFotoDesdeBase64(String base64, ImageView imageView) {
@@ -289,22 +289,6 @@ public class PerfilFragment extends Fragment {
             imageView.setPadding(0, 0, 0, 0);
             imageView.setImageTintList(null);
         } catch (Exception e) { e.printStackTrace(); }
-    }
-
-    private void cargarFotoGoogle(String urlImagen, ImageView targetImageView) {
-        new Thread(() -> {
-            try {
-                InputStream in = new java.net.URL(urlImagen).openStream();
-                Bitmap foto = BitmapFactory.decodeStream(in);
-                if (getActivity() != null && targetImageView != null) {
-                    getActivity().runOnUiThread(() -> {
-                        targetImageView.setImageBitmap(foto);
-                        targetImageView.setPadding(0,0,0,0);
-                        targetImageView.setImageTintList(null);
-                    });
-                }
-            } catch (Exception e) { e.printStackTrace(); }
-        }).start();
     }
 
     private void cerrarSesion() {
@@ -359,23 +343,5 @@ public class PerfilFragment extends Fragment {
         ivGrande.setOnClickListener(v -> dialog.dismiss());
 
         dialog.show();
-    }
-    private void guardarCambiosPerfil(String nombre, String apellidos, String nick, AlertDialog dialog) {
-        Map<String, Object> actualizaciones = new HashMap<>();
-        actualizaciones.put("nombre", nombre);
-        actualizaciones.put("apellidos", apellidos);
-        actualizaciones.put("nick", nick);
-
-        if (fotoBase64Temporal != null && !fotoBase64Temporal.isEmpty()) {
-            actualizaciones.put("fotoPerfil", fotoBase64Temporal);
-        }
-
-        userRef.updateChildren(actualizaciones).addOnSuccessListener(aVoid -> {
-            Toast.makeText(getContext(), "Cuenta actualizada", Toast.LENGTH_SHORT).show();
-            dialog.dismiss();
-        }).addOnFailureListener(e -> {
-            Toast.makeText(getContext(), "Error al guardar", Toast.LENGTH_SHORT).show();
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(true);
-        });
     }
 }
