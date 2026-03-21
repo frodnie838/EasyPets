@@ -127,17 +127,26 @@ public class RespuestaAdapter extends RecyclerView.Adapter<RespuestaAdapter.Resp
                                 holder.tvAutor.setText(nombre != null ? nombre : "Usuario");
                             }
 
+                            // ✨ LÓGICA HÍBRIDA PARA LAS RESPUESTAS DEL FORO
                             String foto = snapshot.child("fotoPerfil").getValue(String.class);
                             if (foto != null && !foto.isEmpty()) {
                                 if (foto.startsWith("http")) {
-                                    cargarFotoGoogle(foto, holder.ivAvatar);
+                                    com.bumptech.glide.Glide.with(holder.itemView.getContext())
+                                            .load(foto)
+                                            .circleCrop()
+                                            .into(holder.ivAvatar);
+                                    holder.ivAvatar.setPadding(0, 0, 0, 0);
+                                    holder.ivAvatar.setImageTintList(null);
                                 } else {
                                     try {
                                         byte[] decodedString = Base64.decode(foto, Base64.DEFAULT);
                                         Bitmap bitmap = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
                                         holder.ivAvatar.setImageBitmap(bitmap);
+                                        holder.ivAvatar.setPadding(0, 0, 0, 0);
                                         holder.ivAvatar.setImageTintList(null);
-                                    } catch (Exception e) { e.printStackTrace(); }
+                                    } catch (Exception e) {
+                                        holder.ivAvatar.setImageResource(R.drawable.profile);
+                                    }
                                 }
                             }
                         }
@@ -147,21 +156,6 @@ public class RespuestaAdapter extends RecyclerView.Adapter<RespuestaAdapter.Resp
     }
 
     @Override public int getItemCount() { return respuestas.size(); }
-
-    private void cargarFotoGoogle(String urlImagen, ImageView targetImageView) {
-        new Thread(() -> {
-            try {
-                java.io.InputStream in = new java.net.URL(urlImagen).openStream();
-                Bitmap foto = BitmapFactory.decodeStream(in);
-                if (targetImageView != null) {
-                    targetImageView.post(() -> {
-                        targetImageView.setImageBitmap(foto);
-                        targetImageView.setImageTintList(null);
-                    });
-                }
-            } catch (Exception e) { e.printStackTrace(); }
-        }).start();
-    }
 
     public static class RespuestaViewHolder extends RecyclerView.ViewHolder {
         TextView tvAutor, tvFecha, tvTexto, tvEditado;

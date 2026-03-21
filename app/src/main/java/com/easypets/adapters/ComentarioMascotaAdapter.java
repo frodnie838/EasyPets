@@ -59,25 +59,26 @@ public class ComentarioMascotaAdapter extends RecyclerView.Adapter<ComentarioMas
         String fechaStr = sdf.format(new Date(comentario.getTimestamp()));
         holder.tvFecha.setText(fechaStr);
 
+        // ✨ LÓGICA HÍBRIDA PARA LA FOTO DEL COMENTARIO
         String foto = comentario.getAutorFoto();
         if (foto != null && !foto.isEmpty()) {
             if (foto.startsWith("http")) {
-                // Es un enlace de Google
-                new Thread(() -> {
-                    try {
-                        java.io.InputStream in = new java.net.URL(foto).openStream();
-                        android.graphics.Bitmap fotoBitmap = android.graphics.BitmapFactory.decodeStream(in);
-                        // Volvemos al hilo principal para pintar la imagen
-                        holder.ivPerfil.post(() -> holder.ivPerfil.setImageBitmap(fotoBitmap));
-                    } catch (Exception e) { e.printStackTrace(); }
-                }).start();
+                // Foto de Firebase Storage
+                com.bumptech.glide.Glide.with(holder.itemView.getContext())
+                        .load(foto)
+                        .circleCrop() // ✨ Hace la foto redondita
+                        .into(holder.ivPerfil);
+                holder.ivPerfil.setPadding(0, 0, 0, 0);
             } else {
-                // Es una foto de la galería (Base64)
+                // Foto antigua en Base64
                 try {
                     byte[] decodedString = Base64.decode(foto, Base64.DEFAULT);
                     Bitmap bitmap = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
                     holder.ivPerfil.setImageBitmap(bitmap);
-                } catch (Exception e) { e.printStackTrace(); }
+                    holder.ivPerfil.setPadding(0, 0, 0, 0);
+                } catch (Exception e) {
+                    holder.ivPerfil.setImageResource(R.drawable.profile);
+                }
             }
         } else {
             // Si no tiene foto, ponemos la de por defecto
