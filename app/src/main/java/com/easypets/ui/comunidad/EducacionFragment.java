@@ -980,9 +980,6 @@ public class EducacionFragment extends Fragment {
             publicacionComentariosRef.child(comentarioId).setValue(nuevoComentario).addOnSuccessListener(aVoid -> {
                 etNuevoComentario.setText("");
 
-                galeriaRef.child(publicacion.getId()).child("comentariosCount")
-                        .setValue(publicacion.getComentariosCount() + 1);
-
                 java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("@(\\w+)").matcher(texto);
                 while (matcher.find()) {
                     String nickMencionado = matcher.group(1);

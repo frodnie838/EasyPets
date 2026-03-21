@@ -16,6 +16,11 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.easypets.R;
 import com.easypets.models.PublicacionMascota;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 import java.util.List;
 
@@ -72,7 +77,27 @@ public class GaleriaAdapter extends RecyclerView.Adapter<GaleriaAdapter.ViewHold
 
         int totalLikes = (publicacion.getLikes() != null) ? publicacion.getLikes().size() : 0;
         holder.tvLikesCount.setText(String.valueOf(totalLikes));
-        holder.tvComentariosCount.setText(String.valueOf(publicacion.getComentariosCount()));
+
+        // ✨ MAGIA: CONTADOR EXACTO Y EN TIEMPO REAL
+        // 1. Si la tarjeta se está reciclando (el usuario hace scroll rápido), matamos el oyente viejo
+        if (holder.comentariosRef != null && holder.comentariosListener != null) {
+            holder.comentariosRef.removeEventListener(holder.comentariosListener);
+        }
+
+        // 2. Le ponemos la oreja a Firebase solo para esta foto exacta
+        holder.comentariosRef = FirebaseDatabase.getInstance().getReference("mascotas_comentarios").child(publicacion.getId());
+        holder.comentariosListener = new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                // Cuenta exactamente cuántos comentarios hijos hay ahora mismo
+                long contadorReal = snapshot.getChildrenCount();
+                holder.tvComentariosCount.setText(String.valueOf(contadorReal));
+            }
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {}
+        };
+        holder.comentariosRef.addValueEventListener(holder.comentariosListener);
+
 
         boolean leHeDadoLike = miUid != null && publicacion.getLikes() != null && publicacion.getLikes().containsKey(miUid);
         if (leHeDadoLike) {
@@ -94,6 +119,16 @@ public class GaleriaAdapter extends RecyclerView.Adapter<GaleriaAdapter.ViewHold
         holder.btnOpciones.setOnClickListener(v -> listener.onOpcionesClick(publicacion, v));
     }
 
+    // ✨ TÉCNICA SENIOR: Evitar fugas de memoria
+    // Cuando el usuario baja la pantalla y la foto deja de verse, desenchufamos la conexión
+    @Override
+    public void onViewRecycled(@NonNull ViewHolder holder) {
+        super.onViewRecycled(holder);
+        if (holder.comentariosRef != null && holder.comentariosListener != null) {
+            holder.comentariosRef.removeEventListener(holder.comentariosListener);
+        }
+    }
+
     @Override
     public int getItemCount() {
         return listaPublicaciones.size();
@@ -103,6 +138,9 @@ public class GaleriaAdapter extends RecyclerView.Adapter<GaleriaAdapter.ViewHold
         TextView tvNombreMascota, tvAutor, tvDescripcion, tvLikesCount, tvComentariosCount;
         ImageView ivFoto;
         ImageButton btnLike, btnComentar, btnOpciones;
+
+        DatabaseReference comentariosRef;
+        ValueEventListener comentariosListener;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
