@@ -135,10 +135,12 @@ public class EducacionFragment extends Fragment {
         listaHilosOriginal = new ArrayList<>();
         listaGaleria = new ArrayList<>();
 
+        // ✨ ADAPTADOR ACTUALIZADO CON LA OPCIÓN DE REPORTAR
         articuloAdapter = new ArticuloAdapter(listaArticulos, new ArticuloAdapter.OnArticuloClickListener() {
             @Override public void onArticuloClick(Articulo articulo) { mostrarArticuloCompleto(articulo); }
             @Override public void onEditarClick(Articulo articulo) { mostrarDialogoEditarArticulo(articulo); }
             @Override public void onBorrarClick(Articulo articulo) { confirmarBorradoArticulo(articulo); }
+            @Override public void onReportarClick(Articulo articulo) { mostrarDialogoReporte(articulo); }
         });
 
         foroAdapter = new ForoAdapter(listaHilos, new ForoAdapter.OnHiloAccionListener() {
@@ -189,16 +191,27 @@ public class EducacionFragment extends Fragment {
                 mostrarBottomSheetComentarios(publicacion);
             }
 
+            // ✨ MENÚ INTELIGENTE PARA MASCOTAS (Dueño vs Visitante)
             @Override
             public void onOpcionesClick(PublicacionMascota publicacion, View anchorView) {
-                CharSequence[] opciones = {"Editar descripción", "Eliminar publicación"};
-                new AlertDialog.Builder(requireContext())
-                        .setTitle("Opciones")
-                        .setItems(opciones, (dialog, which) -> {
-                            if (which == 0) mostrarDialogoEditarMascota(publicacion);
-                            else confirmarBorradoMascota(publicacion);
-                        })
-                        .show();
+                if (currentUser != null && currentUser.getUid().equals(publicacion.getIdAutor())) {
+                    CharSequence[] opciones = {"✏️ Editar descripción", "🗑️ Eliminar publicación"};
+                    new AlertDialog.Builder(requireContext())
+                            .setTitle("Opciones de mi publicación")
+                            .setItems(opciones, (dialog, which) -> {
+                                if (which == 0) mostrarDialogoEditarMascota(publicacion);
+                                else confirmarBorradoMascota(publicacion);
+                            })
+                            .show();
+                } else {
+                    CharSequence[] opciones = {"🚩 Reportar contenido inapropiado"};
+                    new AlertDialog.Builder(requireContext())
+                            .setTitle("Opciones de comunidad")
+                            .setItems(opciones, (dialog, which) -> {
+                                if (which == 0) mostrarDialogoReporte(publicacion);
+                            })
+                            .show();
+                }
             }
         });
 
@@ -261,8 +274,12 @@ public class EducacionFragment extends Fragment {
                 }
         );
 
+        // ✨ MAGIA DE DEEP LINKING AL ENTRAR DESDE UNA NOTIFICACIÓN
         if (getArguments() != null && getArguments().containsKey("abrirPublicacionId")) {
             String pubId = getArguments().getString("abrirPublicacionId");
+
+            // Vaciamos la mochila para que no se repita al darle atrás
+            getArguments().remove("abrirPublicacionId");
 
             if (pubId != null && !pubId.trim().isEmpty()) {
 
@@ -379,7 +396,7 @@ public class EducacionFragment extends Fragment {
             rvContenido.setAdapter(articuloAdapter);
             cargarArticulos(comunidadRef.orderByChild("idAutor").equalTo(currentUser.getUid()), "");
         } else if (selectedChipId == R.id.chipMisHilos) {
-            foroAdapter.setMostrarOpciones(true);
+            if (foroAdapter != null) foroAdapter.setMostrarOpciones(true);
             rvContenido.setAdapter(foroAdapter);
             cargarHilos(foroRef.orderByChild("idAutor").equalTo(currentUser.getUid()));
         } else if (selectedChipId == R.id.chipMisMascotas) {
@@ -419,7 +436,7 @@ public class EducacionFragment extends Fragment {
                 listaArticulos.addAll(listaArticulosOriginal);
             } else {
                 for (Articulo a : listaArticulosOriginal) {
-                    if (a.getTitulo().toLowerCase().contains(texto)) {
+                    if (a.getTitulo() != null && a.getTitulo().toLowerCase().contains(texto)) {
                         listaArticulos.add(a);
                     }
                 }
@@ -432,7 +449,7 @@ public class EducacionFragment extends Fragment {
                 listaHilos.addAll(listaHilosOriginal);
             } else {
                 for (HiloForo h : listaHilosOriginal) {
-                    if (h.getTitulo().toLowerCase().contains(texto)) {
+                    if (h.getTitulo() != null && h.getTitulo().toLowerCase().contains(texto)) {
                         listaHilos.add(h);
                     }
                 }
@@ -458,6 +475,7 @@ public class EducacionFragment extends Fragment {
                 Collections.reverse(listaGaleria);
                 galeriaAdapter.notifyDataSetChanged();
                 pbCargando.setVisibility(View.GONE);
+                comprobarEmptyState(listaGaleria.isEmpty());
             }
             @Override public void onCancelled(@NonNull DatabaseError error) { pbCargando.setVisibility(View.GONE); }
         };
@@ -478,7 +496,6 @@ public class EducacionFragment extends Fragment {
                     PublicacionMascota p = data.getValue(PublicacionMascota.class);
                     if (p != null) listaGaleria.add(p);
                 }
-                // Como filtramos por autor, la base de datos no lo ordena por fecha. Lo hacemos nosotros:
                 Collections.sort(listaGaleria, (p1, p2) -> Long.compare(p2.getTimestamp(), p1.getTimestamp()));
 
                 galeriaAdapter.notifyDataSetChanged();
@@ -508,6 +525,7 @@ public class EducacionFragment extends Fragment {
                 Collections.sort(listaArticulosOriginal, (a1, a2) -> Long.compare(a2.getTimestampCreacion(), a1.getTimestampCreacion()));
                 aplicarFiltroActual();
                 pbCargando.setVisibility(View.GONE);
+                comprobarEmptyState(listaArticulosOriginal.isEmpty());
             }
             @Override public void onCancelled(@NonNull DatabaseError error) { pbCargando.setVisibility(View.GONE); }
         };
@@ -532,6 +550,7 @@ public class EducacionFragment extends Fragment {
                 Collections.sort(listaHilosOriginal, (h1, h2) -> Long.compare(h2.getTimestampCreacion(), h1.getTimestampCreacion()));
                 aplicarFiltroActual();
                 pbCargando.setVisibility(View.GONE);
+                comprobarEmptyState(listaHilosOriginal.isEmpty());
             }
             @Override public void onCancelled(@NonNull DatabaseError error) { pbCargando.setVisibility(View.GONE); }
         };
@@ -557,6 +576,7 @@ public class EducacionFragment extends Fragment {
 
     private void actualizarVisibilidadFab() {
         int pos = tabLayout.getSelectedTabPosition();
+        if (pos < 0) return;
         TabLayout.Tab tab = tabLayout.getTabAt(pos);
         if (tab == null || tab.getText() == null) return;
         String titulo = tab.getText().toString();
@@ -717,7 +737,6 @@ public class EducacionFragment extends Fragment {
                 .setMessage("Esta acción no se puede deshacer.")
                 .setPositiveButton("Eliminar", (d, w) -> {
                     galeriaRef.child(pub.getId()).removeValue();
-                    // Al borrar la foto, borramos sus comentarios para mantener Firebase limpio
                     comentariosMascotasRef.child(pub.getId()).removeValue();
                     Toast.makeText(getContext(), "Publicación eliminada", Toast.LENGTH_SHORT).show();
                 })
@@ -998,7 +1017,7 @@ public class EducacionFragment extends Fragment {
 
         bottomSheetDialog.show();
     }
-    // MÉTODO PARA ENVIAR LA NOTIFICACIÓN DE MENCIÓN
+
     private void notificarMencion(String nickMencionado, PublicacionMascota publicacion) {
         usuariosRef.orderByChild("nick").equalTo(nickMencionado).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
@@ -1030,13 +1049,137 @@ public class EducacionFragment extends Fragment {
             @Override public void onCancelled(@NonNull DatabaseError error) {}
         });
     }
+
+    // ✨ ESCUDO ANTI-CRASHEOS AÑADIDO
     private void comprobarEmptyState(boolean estaVacio) {
+        if (layoutEmptyState == null || rvContenido == null) return;
+
         if (estaVacio) {
             rvContenido.setVisibility(View.GONE);
             layoutEmptyState.setVisibility(View.VISIBLE);
         } else {
             rvContenido.setVisibility(View.VISIBLE);
             layoutEmptyState.setVisibility(View.GONE);
+        }
+    }
+
+    // ==========================================
+    // ✨ SISTEMA DE REPORTES PROFESIONAL
+    // ==========================================
+
+    // 1. PARA MASCOTAS
+    private void mostrarDialogoReporte(PublicacionMascota publicacion) {
+        String[] opciones = {"Spam o publicidad", "Contenido sexual", "Violencia o maltrato", "Acoso o bullying", "Otro motivo"};
+        final int[] seleccion = {0};
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+        builder.setTitle("¿Por qué reportas esta publicación?");
+
+        LinearLayout layout = new LinearLayout(requireContext());
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(60, 20, 60, 10);
+
+        final EditText etDetalles = new EditText(requireContext());
+        etDetalles.setHint("Explícanos más detalles (opcional)...");
+        etDetalles.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE);
+        etDetalles.setLines(3);
+
+        builder.setSingleChoiceItems(opciones, 0, (dialog, which) -> {
+            seleccion[0] = which;
+        });
+
+        layout.addView(etDetalles);
+        builder.setView(layout);
+
+        builder.setPositiveButton("Enviar reporte", (dialog, which) -> {
+            String motivoElegido = opciones[seleccion[0]];
+            String descripcion = etDetalles.getText().toString().trim();
+            enviarReporteDetallado(publicacion, motivoElegido, descripcion);
+        });
+
+        builder.setNegativeButton("Cancelar", null);
+        builder.show();
+    }
+
+    private void enviarReporteDetallado(PublicacionMascota publicacion, String motivo, String detalles) {
+        if (currentUser == null) return;
+
+        DatabaseReference reportesRef = FirebaseDatabase.getInstance().getReference("reportes");
+        String idReporte = reportesRef.push().getKey();
+
+        Map<String, Object> reporte = new HashMap<>();
+        reporte.put("idReporte", idReporte);
+        reporte.put("idPublicacion", publicacion.getId());
+        reporte.put("idAutorPublicacion", publicacion.getIdAutor());
+        reporte.put("idDenunciante", currentUser.getUid());
+        reporte.put("timestamp", System.currentTimeMillis());
+        reporte.put("estado", "pendiente_revision");
+        reporte.put("tipo", "mascota");
+        reporte.put("motivo", motivo);
+        reporte.put("detalles", detalles);
+
+        if (idReporte != null) {
+            reportesRef.child(idReporte).setValue(reporte).addOnSuccessListener(aVoid -> {
+                Toast.makeText(getContext(), "🚩 Reporte enviado. Gracias por ayudar a mantener la comunidad segura.", Toast.LENGTH_LONG).show();
+            });
+        }
+    }
+
+    // 2. PARA ARTÍCULOS
+    private void mostrarDialogoReporte(Articulo articulo) {
+        String[] opciones = {"Spam o publicidad", "Información falsa o peligrosa", "Violencia o maltrato", "Acoso o bullying", "Otro motivo"};
+        final int[] seleccion = {0};
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+        builder.setTitle("¿Por qué reportas este artículo?");
+
+        LinearLayout layout = new LinearLayout(requireContext());
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(60, 20, 60, 10);
+
+        final EditText etDetalles = new EditText(requireContext());
+        etDetalles.setHint("Explícanos más detalles (opcional)...");
+        etDetalles.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE);
+        etDetalles.setLines(3);
+
+        builder.setSingleChoiceItems(opciones, 0, (dialog, which) -> {
+            seleccion[0] = which;
+        });
+
+        layout.addView(etDetalles);
+        builder.setView(layout);
+
+        builder.setPositiveButton("Enviar reporte", (dialog, which) -> {
+            String motivoElegido = opciones[seleccion[0]];
+            String descripcion = etDetalles.getText().toString().trim();
+            enviarReporteDetallado(articulo, motivoElegido, descripcion);
+        });
+
+        builder.setNegativeButton("Cancelar", null);
+        builder.show();
+    }
+
+    private void enviarReporteDetallado(Articulo articulo, String motivo, String detalles) {
+        if (currentUser == null) return;
+
+        DatabaseReference reportesRef = FirebaseDatabase.getInstance().getReference("reportes");
+        String idReporte = reportesRef.push().getKey();
+
+        Map<String, Object> reporte = new HashMap<>();
+        reporte.put("idReporte", idReporte);
+        reporte.put("idPublicacion", articulo.getId());
+        reporte.put("idAutorPublicacion", articulo.getIdAutor());
+        reporte.put("idDenunciante", currentUser.getUid());
+        reporte.put("timestamp", System.currentTimeMillis());
+        reporte.put("estado", "pendiente_revision");
+        reporte.put("tipo", "articulo");
+        reporte.put("motivo", motivo);
+        reporte.put("detalles", detalles);
+
+        if (idReporte != null) {
+            reportesRef.child(idReporte).setValue(reporte).addOnSuccessListener(aVoid -> {
+                Toast.makeText(getContext(), "🚩 Reporte enviado. Revisaremos este artículo pronto.", Toast.LENGTH_LONG).show();
+            });
         }
     }
 }

@@ -25,13 +25,14 @@ import java.util.Locale;
 public class ArticuloAdapter extends RecyclerView.Adapter<ArticuloAdapter.ArticuloViewHolder> {
     private List<Articulo> articulos;
     private OnArticuloClickListener listener;
-    private boolean mostrarOpciones = false; // ✨ Interruptor para los 3 puntos
+    private boolean mostrarOpciones = false;
 
     // ✨ Interfaz actualizada para manejar las nuevas acciones
     public interface OnArticuloClickListener {
         void onArticuloClick(Articulo articulo);
         void onEditarClick(Articulo articulo);
         void onBorrarClick(Articulo articulo);
+        void onReportarClick(Articulo articulo);
     }
 
     public ArticuloAdapter(List<Articulo> articulos, OnArticuloClickListener listener) {
@@ -39,7 +40,6 @@ public class ArticuloAdapter extends RecyclerView.Adapter<ArticuloAdapter.Articu
         this.listener = listener;
     }
 
-    // Método para activar/desactivar el menú desde el fragmento
     public void setMostrarOpciones(boolean mostrarOpciones) {
         this.mostrarOpciones = mostrarOpciones;
     }
@@ -72,19 +72,31 @@ public class ArticuloAdapter extends RecyclerView.Adapter<ArticuloAdapter.Articu
             holder.ivIcono.setImageResource(articulo.isEsOficial() ? R.drawable.consejos : R.drawable.profile);
         }
 
+        // Definimos quiénes somos una sola vez
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
-        if (mostrarOpciones && currentUser != null && articulo.getIdAutor().equals(currentUser.getUid())) {
+        String currentUserId = (currentUser != null) ? currentUser.getUid() : "";
+        boolean soyAutor = currentUser != null && articulo.getIdAutor().equals(currentUserId);
+
+        // ✨ MAGIA: Mostramos opciones si soy el autor, o si NO es oficial y estoy logueado (para reportar)
+        if (currentUser != null && (soyAutor || !articulo.isEsOficial())) {
             holder.btnMenu.setVisibility(View.VISIBLE);
             holder.btnMenu.setOnClickListener(v -> {
                 android.widget.PopupMenu popup = new android.widget.PopupMenu(v.getContext(), v);
-                popup.getMenu().add("Editar");
-                popup.getMenu().add("Eliminar");
+
+                if (soyAutor) {
+                    popup.getMenu().add(0, 1, 0, "✏️ Editar");
+                    popup.getMenu().add(0, 2, 0, "🗑️ Eliminar");
+                } else {
+                    popup.getMenu().add(0, 3, 0, "🚩 Reportar contenido inapropiado");
+                }
 
                 popup.setOnMenuItemClickListener(item -> {
-                    if (item.getTitle().equals("Editar")) {
+                    if (item.getItemId() == 1) {
                         listener.onEditarClick(articulo);
-                    } else if (item.getTitle().equals("Eliminar")) {
+                    } else if (item.getItemId() == 2) {
                         listener.onBorrarClick(articulo);
+                    } else if (item.getItemId() == 3) {
+                        listener.onReportarClick(articulo); // ✨ LLAMAMOS AL REPORTE
                     }
                     return true;
                 });
@@ -94,7 +106,7 @@ public class ArticuloAdapter extends RecyclerView.Adapter<ArticuloAdapter.Articu
             holder.btnMenu.setVisibility(View.GONE);
         }
 
-        String currentUserId = (currentUser != null) ? currentUser.getUid() : "";
+        // Lógica de Likes usando la variable currentUserId que ya teníamos arriba
         int numeroDeLikes = 0;
         boolean isLikedByMe = false;
 
@@ -121,7 +133,6 @@ public class ArticuloAdapter extends RecyclerView.Adapter<ArticuloAdapter.Articu
         holder.btnLike.setOnClickListener(v -> {
             if (currentUserId.isEmpty()) return;
 
-            // Diferenciamos si va a la comunidad o a los oficiales
             String nodoFirebase = articulo.isEsOficial() ? "articulos_oficiales" : "articulos_comunidad";
 
             DatabaseReference likesRef = FirebaseDatabase.getInstance().getReference(nodoFirebase)
@@ -133,6 +144,7 @@ public class ArticuloAdapter extends RecyclerView.Adapter<ArticuloAdapter.Articu
                 likesRef.setValue(true);
             }
         });
+
         holder.itemView.setOnClickListener(v -> listener.onArticuloClick(articulo));
     }
 

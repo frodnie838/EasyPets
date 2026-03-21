@@ -108,7 +108,7 @@ public class GaleriaAdapter extends RecyclerView.Adapter<GaleriaAdapter.ViewHold
             holder.btnLike.setColorFilter(android.graphics.Color.parseColor("#757575"));
         }
 
-        if (mostrarOpciones && miUid != null && miUid.equals(publicacion.getIdAutor())) {
+        if (miUid != null) {
             holder.btnOpciones.setVisibility(View.VISIBLE);
         } else {
             holder.btnOpciones.setVisibility(View.GONE);
@@ -119,7 +119,7 @@ public class GaleriaAdapter extends RecyclerView.Adapter<GaleriaAdapter.ViewHold
         holder.btnOpciones.setOnClickListener(v -> listener.onOpcionesClick(publicacion, v));
     }
 
-    // ✨ TÉCNICA SENIOR: Evitar fugas de memoria
+    // Evitar fugas de memoria
     // Cuando el usuario baja la pantalla y la foto deja de verse, desenchufamos la conexión
     @Override
     public void onViewRecycled(@NonNull ViewHolder holder) {

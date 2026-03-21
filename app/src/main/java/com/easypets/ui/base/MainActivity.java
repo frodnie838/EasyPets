@@ -40,10 +40,6 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.messaging.FirebaseMessaging;
 
-/**
- * Actividad principal de la aplicación.
- * Gestiona la navegación base, la cabecera dinámica, el buscador global y el sistema de notificaciones.
- */
 public class MainActivity extends AppCompatActivity {
 
     private BottomNavigationView bottomNav;
@@ -53,16 +49,14 @@ public class MainActivity extends AppCompatActivity {
     private android.widget.ImageButton btnTopBack;
     private android.widget.LinearLayout layoutTopSearch;
     private android.widget.EditText etTopSearch;
-    private java.util.List<com.easypets.models.Notificacion> listaNotificaciones = new java.util.ArrayList<>();
 
+    private java.util.List<com.easypets.models.Notificacion> listaNotificaciones = new java.util.ArrayList<>();
     private boolean primeraCargaNotificaciones = true;
     private java.util.HashSet<String> notificacionesProcesadas = new java.util.HashSet<>();
+
     private DatabaseReference buzonRef;
     private ValueEventListener notificacionesListener;
 
-    /**
-     * Inicializa la vista, los componentes de la interfaz y los oyentes de navegación.
-     */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -79,9 +73,7 @@ public class MainActivity extends AppCompatActivity {
         activarBuzonDeNotificaciones();
         guardarTokenFCM();
 
-        btnTopBack.setOnClickListener(v -> {
-            getOnBackPressedDispatcher().onBackPressed();
-        });
+        btnTopBack.setOnClickListener(v -> getOnBackPressedDispatcher().onBackPressed());
 
         cardTopProfile.setOnClickListener(v -> {
             getSupportFragmentManager().beginTransaction()
@@ -126,7 +118,6 @@ public class MainActivity extends AppCompatActivity {
                 String ciudad = etTopSearch.getText().toString().trim();
                 if (!ciudad.isEmpty()) {
                     busquedaViewModel.buscarCiudad(ciudad);
-
                     android.view.inputmethod.InputMethodManager imm =
                             (android.view.inputmethod.InputMethodManager) getSystemService(android.content.Context.INPUT_METHOD_SERVICE);
                     if (imm != null) {
@@ -230,6 +221,70 @@ public class MainActivity extends AppCompatActivity {
                 requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 101);
             }
         }
+
+        manejarDeepLinkDePush(getIntent());
+    }
+
+    @Override
+    protected void onNewIntent(android.content.Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        manejarDeepLinkDePush(intent);
+    }
+
+    // ✨ ESCUCHAMOS EL INTENT QUE VIENE DE LA NOTIFICACIÓN
+    private void manejarDeepLinkDePush(android.content.Intent intent) {
+        if (intent != null && intent.hasExtra("tipoNotif")) {
+            String tipo = intent.getStringExtra("tipoNotif");
+            String hiloId = intent.getStringExtra("hiloId");
+
+            long timestamp = 0L;
+            if (intent.hasExtra("hiloTimestamp")) {
+                Object obj = intent.getExtras().get("hiloTimestamp");
+                if (obj instanceof String) {
+                    try { timestamp = Long.parseLong((String) obj); } catch (Exception e) {}
+                } else if (obj instanceof Long) {
+                    timestamp = (Long) obj;
+                }
+            }
+
+            intent.removeExtra("tipoNotif");
+
+            if ("foro_respuesta".equals(tipo) && hiloId != null) {
+                bottomNav.getMenu().findItem(R.id.nav_comunidad).setChecked(true);
+
+                android.os.Bundle args = new android.os.Bundle();
+                args.putString("hiloId", hiloId);
+                args.putString("titulo", intent.getStringExtra("hiloTitulo"));
+                args.putString("descripcion", intent.getStringExtra("hiloDescripcion"));
+                args.putString("idAutor", intent.getStringExtra("hiloAutor"));
+                args.putLong("timestamp", timestamp);
+
+                com.easypets.ui.comunidad.HiloDetalleFragment fragment = new com.easypets.ui.comunidad.HiloDetalleFragment();
+                fragment.setArguments(args);
+
+                getSupportFragmentManager().beginTransaction()
+                        .replace(R.id.frame_container, fragment)
+                        .addToBackStack(null)
+                        .commit();
+
+            } else if ("comunidad".equals(tipo)) {
+                bottomNav.getMenu().findItem(R.id.nav_comunidad).setChecked(true);
+
+                if (hiloId != null && !hiloId.trim().isEmpty()) {
+                    android.os.Bundle args = new android.os.Bundle();
+                    args.putString("abrirPublicacionId", hiloId);
+
+                    com.easypets.ui.comunidad.EducacionFragment fragment = new com.easypets.ui.comunidad.EducacionFragment();
+                    fragment.setArguments(args);
+
+                    getSupportFragmentManager().beginTransaction()
+                            .replace(R.id.frame_container, fragment)
+                            .addToBackStack(null)
+                            .commit();
+                }
+            }
+        }
     }
 
     private void cargarFotoDePerfilEnCabecera() {
@@ -312,11 +367,6 @@ public class MainActivity extends AppCompatActivity {
                     if (hiloTimestamp == null) hiloTimestamp = 0L;
 
                     if (mostrada == null || !mostrada) {
-                        if (!primeraCargaNotificaciones && !notificacionesProcesadas.contains(id)) {
-                            if (!"evento_calendario".equals(tipo)) {
-                                //lanzarNotificacionForo(titulo, mensaje);
-                            }
-                        }
                         notificacionesProcesadas.add(id);
                         ds.getRef().child("mostrada").setValue(true);
                     }
@@ -333,7 +383,6 @@ public class MainActivity extends AppCompatActivity {
             public void onCancelled(@NonNull DatabaseError error) {}
         };
 
-        // Enchufamos el nuevo oyente
         buzonRef.addValueEventListener(notificacionesListener);
 
         android.widget.FrameLayout layoutCampanita = findViewById(R.id.layoutCampanita);
@@ -392,20 +441,16 @@ public class MainActivity extends AppCompatActivity {
             };
             lvNotificaciones.setAdapter(adapter);
 
-            // EVENTO DE CLIC EN LA NOTIFICACIÓN
             lvNotificaciones.setOnItemClickListener((parent, view, position, id) -> {
                 com.easypets.models.Notificacion n = listaNotificaciones.get(position);
 
-                // Borramos la notificación de la base de datos
                 FirebaseDatabase.getInstance().getReference().child("notificaciones")
                         .child(FirebaseAuth.getInstance().getCurrentUser().getUid())
                         .child(n.id).removeValue();
 
                 popupWindow.dismiss();
 
-                // LÓGICA DE NAVEGACIÓN (DEEP LINKING)
                 if ("foro_respuesta".equals(n.tipo) && n.hiloId != null) {
-
                     bottomNav.getMenu().findItem(R.id.nav_comunidad).setChecked(true);
 
                     android.os.Bundle args = new android.os.Bundle();
@@ -459,51 +504,21 @@ public class MainActivity extends AppCompatActivity {
         return Math.round((float) dp * density);
     }
 
-    private void lanzarNotificacionForo(String titulo, String mensaje) {
-        String channelId = "easypets_foro";
-        android.content.Intent intent = new android.content.Intent(this, MainActivity.class);
-        intent.addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        android.app.PendingIntent pendingIntent = android.app.PendingIntent.getActivity(this, 0, intent, android.app.PendingIntent.FLAG_ONE_SHOT | android.app.PendingIntent.FLAG_IMMUTABLE);
-
-        android.net.Uri defaultSoundUri = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_NOTIFICATION);
-        androidx.core.app.NotificationCompat.Builder builder = new androidx.core.app.NotificationCompat.Builder(this, channelId)
-                .setSmallIcon(R.drawable.logo_sin_fondo)
-                .setContentTitle(titulo)
-                .setContentText(mensaje)
-                .setAutoCancel(true)
-                .setSound(defaultSoundUri)
-                .setContentIntent(pendingIntent)
-                .setPriority(androidx.core.app.NotificationCompat.PRIORITY_HIGH);
-
-        android.app.NotificationManager notificationManager = (android.app.NotificationManager) getSystemService(android.content.Context.NOTIFICATION_SERVICE);
-
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            android.app.NotificationChannel channel = new android.app.NotificationChannel(channelId, "Notificaciones de la Comunidad", android.app.NotificationManager.IMPORTANCE_HIGH);
-            notificationManager.createNotificationChannel(channel);
-        }
-
-        notificationManager.notify((int) System.currentTimeMillis(), builder.build());
-    }
-
     private void guardarTokenFCM() {
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
         if (currentUser == null) return;
 
         FirebaseMessaging.getInstance().getToken()
                 .addOnCompleteListener(task -> {
-                    if (!task.isSuccessful()) {
-                        android.util.Log.w("FCM", "No se pudo obtener el token FCM", task.getException());
-                        return;
-                    }
-
+                    if (!task.isSuccessful()) return;
                     String token = task.getResult();
-
                     FirebaseDatabase.getInstance().getReference("usuarios")
                             .child(currentUser.getUid())
                             .child("fcmToken")
                             .setValue(token);
                 });
     }
+
     @Override
     protected void onDestroy() {
         super.onDestroy();

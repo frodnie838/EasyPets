@@ -6,9 +6,7 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.media.RingtoneManager;
-import android.net.Uri;
 import android.os.Build;
-import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
@@ -24,52 +22,40 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
     public void onMessageReceived(@NonNull RemoteMessage remoteMessage) {
         super.onMessageReceived(remoteMessage);
 
-        // Si Firebase nos manda una notificación (Título y Cuerpo)
-        if (remoteMessage.getNotification() != null) {
-            String titulo = remoteMessage.getNotification().getTitle();
-            String cuerpo = remoteMessage.getNotification().getBody();
-            mostrarNotificacion(titulo, cuerpo);
-        }
-    }
+        String titulo = remoteMessage.getNotification() != null ? remoteMessage.getNotification().getTitle() : "EasyPets";
+        String mensaje = remoteMessage.getNotification() != null ? remoteMessage.getNotification().getBody() : "Nueva notificación";
 
-    // Este token es el "DNI" del teléfono. Sirve por si quieres mandar
-    // una notificación a un teléfono en concreto desde tu servidor.
-    @Override
-    public void onNewToken(@NonNull String token) {
-        Log.d("FCM_TOKEN", "Nuevo token generado: " + token);
-        // Aquí podrías guardar este token en Firestore asociado al usuario actual
-    }
-
-    private void mostrarNotificacion(String titulo, String mensaje) {
         Intent intent = new Intent(this, MainActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
 
-        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent,
-                PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_IMMUTABLE);
-
-        String channelId = "easypets_notificaciones";
-        Uri defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
-
-        NotificationCompat.Builder notificationBuilder =
-                new NotificationCompat.Builder(this, channelId)
-                        .setSmallIcon(R.drawable.huella) // ¡Cambia esto por tu logo!
-                        .setContentTitle(titulo)
-                        .setContentText(mensaje)
-                        .setAutoCancel(true)
-                        .setSound(defaultSoundUri)
-                        .setContentIntent(pendingIntent);
-
-        NotificationManager notificationManager =
-                (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-
-        // Desde Android Oreo (API 26) es obligatorio crear un "Canal" de notificaciones
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(channelId,
-                    "Notificaciones de EasyPets",
-                    NotificationManager.IMPORTANCE_DEFAULT);
-            notificationManager.createNotificationChannel(channel);
+        // Rescatamos los datos ocultos que nos manda index.js
+        if (remoteMessage.getData().size() > 0) {
+            intent.putExtra("tipoNotif", remoteMessage.getData().get("tipoNotif"));
+            intent.putExtra("hiloId", remoteMessage.getData().get("hiloId"));
+            intent.putExtra("hiloTitulo", remoteMessage.getData().get("hiloTitulo"));
+            intent.putExtra("hiloDescripcion", remoteMessage.getData().get("hiloDescripcion"));
+            intent.putExtra("hiloAutor", remoteMessage.getData().get("hiloAutor"));
+            intent.putExtra("hiloTimestamp", remoteMessage.getData().get("hiloTimestamp"));
         }
 
-        notificationManager.notify(0, notificationBuilder.build());
+        int requestID = (int) System.currentTimeMillis();
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, requestID, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+        String channelId = "easypets_avisos";
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, channelId)
+                .setSmallIcon(R.drawable.huella)
+                .setContentTitle(titulo)
+                .setContentText(mensaje)
+                .setAutoCancel(true)
+                .setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))
+                .setContentIntent(pendingIntent)
+                .setPriority(NotificationCompat.PRIORITY_HIGH);
+
+        NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(channelId, "Avisos EasyPets", NotificationManager.IMPORTANCE_HIGH);
+            manager.createNotificationChannel(channel);
+        }
+        manager.notify(requestID, builder.build());
     }
 }

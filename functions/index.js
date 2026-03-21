@@ -1,10 +1,8 @@
-const functions = require("firebase-functions/v1"); // ✨ ¡AQUÍ ESTÁ EL CAMBIO!
+const functions = require("firebase-functions/v1");
 const admin = require("firebase-admin");
 
-// Inicializamos el servidor con permisos de administrador
 admin.initializeApp();
 
-// Esta función se dispara AUTOMÁTICAMENTE cuando alguien escribe en el "buzón"
 exports.enviarNotificacionPush = functions.database.ref('/notificaciones/{usuarioId}/{idNotificacion}')
     .onCreate(async (snapshot, context) => {
 
@@ -27,8 +25,12 @@ exports.enviarNotificacionPush = functions.database.ref('/notificaciones/{usuari
                 body: notificacion.mensaje || "Tienes un mensaje nuevo en EasyPets.",
             },
             data: {
-                tipo: String(notificacion.tipo || "default"),
-                hiloId: String(notificacion.hiloId || "")
+                tipoNotif: String(notificacion.tipo || "default"),
+                hiloId: String(notificacion.hiloId || ""),
+                hiloTitulo: String(notificacion.hiloTitulo || ""),
+                hiloDescripcion: String(notificacion.hiloDescripcion || ""),
+                hiloAutor: String(notificacion.hiloAutor || ""),
+                hiloTimestamp: String(notificacion.hiloTimestamp || "0")
             },
             token: fcmToken
         };
