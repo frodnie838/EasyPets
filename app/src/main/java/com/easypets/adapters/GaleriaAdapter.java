@@ -65,20 +65,31 @@ public class GaleriaAdapter extends RecyclerView.Adapter<GaleriaAdapter.ViewHold
         holder.tvAutor.setText(publicacion.getAutorNick());
         holder.tvDescripcion.setText(publicacion.getDescripcion());
 
+        // Carga URLs modernas o Base64 antiguos
         if (publicacion.getFotoBase64() != null && !publicacion.getFotoBase64().isEmpty()) {
-            try {
-                byte[] decodedString = Base64.decode(publicacion.getFotoBase64(), Base64.DEFAULT);
-                Bitmap decodedByte = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
-                holder.ivFoto.setImageBitmap(decodedByte);
-            } catch (Exception e) {
-                e.printStackTrace();
+            if (publicacion.getFotoBase64().startsWith("http")) {
+                // Es un enlace de Firebase Storage: Usamos la librería Glide (súper rápida)
+                com.bumptech.glide.Glide.with(holder.itemView.getContext())
+                        .load(publicacion.getFotoBase64())
+                        .into(holder.ivFoto);
+            } else {
+                // Es una foto antigua en Base64: La decodificamos como antes
+                try {
+                    byte[] decodedString = Base64.decode(publicacion.getFotoBase64(), Base64.DEFAULT);
+                    Bitmap decodedByte = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
+                    holder.ivFoto.setImageBitmap(decodedByte);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
+        } else {
+            // Imagen por defecto si falla
+            holder.ivFoto.setImageResource(R.drawable.logo_sin_letra_trans);
         }
 
         int totalLikes = (publicacion.getLikes() != null) ? publicacion.getLikes().size() : 0;
         holder.tvLikesCount.setText(String.valueOf(totalLikes));
 
-        // ✨ MAGIA: CONTADOR EXACTO Y EN TIEMPO REAL
         // 1. Si la tarjeta se está reciclando (el usuario hace scroll rápido), matamos el oyente viejo
         if (holder.comentariosRef != null && holder.comentariosListener != null) {
             holder.comentariosRef.removeEventListener(holder.comentariosListener);

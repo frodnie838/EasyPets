@@ -59,14 +59,25 @@ public class ArticuloAdapter extends RecyclerView.Adapter<ArticuloAdapter.Articu
         holder.tvAutor.setText(articulo.isEsOficial() ? "✓ Oficial • " + fecha : "Por: " + articulo.getAutor());
 
         // Manejo de imagen
+        // LÓGICA HÍBRIDA PARA ARTÍCULOS
         if (articulo.getImagenPortadaBase64() != null && !articulo.getImagenPortadaBase64().isEmpty()) {
-            try {
-                byte[] decodedString = Base64.decode(articulo.getImagenPortadaBase64(), Base64.DEFAULT);
-                holder.ivIcono.setImageBitmap(BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length));
-                holder.ivIcono.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            if (articulo.getImagenPortadaBase64().startsWith("http")) {
+                // Usamos Glide para URLs modernas
+                com.bumptech.glide.Glide.with(holder.itemView.getContext())
+                        .load(articulo.getImagenPortadaBase64())
+                        .centerCrop()
+                        .into(holder.ivIcono);
                 holder.ivIcono.setImageTintList(null);
-            } catch (Exception e) {
-                holder.ivIcono.setImageResource(articulo.isEsOficial() ? R.drawable.consejos : R.drawable.profile);
+            } else {
+                // Código antiguo (Base64)
+                try {
+                    byte[] decodedString = Base64.decode(articulo.getImagenPortadaBase64(), Base64.DEFAULT);
+                    holder.ivIcono.setImageBitmap(BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length));
+                    holder.ivIcono.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                    holder.ivIcono.setImageTintList(null);
+                } catch (Exception e) {
+                    holder.ivIcono.setImageResource(articulo.isEsOficial() ? R.drawable.consejos : R.drawable.profile);
+                }
             }
         } else {
             holder.ivIcono.setImageResource(articulo.isEsOficial() ? R.drawable.consejos : R.drawable.profile);
@@ -75,9 +86,9 @@ public class ArticuloAdapter extends RecyclerView.Adapter<ArticuloAdapter.Articu
         // Definimos quiénes somos una sola vez
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
         String currentUserId = (currentUser != null) ? currentUser.getUid() : "";
-        boolean soyAutor = currentUser != null && articulo.getIdAutor().equals(currentUserId);
+        boolean soyAutor = currentUser != null && articulo.getIdAutor() != null && articulo.getIdAutor().equals(currentUserId);
 
-        // ✨ MAGIA: Mostramos opciones si soy el autor, o si NO es oficial y estoy logueado (para reportar)
+        // Mostramos opciones si soy el autor, o si NO es oficial y estoy logueado (para reportar)
         if (currentUser != null && (soyAutor || !articulo.isEsOficial())) {
             holder.btnMenu.setVisibility(View.VISIBLE);
             holder.btnMenu.setOnClickListener(v -> {

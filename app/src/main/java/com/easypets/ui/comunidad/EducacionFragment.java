@@ -2,7 +2,6 @@ package com.easypets.ui.comunidad;
 
 import android.app.Activity;
 import android.content.Intent;
-import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
@@ -53,8 +52,9 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.Query;
 import com.google.firebase.database.ValueEventListener;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
 
-import java.io.ByteArrayOutputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -97,6 +97,9 @@ public class EducacionFragment extends Fragment {
     private String miFotoPerfil = "";
 
     private String imagenSeleccionadaBase64 = "";
+    // ✨ LA NUEVA VARIABLE PARA STORAGE: Guarda la ruta del archivo real en el móvil
+    private Uri uriImagenSeleccionada = null;
+
     private ImageView ivVistaPreviaDialogo;
     private ActivityResultLauncher<Intent> galeriaLauncher;
     private LinearLayout layoutEmptyState;
@@ -135,7 +138,6 @@ public class EducacionFragment extends Fragment {
         listaHilosOriginal = new ArrayList<>();
         listaGaleria = new ArrayList<>();
 
-        // ✨ ADAPTADOR ACTUALIZADO CON LA OPCIÓN DE REPORTAR
         articuloAdapter = new ArticuloAdapter(listaArticulos, new ArticuloAdapter.OnArticuloClickListener() {
             @Override public void onArticuloClick(Articulo articulo) { mostrarArticuloCompleto(articulo); }
             @Override public void onEditarClick(Articulo articulo) { mostrarDialogoEditarArticulo(articulo); }
@@ -169,11 +171,7 @@ public class EducacionFragment extends Fragment {
         galeriaAdapter = new GaleriaAdapter(listaGaleria, new GaleriaAdapter.OnGaleriaClickListener() {
             @Override
             public void onLikeClick(PublicacionMascota publicacion) {
-                if (currentUser == null) {
-                    Toast.makeText(getContext(), "Regístrate para dar Me gusta ❤️", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
+                if (currentUser == null) return;
                 DatabaseReference likeRef = galeriaRef.child(publicacion.getId()).child("likes").child(currentUser.getUid());
                 if (publicacion.getLikes() != null && publicacion.getLikes().containsKey(currentUser.getUid())) {
                     likeRef.removeValue();
@@ -184,33 +182,23 @@ public class EducacionFragment extends Fragment {
 
             @Override
             public void onComentarClick(PublicacionMascota publicacion) {
-                if (currentUser == null) {
-                    Toast.makeText(getContext(), "Regístrate para comentar 💬", Toast.LENGTH_SHORT).show();
-                    return;
-                }
+                if (currentUser == null) return;
                 mostrarBottomSheetComentarios(publicacion);
             }
 
-            // ✨ MENÚ INTELIGENTE PARA MASCOTAS (Dueño vs Visitante)
             @Override
             public void onOpcionesClick(PublicacionMascota publicacion, View anchorView) {
                 if (currentUser != null && currentUser.getUid().equals(publicacion.getIdAutor())) {
                     CharSequence[] opciones = {"✏️ Editar descripción", "🗑️ Eliminar publicación"};
-                    new AlertDialog.Builder(requireContext())
-                            .setTitle("Opciones de mi publicación")
-                            .setItems(opciones, (dialog, which) -> {
-                                if (which == 0) mostrarDialogoEditarMascota(publicacion);
-                                else confirmarBorradoMascota(publicacion);
-                            })
-                            .show();
+                    new AlertDialog.Builder(requireContext()).setTitle("Opciones de mi publicación").setItems(opciones, (dialog, which) -> {
+                        if (which == 0) mostrarDialogoEditarMascota(publicacion);
+                        else confirmarBorradoMascota(publicacion);
+                    }).show();
                 } else {
                     CharSequence[] opciones = {"🚩 Reportar contenido inapropiado"};
-                    new AlertDialog.Builder(requireContext())
-                            .setTitle("Opciones de comunidad")
-                            .setItems(opciones, (dialog, which) -> {
-                                if (which == 0) mostrarDialogoReporte(publicacion);
-                            })
-                            .show();
+                    new AlertDialog.Builder(requireContext()).setTitle("Opciones de comunidad").setItems(opciones, (dialog, which) -> {
+                        if (which == 0) mostrarDialogoReporte(publicacion);
+                    }).show();
                 }
             }
         });
@@ -222,9 +210,7 @@ public class EducacionFragment extends Fragment {
         if (etBuscador != null) {
             buscadorWatcher = new TextWatcher() {
                 @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-                @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
-                    aplicarFiltroActual();
-                }
+                @Override public void onTextChanged(CharSequence s, int start, int before, int count) { aplicarFiltroActual(); }
                 @Override public void afterTextChanged(Editable s) {}
             };
             etBuscador.addTextChangedListener(buscadorWatcher);
@@ -238,65 +224,46 @@ public class EducacionFragment extends Fragment {
                     mostrarDialogoCrearHilo();
                 } else if (titulo.equals("Mis Publicaciones")) {
                     int selectedChipId = chipGroupMisPublicaciones.getCheckedChipId();
-                    if (selectedChipId == R.id.chipMisArticulos) {
-                        mostrarDialogoCrearArticulo();
-                    } else if (selectedChipId == R.id.chipMisHilos) {
-                        mostrarDialogoCrearHilo();
-                    } else if (selectedChipId == R.id.chipMisMascotas) {
-                        mostrarDialogoSubirMascota();
-                    }
+                    if (selectedChipId == R.id.chipMisArticulos) mostrarDialogoCrearArticulo();
+                    else if (selectedChipId == R.id.chipMisHilos) mostrarDialogoCrearHilo();
+                    else if (selectedChipId == R.id.chipMisMascotas) mostrarDialogoSubirMascota();
                 } else if (titulo.equals("Oficiales")) {
                     mostrarDialogoCrearArticulo();
                 }
             }
         });
 
+        // ✨ AHORA EL LAUNCHER SOLO GUARDA EL ARCHIVO (Para mandarlo a Storage luego)
         galeriaLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> {
                     if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
-                        Uri imageUri = result.getData().getData();
-                        try {
-                            Bitmap bitmap = MediaStore.Images.Media.getBitmap(requireActivity().getContentResolver(), imageUri);
-                            Bitmap resized = redimensionarImagen(bitmap, 800);
-                            if (ivVistaPreviaDialogo != null) {
-                                ivVistaPreviaDialogo.setImageBitmap(resized);
-                                ivVistaPreviaDialogo.setVisibility(View.VISIBLE);
-                                ivVistaPreviaDialogo.setPadding(0, 0, 0, 0);
-                            }
-                            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                            resized.compress(Bitmap.CompressFormat.JPEG, 70, baos);
-                            imagenSeleccionadaBase64 = Base64.encodeToString(baos.toByteArray(), Base64.DEFAULT);
-                        } catch (Exception e) {
-                            Toast.makeText(getContext(), "Error al cargar", Toast.LENGTH_SHORT).show();
+                        uriImagenSeleccionada = result.getData().getData();
+                        if (ivVistaPreviaDialogo != null && uriImagenSeleccionada != null) {
+                            // Usamos Glide para previsualizar súper rápido
+                            com.bumptech.glide.Glide.with(requireContext()).load(uriImagenSeleccionada).into(ivVistaPreviaDialogo);
+                            ivVistaPreviaDialogo.setVisibility(View.VISIBLE);
+                            ivVistaPreviaDialogo.setPadding(0, 0, 0, 0);
                         }
+                        imagenSeleccionadaBase64 = ""; // Limpiamos el rastro antiguo
                     }
                 }
         );
 
-        // ✨ MAGIA DE DEEP LINKING AL ENTRAR DESDE UNA NOTIFICACIÓN
         if (getArguments() != null && getArguments().containsKey("abrirPublicacionId")) {
             String pubId = getArguments().getString("abrirPublicacionId");
-
-            // Vaciamos la mochila para que no se repita al darle atrás
             getArguments().remove("abrirPublicacionId");
 
             if (pubId != null && !pubId.trim().isEmpty()) {
-
                 TabLayout.Tab tabComunidad = tabLayout.getTabAt(1);
-                if (tabComunidad != null) {
-                    tabComunidad.select();
-                }
-
+                if (tabComunidad != null) tabComunidad.select();
                 chipGroupComunidad.check(R.id.chipComunidadMascotas);
 
                 galeriaRef.child(pubId).addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot snapshot) {
                         PublicacionMascota pub = snapshot.getValue(PublicacionMascota.class);
-                        if (pub != null && isAdded()) {
-                            mostrarBottomSheetComentarios(pub);
-                        }
+                        if (pub != null && isAdded()) mostrarBottomSheetComentarios(pub);
                     }
                     @Override public void onCancelled(@NonNull DatabaseError error) {}
                 });
@@ -325,9 +292,9 @@ public class EducacionFragment extends Fragment {
                 listaArticulos.clear();
                 listaHilos.clear();
                 listaGaleria.clear();
-                articuloAdapter.notifyDataSetChanged();
-                foroAdapter.notifyDataSetChanged();
-                galeriaAdapter.notifyDataSetChanged();
+                if (articuloAdapter != null) articuloAdapter.notifyDataSetChanged();
+                if (foroAdapter != null) foroAdapter.notifyDataSetChanged();
+                if (galeriaAdapter != null) galeriaAdapter.notifyDataSetChanged();
 
                 if (titulo.equals("Mis Publicaciones")) {
                     chipGroupMisPublicaciones.setVisibility(View.VISIBLE);
@@ -383,9 +350,7 @@ public class EducacionFragment extends Fragment {
 
     private void actualizarListaMisPublicaciones() {
         TabLayout.Tab tab = tabLayout.getTabAt(tabLayout.getSelectedTabPosition());
-        if (tab == null || tab.getText() == null || !tab.getText().toString().equals("Mis Publicaciones")) {
-            return;
-        }
+        if (tab == null || tab.getText() == null || !tab.getText().toString().equals("Mis Publicaciones")) return;
 
         detenerListener();
         if (currentUser == null) return;
@@ -408,9 +373,7 @@ public class EducacionFragment extends Fragment {
 
     private void actualizarListaComunidad() {
         TabLayout.Tab tab = tabLayout.getTabAt(tabLayout.getSelectedTabPosition());
-        if (tab == null || tab.getText() == null || !tab.getText().toString().equals("Comunidad")) {
-            return;
-        }
+        if (tab == null || tab.getText() == null || !tab.getText().toString().equals("Comunidad")) return;
 
         detenerListener();
         int selectedChipId = chipGroupComunidad.getCheckedChipId();
@@ -436,9 +399,7 @@ public class EducacionFragment extends Fragment {
                 listaArticulos.addAll(listaArticulosOriginal);
             } else {
                 for (Articulo a : listaArticulosOriginal) {
-                    if (a.getTitulo() != null && a.getTitulo().toLowerCase().contains(texto)) {
-                        listaArticulos.add(a);
-                    }
+                    if (a.getTitulo() != null && a.getTitulo().toLowerCase().contains(texto)) listaArticulos.add(a);
                 }
             }
             articuloAdapter.notifyDataSetChanged();
@@ -449,9 +410,7 @@ public class EducacionFragment extends Fragment {
                 listaHilos.addAll(listaHilosOriginal);
             } else {
                 for (HiloForo h : listaHilosOriginal) {
-                    if (h.getTitulo() != null && h.getTitulo().toLowerCase().contains(texto)) {
-                        listaHilos.add(h);
-                    }
+                    if (h.getTitulo() != null && h.getTitulo().toLowerCase().contains(texto)) listaHilos.add(h);
                 }
             }
             foroAdapter.notifyDataSetChanged();
@@ -601,19 +560,7 @@ public class EducacionFragment extends Fragment {
     public void onDestroyView() {
         super.onDestroyView();
         detenerListener();
-
-        if (etBuscador != null && buscadorWatcher != null) {
-            etBuscador.removeTextChangedListener(buscadorWatcher);
-        }
-    }
-
-    private Bitmap redimensionarImagen(Bitmap image, int maxSize) {
-        int width = image.getWidth();
-        int height = image.getHeight();
-        float bitmapRatio = (float) width / (float) height;
-        if (bitmapRatio > 1) { width = maxSize; height = (int) (width / bitmapRatio);
-        } else { height = maxSize; width = (int) (height * bitmapRatio); }
-        return Bitmap.createScaledBitmap(image, width, height, true);
+        if (etBuscador != null && buscadorWatcher != null) etBuscador.removeTextChangedListener(buscadorWatcher);
     }
 
     private void mostrarArticuloCompleto(Articulo articulo) {
@@ -628,11 +575,18 @@ public class EducacionFragment extends Fragment {
             ivPortada.setAdjustViewBounds(true);
             ivPortada.setMaxHeight(600);
             ivPortada.setPadding(0, 0, 0, 40);
-            try {
-                byte[] decodedString = Base64.decode(articulo.getImagenPortadaBase64(), Base64.DEFAULT);
-                ivPortada.setImageBitmap(BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length));
+
+            // ✨ Compatibilidad para ver los viejos en Base64 y los nuevos por URL
+            if (articulo.getImagenPortadaBase64().startsWith("http")) {
+                com.bumptech.glide.Glide.with(requireContext()).load(articulo.getImagenPortadaBase64()).into(ivPortada);
                 layout.addView(ivPortada);
-            } catch (Exception e) {}
+            } else {
+                try {
+                    byte[] decodedString = Base64.decode(articulo.getImagenPortadaBase64(), Base64.DEFAULT);
+                    ivPortada.setImageBitmap(BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length));
+                    layout.addView(ivPortada);
+                } catch (Exception e) {}
+            }
         }
 
         TextView tvTitulo = new TextView(requireContext());
@@ -747,7 +701,6 @@ public class EducacionFragment extends Fragment {
     private void mostrarDialogoEditarMascota(PublicacionMascota pub) {
         EditText input = new EditText(requireContext());
         input.setText(pub.getDescripcion());
-        input.setHint("Escribe una nueva descripción...");
         input.setBackgroundResource(R.drawable.bg_search_bar_top);
         input.setPadding(30, 30, 30, 30);
 
@@ -788,14 +741,11 @@ public class EducacionFragment extends Fragment {
                     public void onDataChange(@NonNull DataSnapshot snapshot) {
                         for (DataSnapshot ds : snapshot.getChildren()) {
                             com.easypets.models.Mascota m = ds.getValue(com.easypets.models.Mascota.class);
-                            if (m != null) {
-                                misMascotas.add(m);
-                                nombresMascotas.add(m.getNombre());
-                            }
+                            if (m != null) { misMascotas.add(m); nombresMascotas.add(m.getNombre()); }
                         }
 
                         if (misMascotas.isEmpty()) {
-                            Toast.makeText(getContext(), "Primero debes registrar una mascota en 'Mis Mascotas'", Toast.LENGTH_LONG).show();
+                            Toast.makeText(getContext(), "Primero debes registrar una mascota", Toast.LENGTH_LONG).show();
                             dialog.dismiss();
                             return;
                         }
@@ -812,8 +762,14 @@ public class EducacionFragment extends Fragment {
             public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
                 com.easypets.models.Mascota seleccionada = misMascotas.get(position);
                 if (seleccionada.getFotoPerfilUrl() != null && !seleccionada.getFotoPerfilUrl().isEmpty()) {
-                    byte[] decodedString = Base64.decode(seleccionada.getFotoPerfilUrl(), Base64.DEFAULT);
-                    ivPreview.setImageBitmap(BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length));
+                    if (seleccionada.getFotoPerfilUrl().startsWith("http")) {
+                        com.bumptech.glide.Glide.with(requireContext()).load(seleccionada.getFotoPerfilUrl()).into(ivPreview);
+                    } else {
+                        try {
+                            byte[] decodedString = Base64.decode(seleccionada.getFotoPerfilUrl(), Base64.DEFAULT);
+                            ivPreview.setImageBitmap(BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length));
+                        } catch (Exception e) {}
+                    }
                     ivPreview.setPadding(0, 0, 0, 0);
                 }
             }
@@ -823,20 +779,10 @@ public class EducacionFragment extends Fragment {
         btnPublicar.setOnClickListener(v -> {
             int pos = spinner.getSelectedItemPosition();
             if (pos == -1) return;
-
             com.easypets.models.Mascota m = misMascotas.get(pos);
             String desc = etDesc.getText().toString().trim();
-
             String pubId = galeriaRef.push().getKey();
-            PublicacionMascota nuevaPub = new PublicacionMascota(
-                    pubId,
-                    currentUser.getUid(),
-                    "@" + miNick,
-                    m.getNombre(),
-                    desc,
-                    m.getFotoPerfilUrl(),
-                    System.currentTimeMillis()
-            );
+            PublicacionMascota nuevaPub = new PublicacionMascota(pubId, currentUser.getUid(), "@" + miNick, m.getNombre(), desc, m.getFotoPerfilUrl(), System.currentTimeMillis());
 
             galeriaRef.child(pubId).setValue(nuevaPub).addOnSuccessListener(aVoid -> {
                 Toast.makeText(getContext(), "¡" + m.getNombre() + " ya está en la comunidad!", Toast.LENGTH_SHORT).show();
@@ -849,9 +795,10 @@ public class EducacionFragment extends Fragment {
         dialog.show();
     }
 
+    // ✨ CREACIÓN DE ARTÍCULO - ¡NUEVA LÓGICA CON FIREBASE STORAGE!
     private void mostrarDialogoCrearArticulo() {
         boolean esOficial = (tabLayout.getSelectedTabPosition() == 0);
-        imagenSeleccionadaBase64 = "";
+        uriImagenSeleccionada = null; // Reiniciamos por si acaso
 
         View view = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_agregar_articulo, null);
         AlertDialog dialog = new AlertDialog.Builder(requireContext()).setView(view).create();
@@ -863,8 +810,9 @@ public class EducacionFragment extends Fragment {
         TextInputEditText etDesc = view.findViewById(R.id.etDialogDescripcion);
         TextInputEditText etCont = view.findViewById(R.id.etDialogContenido);
         TextInputEditText etUrl = view.findViewById(R.id.etDialogUrl);
+        MaterialButton btnGuardar = view.findViewById(R.id.btnGuardarDialog);
 
-        view.findViewById(R.id.btnGuardarDialog).setOnClickListener(v -> {
+        btnGuardar.setOnClickListener(v -> {
             String titulo = etTitulo.getText().toString().trim();
             if (titulo.isEmpty()) { Toast.makeText(getContext(), "Título obligatorio", Toast.LENGTH_SHORT).show(); return; }
 
@@ -872,29 +820,57 @@ public class EducacionFragment extends Fragment {
             String id = targetRef.push().getKey();
             String autor = esOficial ? "EasyPets Oficial" : "@" + miNick;
 
+            // Al principio el artículo nace con una imagen vacía
             Articulo nuevo = new Articulo(id, currentUser.getUid(), titulo,
                     etDesc.getText().toString().trim(),
                     etCont.getText().toString().trim(),
-                    autor, System.currentTimeMillis(), imagenSeleccionadaBase64,
+                    autor, System.currentTimeMillis(), "",
                     etUrl.getText().toString().trim(), esOficial);
 
-            targetRef.child(id).setValue(nuevo).addOnSuccessListener(aVoid -> {
-                Toast.makeText(getContext(), "¡Publicado!", Toast.LENGTH_SHORT).show();
-                dialog.dismiss();
-            });
+            btnGuardar.setEnabled(false); // Para que no toquen dos veces
+            btnGuardar.setText("Subiendo foto...");
+
+            if (uriImagenSeleccionada != null) {
+                // Hay archivo: lo subimos a Firebase Storage
+                StorageReference ref = FirebaseStorage.getInstance().getReference("articulos").child(id + ".jpg");
+                ref.putFile(uriImagenSeleccionada).addOnSuccessListener(taskSnapshot -> {
+                    // Si se sube bien, le pedimos la URL a Google
+                    ref.getDownloadUrl().addOnSuccessListener(uri -> {
+                        nuevo.setImagenPortadaBase64(uri.toString()); // Reutilizamos el nombre de la variable pero metemos la URL
+                        targetRef.child(id).setValue(nuevo).addOnSuccessListener(aVoid -> {
+                            Toast.makeText(getContext(), "¡Publicado con éxito!", Toast.LENGTH_SHORT).show();
+                            dialog.dismiss();
+                        });
+                    });
+                }).addOnFailureListener(e -> {
+                    // ✨ AHORA EL TOAST NOS DIRÁ EL ERROR EXACTO
+                    Toast.makeText(getContext(), "Error Storage: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    android.util.Log.e("FIREBASE_STORAGE", "Error al subir foto", e);
+
+                    btnGuardar.setEnabled(true);
+                    btnGuardar.setText("Guardar");
+                });
+            } else {
+                // No hay archivo, se publica tal cual
+                targetRef.child(id).setValue(nuevo).addOnSuccessListener(aVoid -> {
+                    Toast.makeText(getContext(), "¡Publicado sin imagen!", Toast.LENGTH_SHORT).show();
+                    dialog.dismiss();
+                });
+            }
         });
 
         view.findViewById(R.id.btnDialogImagen).setOnClickListener(v ->
                 galeriaLauncher.launch(new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)));
 
         view.findViewById(R.id.btnCancelarDialog).setOnClickListener(v -> dialog.dismiss());
-
         if (dialog.getWindow() != null) dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         dialog.show();
     }
 
+    // ✨ EDICIÓN DE ARTÍCULO - ¡NUEVA LÓGICA CON FIREBASE STORAGE!
     private void mostrarDialogoEditarArticulo(Articulo articulo) {
         imagenSeleccionadaBase64 = articulo.getImagenPortadaBase64();
+        uriImagenSeleccionada = null; // Reiniciamos
 
         View view = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_agregar_articulo, null);
         AlertDialog dialog = new AlertDialog.Builder(requireContext()).setView(view).create();
@@ -908,7 +884,6 @@ public class EducacionFragment extends Fragment {
         ivVistaPreviaDialogo = view.findViewById(R.id.ivDialogVistaPrevia);
         ivVistaPreviaDialogo.setPadding(0, 0, 0, 0);
         MaterialButton btnGuardar = view.findViewById(R.id.btnGuardarDialog);
-        MaterialButton btnCancelar = view.findViewById(R.id.btnCancelarDialog);
 
         tvTitle.setText("Editar Mi Artículo");
         etTitulo.setText(articulo.getTitulo());
@@ -916,16 +891,21 @@ public class EducacionFragment extends Fragment {
         etContenido.setText(articulo.getContenidoCompleto());
         etUrl.setText(articulo.getUrlEnlace());
 
+        // Cargar imagen existente para previsualizar
         if (imagenSeleccionadaBase64 != null && !imagenSeleccionadaBase64.isEmpty()) {
-            try {
-                byte[] decodedString = Base64.decode(imagenSeleccionadaBase64, Base64.DEFAULT);
-                ivVistaPreviaDialogo.setImageBitmap(BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length));
-                ivVistaPreviaDialogo.setVisibility(View.VISIBLE);
-            } catch (Exception e) { e.printStackTrace(); }
+            if (imagenSeleccionadaBase64.startsWith("http")) {
+                com.bumptech.glide.Glide.with(requireContext()).load(imagenSeleccionadaBase64).into(ivVistaPreviaDialogo);
+            } else {
+                try {
+                    byte[] decodedString = Base64.decode(imagenSeleccionadaBase64, Base64.DEFAULT);
+                    ivVistaPreviaDialogo.setImageBitmap(BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length));
+                } catch (Exception e) {}
+            }
+            ivVistaPreviaDialogo.setVisibility(View.VISIBLE);
         }
 
         btnImagen.setOnClickListener(v -> galeriaLauncher.launch(new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)));
-        btnCancelar.setOnClickListener(v -> dialog.dismiss());
+        view.findViewById(R.id.btnCancelarDialog).setOnClickListener(v -> dialog.dismiss());
 
         btnGuardar.setOnClickListener(v -> {
             String tit = etTitulo.getText().toString().trim();
@@ -936,12 +916,30 @@ public class EducacionFragment extends Fragment {
             updates.put("descripcionCorta", etDescripcion.getText().toString().trim());
             updates.put("contenidoCompleto", etContenido.getText().toString().trim());
             updates.put("urlEnlace", etUrl.getText().toString().trim());
-            updates.put("imagenPortadaBase64", imagenSeleccionadaBase64);
 
-            comunidadRef.child(articulo.getId()).updateChildren(updates).addOnSuccessListener(aVoid -> {
-                Toast.makeText(getContext(), "Artículo actualizado", Toast.LENGTH_SHORT).show();
-                dialog.dismiss();
-            });
+            btnGuardar.setEnabled(false);
+            btnGuardar.setText("Actualizando...");
+
+            if (uriImagenSeleccionada != null) {
+                // Han elegido una imagen NUEVA, la subimos a Storage
+                StorageReference ref = FirebaseStorage.getInstance().getReference("articulos").child(articulo.getId() + ".jpg");
+                ref.putFile(uriImagenSeleccionada).addOnSuccessListener(taskSnapshot -> {
+                    ref.getDownloadUrl().addOnSuccessListener(uri -> {
+                        updates.put("imagenPortadaBase64", uri.toString());
+                        comunidadRef.child(articulo.getId()).updateChildren(updates).addOnSuccessListener(aVoid -> {
+                            Toast.makeText(getContext(), "Artículo actualizado", Toast.LENGTH_SHORT).show();
+                            dialog.dismiss();
+                        });
+                    });
+                });
+            } else {
+                // No han elegido imagen nueva, se guarda lo que ya había (ya sea URL o Base64)
+                updates.put("imagenPortadaBase64", imagenSeleccionadaBase64);
+                comunidadRef.child(articulo.getId()).updateChildren(updates).addOnSuccessListener(aVoid -> {
+                    Toast.makeText(getContext(), "Artículo actualizado", Toast.LENGTH_SHORT).show();
+                    dialog.dismiss();
+                });
+            }
         });
 
         if (dialog.getWindow() != null) dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
@@ -959,12 +957,10 @@ public class EducacionFragment extends Fragment {
 
         List<ComentarioMascota> listaComentarios = new ArrayList<>();
         ComentarioMascotaAdapter adaptadorComentarios = new ComentarioMascotaAdapter(listaComentarios);
-
         rvComentarios.setLayoutManager(new LinearLayoutManager(getContext()));
         rvComentarios.setAdapter(adaptadorComentarios);
 
         DatabaseReference publicacionComentariosRef = comentariosMascotasRef.child(publicacion.getId());
-
         ValueEventListener comentariosListener = new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
@@ -974,9 +970,7 @@ public class EducacionFragment extends Fragment {
                     if (c != null) listaComentarios.add(c);
                 }
                 adaptadorComentarios.notifyDataSetChanged();
-                if (!listaComentarios.isEmpty()) {
-                    rvComentarios.scrollToPosition(listaComentarios.size() - 1);
-                }
+                if (!listaComentarios.isEmpty()) rvComentarios.scrollToPosition(listaComentarios.size() - 1);
             }
             @Override public void onCancelled(@NonNull DatabaseError error) {}
         };
@@ -988,17 +982,10 @@ public class EducacionFragment extends Fragment {
 
             String comentarioId = publicacionComentariosRef.push().getKey();
             ComentarioMascota nuevoComentario = new ComentarioMascota(
-                    comentarioId,
-                    currentUser.getUid(),
-                    "@" + miNick,
-                    texto,
-                    System.currentTimeMillis(),
-                    miFotoPerfil
-            );
+                    comentarioId, currentUser.getUid(), "@" + miNick, texto, System.currentTimeMillis(), miFotoPerfil);
 
             publicacionComentariosRef.child(comentarioId).setValue(nuevoComentario).addOnSuccessListener(aVoid -> {
                 etNuevoComentario.setText("");
-
                 java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("@(\\w+)").matcher(texto);
                 while (matcher.find()) {
                     String nickMencionado = matcher.group(1);
@@ -1007,14 +994,8 @@ public class EducacionFragment extends Fragment {
             });
         });
 
-        bottomSheetDialog.setOnDismissListener(dialog -> {
-            publicacionComentariosRef.removeEventListener(comentariosListener);
-        });
-
-        if (bottomSheetDialog.getWindow() != null) {
-            bottomSheetDialog.getWindow().findViewById(com.google.android.material.R.id.design_bottom_sheet).setBackgroundResource(android.R.color.transparent);
-        }
-
+        bottomSheetDialog.setOnDismissListener(dialog -> publicacionComentariosRef.removeEventListener(comentariosListener));
+        if (bottomSheetDialog.getWindow() != null) bottomSheetDialog.getWindow().findViewById(com.google.android.material.R.id.design_bottom_sheet).setBackgroundResource(android.R.color.transparent);
         bottomSheetDialog.show();
     }
 
@@ -1025,22 +1006,12 @@ public class EducacionFragment extends Fragment {
                 if (snapshot.exists()) {
                     for (DataSnapshot userSnapshot : snapshot.getChildren()) {
                         String idUsuarioMencionado = userSnapshot.getKey();
-
                         if (idUsuarioMencionado != null && !idUsuarioMencionado.equals(currentUser.getUid())) {
                             DatabaseReference notifRef = FirebaseDatabase.getInstance().getReference("notificaciones").child(idUsuarioMencionado);
                             String idNotif = notifRef.push().getKey();
-
                             com.easypets.models.Notificacion notificacion = new com.easypets.models.Notificacion(
-                                    idNotif,
-                                    "Mención en comentario",
-                                    "@" + miNick + " te ha mencionado en una foto de " + publicacion.getNombreMascota(),
-                                    "comunidad",
-                                    publicacion.getId(),
-                                    "",
-                                    "",
-                                    "",
-                                    System.currentTimeMillis()
-                            );
+                                    idNotif, "Mención en comentario", "@" + miNick + " te ha mencionado en una foto de " + publicacion.getNombreMascota(),
+                                    "comunidad", publicacion.getId(), "", "", "", System.currentTimeMillis());
                             notifRef.child(idNotif).setValue(notificacion);
                         }
                     }
@@ -1050,10 +1021,8 @@ public class EducacionFragment extends Fragment {
         });
     }
 
-    // ✨ ESCUDO ANTI-CRASHEOS AÑADIDO
     private void comprobarEmptyState(boolean estaVacio) {
         if (layoutEmptyState == null || rvContenido == null) return;
-
         if (estaVacio) {
             rvContenido.setVisibility(View.GONE);
             layoutEmptyState.setVisibility(View.VISIBLE);
@@ -1063,50 +1032,30 @@ public class EducacionFragment extends Fragment {
         }
     }
 
-    // ==========================================
-    // ✨ SISTEMA DE REPORTES PROFESIONAL
-    // ==========================================
-
-    // 1. PARA MASCOTAS
     private void mostrarDialogoReporte(PublicacionMascota publicacion) {
         String[] opciones = {"Spam o publicidad", "Contenido sexual", "Violencia o maltrato", "Acoso o bullying", "Otro motivo"};
         final int[] seleccion = {0};
-
         AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
         builder.setTitle("¿Por qué reportas esta publicación?");
-
         LinearLayout layout = new LinearLayout(requireContext());
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setPadding(60, 20, 60, 10);
-
         final EditText etDetalles = new EditText(requireContext());
         etDetalles.setHint("Explícanos más detalles (opcional)...");
         etDetalles.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE);
         etDetalles.setLines(3);
-
-        builder.setSingleChoiceItems(opciones, 0, (dialog, which) -> {
-            seleccion[0] = which;
-        });
-
+        builder.setSingleChoiceItems(opciones, 0, (dialog, which) -> seleccion[0] = which);
         layout.addView(etDetalles);
         builder.setView(layout);
-
-        builder.setPositiveButton("Enviar reporte", (dialog, which) -> {
-            String motivoElegido = opciones[seleccion[0]];
-            String descripcion = etDetalles.getText().toString().trim();
-            enviarReporteDetallado(publicacion, motivoElegido, descripcion);
-        });
-
+        builder.setPositiveButton("Enviar reporte", (dialog, which) -> enviarReporteDetallado(publicacion, opciones[seleccion[0]], etDetalles.getText().toString().trim()));
         builder.setNegativeButton("Cancelar", null);
         builder.show();
     }
 
     private void enviarReporteDetallado(PublicacionMascota publicacion, String motivo, String detalles) {
         if (currentUser == null) return;
-
         DatabaseReference reportesRef = FirebaseDatabase.getInstance().getReference("reportes");
         String idReporte = reportesRef.push().getKey();
-
         Map<String, Object> reporte = new HashMap<>();
         reporte.put("idReporte", idReporte);
         reporte.put("idPublicacion", publicacion.getId());
@@ -1117,54 +1066,35 @@ public class EducacionFragment extends Fragment {
         reporte.put("tipo", "mascota");
         reporte.put("motivo", motivo);
         reporte.put("detalles", detalles);
-
         if (idReporte != null) {
-            reportesRef.child(idReporte).setValue(reporte).addOnSuccessListener(aVoid -> {
-                Toast.makeText(getContext(), "🚩 Reporte enviado. Gracias por ayudar a mantener la comunidad segura.", Toast.LENGTH_LONG).show();
-            });
+            reportesRef.child(idReporte).setValue(reporte).addOnSuccessListener(a -> Toast.makeText(getContext(), "🚩 Reporte enviado.", Toast.LENGTH_LONG).show());
         }
     }
 
-    // 2. PARA ARTÍCULOS
     private void mostrarDialogoReporte(Articulo articulo) {
         String[] opciones = {"Spam o publicidad", "Información falsa o peligrosa", "Violencia o maltrato", "Acoso o bullying", "Otro motivo"};
         final int[] seleccion = {0};
-
         AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
         builder.setTitle("¿Por qué reportas este artículo?");
-
         LinearLayout layout = new LinearLayout(requireContext());
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setPadding(60, 20, 60, 10);
-
         final EditText etDetalles = new EditText(requireContext());
         etDetalles.setHint("Explícanos más detalles (opcional)...");
         etDetalles.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE);
         etDetalles.setLines(3);
-
-        builder.setSingleChoiceItems(opciones, 0, (dialog, which) -> {
-            seleccion[0] = which;
-        });
-
+        builder.setSingleChoiceItems(opciones, 0, (dialog, which) -> seleccion[0] = which);
         layout.addView(etDetalles);
         builder.setView(layout);
-
-        builder.setPositiveButton("Enviar reporte", (dialog, which) -> {
-            String motivoElegido = opciones[seleccion[0]];
-            String descripcion = etDetalles.getText().toString().trim();
-            enviarReporteDetallado(articulo, motivoElegido, descripcion);
-        });
-
+        builder.setPositiveButton("Enviar reporte", (dialog, which) -> enviarReporteDetallado(articulo, opciones[seleccion[0]], etDetalles.getText().toString().trim()));
         builder.setNegativeButton("Cancelar", null);
         builder.show();
     }
 
     private void enviarReporteDetallado(Articulo articulo, String motivo, String detalles) {
         if (currentUser == null) return;
-
         DatabaseReference reportesRef = FirebaseDatabase.getInstance().getReference("reportes");
         String idReporte = reportesRef.push().getKey();
-
         Map<String, Object> reporte = new HashMap<>();
         reporte.put("idReporte", idReporte);
         reporte.put("idPublicacion", articulo.getId());
@@ -1175,11 +1105,8 @@ public class EducacionFragment extends Fragment {
         reporte.put("tipo", "articulo");
         reporte.put("motivo", motivo);
         reporte.put("detalles", detalles);
-
         if (idReporte != null) {
-            reportesRef.child(idReporte).setValue(reporte).addOnSuccessListener(aVoid -> {
-                Toast.makeText(getContext(), "🚩 Reporte enviado. Revisaremos este artículo pronto.", Toast.LENGTH_LONG).show();
-            });
+            reportesRef.child(idReporte).setValue(reporte).addOnSuccessListener(a -> Toast.makeText(getContext(), "🚩 Reporte enviado.", Toast.LENGTH_LONG).show());
         }
     }
 }
