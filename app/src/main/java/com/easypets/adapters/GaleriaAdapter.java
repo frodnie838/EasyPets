@@ -2,6 +2,7 @@ package com.easypets.adapters;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.text.format.DateUtils;
 import android.util.Base64;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -65,15 +66,21 @@ public class GaleriaAdapter extends RecyclerView.Adapter<GaleriaAdapter.ViewHold
         holder.tvAutor.setText(publicacion.getAutorNick());
         holder.tvDescripcion.setText(publicacion.getDescripcion());
 
+        // ✨ CÁLCULO DEL TIEMPO (ESTILO INSTAGRAM) ✨
+        CharSequence tiempoRelativo = DateUtils.getRelativeTimeSpanString(
+                publicacion.getTimestamp(),
+                System.currentTimeMillis(),
+                DateUtils.MINUTE_IN_MILLIS // Mostrará al menos "minutos"
+        );
+        holder.tvTiempo.setText(tiempoRelativo);
+
         // Carga URLs modernas o Base64 antiguos
         if (publicacion.getFotoBase64() != null && !publicacion.getFotoBase64().isEmpty()) {
             if (publicacion.getFotoBase64().startsWith("http")) {
-                // Es un enlace de Firebase Storage: Usamos la librería Glide (súper rápida)
                 com.bumptech.glide.Glide.with(holder.itemView.getContext())
                         .load(publicacion.getFotoBase64())
                         .into(holder.ivFoto);
             } else {
-                // Es una foto antigua en Base64: La decodificamos como antes
                 try {
                     byte[] decodedString = Base64.decode(publicacion.getFotoBase64(), Base64.DEFAULT);
                     Bitmap decodedByte = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
@@ -83,24 +90,20 @@ public class GaleriaAdapter extends RecyclerView.Adapter<GaleriaAdapter.ViewHold
                 }
             }
         } else {
-            // Imagen por defecto si falla
             holder.ivFoto.setImageResource(R.drawable.logo_sin_letra_trans);
         }
 
         int totalLikes = (publicacion.getLikes() != null) ? publicacion.getLikes().size() : 0;
         holder.tvLikesCount.setText(String.valueOf(totalLikes));
 
-        // 1. Si la tarjeta se está reciclando (el usuario hace scroll rápido), matamos el oyente viejo
         if (holder.comentariosRef != null && holder.comentariosListener != null) {
             holder.comentariosRef.removeEventListener(holder.comentariosListener);
         }
 
-        // 2. Le ponemos la oreja a Firebase solo para esta foto exacta
         holder.comentariosRef = FirebaseDatabase.getInstance().getReference("mascotas_comentarios").child(publicacion.getId());
         holder.comentariosListener = new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
-                // Cuenta exactamente cuántos comentarios hijos hay ahora mismo
                 long contadorReal = snapshot.getChildrenCount();
                 holder.tvComentariosCount.setText(String.valueOf(contadorReal));
             }
@@ -130,8 +133,6 @@ public class GaleriaAdapter extends RecyclerView.Adapter<GaleriaAdapter.ViewHold
         holder.btnOpciones.setOnClickListener(v -> listener.onOpcionesClick(publicacion, v));
     }
 
-    // Evitar fugas de memoria
-    // Cuando el usuario baja la pantalla y la foto deja de verse, desenchufamos la conexión
     @Override
     public void onViewRecycled(@NonNull ViewHolder holder) {
         super.onViewRecycled(holder);
@@ -146,7 +147,7 @@ public class GaleriaAdapter extends RecyclerView.Adapter<GaleriaAdapter.ViewHold
     }
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
-        TextView tvNombreMascota, tvAutor, tvDescripcion, tvLikesCount, tvComentariosCount;
+        TextView tvNombreMascota, tvAutor, tvDescripcion, tvLikesCount, tvComentariosCount, tvTiempo; // ✨ tvTiempo añadido
         ImageView ivFoto;
         ImageButton btnLike, btnComentar, btnOpciones;
 
@@ -160,6 +161,7 @@ public class GaleriaAdapter extends RecyclerView.Adapter<GaleriaAdapter.ViewHold
             tvDescripcion = itemView.findViewById(R.id.tvDescripcionGaleria);
             tvLikesCount = itemView.findViewById(R.id.tvLikesCountGaleria);
             tvComentariosCount = itemView.findViewById(R.id.tvComentariosCountGaleria);
+            tvTiempo = itemView.findViewById(R.id.tvTiempoGaleria); // ✨ Vinculamos la vista
             ivFoto = itemView.findViewById(R.id.ivFotoGaleria);
             btnLike = itemView.findViewById(R.id.btnLikeGaleria);
             btnComentar = itemView.findViewById(R.id.btnComentarGaleria);

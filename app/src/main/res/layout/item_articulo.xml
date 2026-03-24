@@ -1,125 +1,138 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginHorizontal="16dp"
-    android:layout_marginVertical="8dp"
+    android:layout_marginVertical="10dp"
     app:cardCornerRadius="16dp"
-    app:cardElevation="2dp"
+    app:cardElevation="4dp"
+    app:strokeWidth="0dp"
+    android:clickable="true"
+    android:focusable="true"
     android:foreground="?attr/selectableItemBackground">
 
-    <FrameLayout
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@color/white">
+
+        <ImageView
+            android:id="@+id/ivIconoArticulo"
+            android:layout_width="match_parent"
+            android:layout_height="180dp"
+            android:scaleType="centerCrop"
+            android:src="@drawable/consejos"
+            android:background="#F5F5F5"/>
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:padding="16dp"
-            android:gravity="center_vertical"
-            android:background="@color/white">
-
-            <androidx.cardview.widget.CardView
-                android:layout_width="60dp"
-                android:layout_height="60dp"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="0dp"
-                app:cardBackgroundColor="#F0F0F0">
-                <ImageView
-                    android:id="@+id/ivIconoArticulo"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:layout_gravity="center"
-                    android:src="@drawable/consejos"
-                    app:tint="@color/color_acento_primario"/>
-            </androidx.cardview.widget.CardView>
+            android:orientation="vertical"
+            android:padding="16dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:layout_marginStart="16dp">
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
 
                 <TextView
-                    android:id="@+id/tvTituloArticulo"
+                    android:id="@+id/tvAutorArticulo"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Título del artículo"
-                    android:textSize="16sp"
+                    android:text="Por: Autor"
+                    android:textSize="12sp"
                     android:textStyle="bold"
-                    android:textColor="@color/black"
-                    android:layout_marginBottom="4dp"/>
+                    android:textColor="@color/color_acento_primario"/>
+
                 <TextView
-                    android:id="@+id/tvDescripcionArticulo"
+                    android:id="@+id/tvTiempoArticulo"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:text=" • Hace 2h"
+                    android:textSize="12sp"
+                    android:textColor="#9E9E9E"
+                    android:layout_marginStart="4dp"/>
+
+                <ImageButton
+                    android:id="@+id/btnMenuArticulo"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_more_vert"
+                    android:visibility="gone"
+                    app:tint="@color/grey" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tvTituloArticulo"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Título del artículo"
+                android:textSize="19sp"
+                android:textStyle="bold"
+                android:textColor="@color/black"
+                android:layout_marginTop="8dp"
+                android:maxLines="2"
+                android:ellipsize="end"/>
+
+            <TextView
+                android:id="@+id/tvDescripcionArticulo"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Una breve descripción para enganchar al lector con el contenido de la publicación..."
+                android:textSize="14sp"
+                android:textColor="#616161"
+                android:layout_marginTop="6dp"
+                android:maxLines="3"
+                android:ellipsize="end"
+                android:lineSpacingExtra="3dp"/>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="#EEEEEE"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="12dp"/>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Leer artículo completo"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:textColor="#9E9E9E" />
+
+                <ImageButton
+                    android:id="@+id/btnLikeArticulo"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_heart_outline"
+                    app:tint="@color/color_acento_primario"
+                    android:scaleType="fitCenter"/>
+
+                <TextView
+                    android:id="@+id/tvLikeCountArticulo"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Una breve descripción para enganchar al lector..."
+                    android:text="0"
                     android:textSize="14sp"
-                    android:textColor="#757575"
-                    android:maxLines="2"
-                    android:ellipsize="end"/>
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:layout_marginTop="6dp">
-
-                    <TextView
-                        android:id="@+id/tvAutorArticulo"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="Por: EasyPets"
-                        android:textSize="12sp"
-                        android:textStyle="italic"
-                        android:textColor="@color/color_acento_primario" />
-
-                    <LinearLayout
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical">
-
-                        <ImageButton
-                            android:id="@+id/btnLikeArticulo"
-                            android:layout_width="18dp"
-                            android:layout_height="18dp"
-                            android:background="?attr/selectableItemBackgroundBorderless"
-                            android:src="@drawable/ic_heart_outline"
-                            app:tint="#A9A9A9"
-                            android:padding="0dp"
-                            android:scaleType="fitCenter"/>
-
-                        <TextView
-                            android:id="@+id/tvLikeCountArticulo"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text=""
-                            android:textSize="14sp"
-                            android:layout_marginStart="4dp"
-                            android:textColor="#757575" />
-                    </LinearLayout>
-                </LinearLayout>
-
+                    android:layout_marginStart="6dp"
+                    android:textStyle="bold"
+                    android:textColor="#757575" />
             </LinearLayout>
         </LinearLayout>
-
-        <ImageButton
-            android:id="@+id/btnMenuArticulo"
-            android:layout_width="15dp"
-            android:layout_height="25dp"
-            android:layout_gravity="end|top"
-            android:layout_marginTop="12dp"
-            android:layout_marginEnd="10dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@drawable/ic_more_vert"
-            android:visibility="gone"
-            app:tint="@color/grey"
-            android:alpha="0.8" />
-
-    </FrameLayout>
-</androidx.cardview.widget.CardView>
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>
