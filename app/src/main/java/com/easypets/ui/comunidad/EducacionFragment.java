@@ -97,7 +97,6 @@ public class EducacionFragment extends Fragment {
     private String miFotoPerfil = "";
 
     private String imagenSeleccionadaBase64 = "";
-    // ✨ LA NUEVA VARIABLE PARA STORAGE: Guarda la ruta del archivo real en el móvil
     private Uri uriImagenSeleccionada = null;
 
     private ImageView ivVistaPreviaDialogo;
@@ -105,6 +104,12 @@ public class EducacionFragment extends Fragment {
     private LinearLayout layoutEmptyState;
 
     private static int tabGuardada = 0;
+
+    // ✨ VARIABLES PARA EL SCROLL INFINITO (PAGINACIÓN)
+    private boolean isLoadingMore = false;
+    private boolean hasMoreData = true;
+    private long lastTimestamp = 0;
+    private final int PAGE_SIZE = 3; // Carga de 10 en 10 (ideal para producción)
 
     @Nullable
     @Override
@@ -207,6 +212,20 @@ public class EducacionFragment extends Fragment {
         obtenerDatosUsuario();
         configurarPestanas();
 
+        // ✨ DETECTOR DE SCROLL ULTRA-SEGURO
+        rvContenido.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
+                super.onScrolled(recyclerView, dx, dy);
+                if (!recyclerView.canScrollVertically(1)) { // Si no se puede bajar más
+                    TabLayout.Tab tab = tabLayout.getTabAt(tabLayout.getSelectedTabPosition());
+                    if (tab != null && "Comunidad".equals(tab.getText()) && chipGroupComunidad.getCheckedChipId() == R.id.chipComunidadMascotas) {
+                        cargarMasGaleria();
+                    }
+                }
+            }
+        });
+
         if (etBuscador != null) {
             buscadorWatcher = new TextWatcher() {
                 @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -233,19 +252,17 @@ public class EducacionFragment extends Fragment {
             }
         });
 
-        // ✨ AHORA EL LAUNCHER SOLO GUARDA EL ARCHIVO (Para mandarlo a Storage luego)
         galeriaLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> {
                     if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
                         uriImagenSeleccionada = result.getData().getData();
                         if (ivVistaPreviaDialogo != null && uriImagenSeleccionada != null) {
-                            // Usamos Glide para previsualizar súper rápido
                             com.bumptech.glide.Glide.with(requireContext()).load(uriImagenSeleccionada).into(ivVistaPreviaDialogo);
                             ivVistaPreviaDialogo.setVisibility(View.VISIBLE);
                             ivVistaPreviaDialogo.setPadding(0, 0, 0, 0);
                         }
-                        imagenSeleccionadaBase64 = ""; // Limpiamos el rastro antiguo
+                        imagenSeleccionadaBase64 = "";
                     }
                 }
         );
@@ -417,28 +434,86 @@ public class EducacionFragment extends Fragment {
         }
     }
 
+    // ✨ PAGINACIÓN 1: CARGA INICIAL
     private void cargarGaleria() {
         listaGaleria.clear();
         galeriaAdapter.notifyDataSetChanged();
         pbCargando.setVisibility(View.VISIBLE);
+        hasMoreData = true;
+        isLoadingMore = true;
 
-        activeQuery = galeriaRef.orderByChild("timestamp");
-        contenidoListener = new ValueEventListener() {
+        Query initialQuery = galeriaRef.orderByChild("timestamp").limitToLast(PAGE_SIZE);
+        initialQuery.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 listaGaleria.clear();
+                List<PublicacionMascota> temp = new ArrayList<>();
                 for (DataSnapshot data : snapshot.getChildren()) {
                     PublicacionMascota p = data.getValue(PublicacionMascota.class);
-                    if (p != null) listaGaleria.add(p);
+                    if (p != null) temp.add(p);
                 }
-                Collections.reverse(listaGaleria);
+                if (temp.size() > 0) {
+                    lastTimestamp = temp.get(0).getTimestamp();
+                }
+                if (temp.size() < PAGE_SIZE) {
+                    hasMoreData = false;
+                }
+                Collections.reverse(temp);
+                listaGaleria.addAll(temp);
                 galeriaAdapter.notifyDataSetChanged();
                 pbCargando.setVisibility(View.GONE);
                 comprobarEmptyState(listaGaleria.isEmpty());
+                isLoadingMore = false;
+
+                // ✨ AUTO-RELLENO: Si sobra pantalla libre, cargamos la siguiente página al instante
+                rvContenido.post(() -> {
+                    if (hasMoreData && !rvContenido.canScrollVertically(1)) {
+                        cargarMasGaleria();
+                    }
+                });
             }
-            @Override public void onCancelled(@NonNull DatabaseError error) { pbCargando.setVisibility(View.GONE); }
-        };
-        activeQuery.addValueEventListener(contenidoListener);
+            @Override public void onCancelled(@NonNull DatabaseError error) { pbCargando.setVisibility(View.GONE); isLoadingMore = false; }
+        });
+    }
+
+    // ✨ PAGINACIÓN 2: CARGA ADICIONAL
+    private void cargarMasGaleria() {
+        if (isLoadingMore || !hasMoreData) return;
+        isLoadingMore = true;
+
+        Query moreQuery = galeriaRef.orderByChild("timestamp").endAt(lastTimestamp - 1).limitToLast(PAGE_SIZE);
+        moreQuery.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                List<PublicacionMascota> temp = new ArrayList<>();
+                for (DataSnapshot data : snapshot.getChildren()) {
+                    PublicacionMascota p = data.getValue(PublicacionMascota.class);
+                    if (p != null) temp.add(p);
+                }
+
+                if (temp.size() > 0) {
+                    lastTimestamp = temp.get(0).getTimestamp();
+                }
+                if (temp.size() < PAGE_SIZE) {
+                    hasMoreData = false;
+                }
+
+                Collections.reverse(temp);
+                int prevSize = listaGaleria.size();
+                listaGaleria.addAll(temp);
+                galeriaAdapter.notifyItemRangeInserted(prevSize, temp.size());
+
+                isLoadingMore = false;
+
+                // ✨ AUTO-RELLENO: Si sigue sobrando pantalla, volvemos a pedir otra tanda
+                rvContenido.post(() -> {
+                    if (hasMoreData && !rvContenido.canScrollVertically(1)) {
+                        cargarMasGaleria();
+                    }
+                });
+            }
+            @Override public void onCancelled(@NonNull DatabaseError error) { isLoadingMore = false; }
+        });
     }
 
     private void cargarMisMascotas() {
@@ -576,7 +651,6 @@ public class EducacionFragment extends Fragment {
             ivPortada.setMaxHeight(600);
             ivPortada.setPadding(0, 0, 0, 40);
 
-            // ✨ Compatibilidad para ver los viejos en Base64 y los nuevos por URL
             if (articulo.getImagenPortadaBase64().startsWith("http")) {
                 com.bumptech.glide.Glide.with(requireContext()).load(articulo.getImagenPortadaBase64()).into(ivPortada);
                 layout.addView(ivPortada);
@@ -795,10 +869,9 @@ public class EducacionFragment extends Fragment {
         dialog.show();
     }
 
-    // ✨ CREACIÓN DE ARTÍCULO - ¡NUEVA LÓGICA CON FIREBASE STORAGE!
     private void mostrarDialogoCrearArticulo() {
         boolean esOficial = (tabLayout.getSelectedTabPosition() == 0);
-        uriImagenSeleccionada = null; // Reiniciamos por si acaso
+        uriImagenSeleccionada = null;
 
         View view = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_agregar_articulo, null);
         AlertDialog dialog = new AlertDialog.Builder(requireContext()).setView(view).create();
@@ -820,38 +893,32 @@ public class EducacionFragment extends Fragment {
             String id = targetRef.push().getKey();
             String autor = esOficial ? "EasyPets Oficial" : "@" + miNick;
 
-            // Al principio el artículo nace con una imagen vacía
             Articulo nuevo = new Articulo(id, currentUser.getUid(), titulo,
                     etDesc.getText().toString().trim(),
                     etCont.getText().toString().trim(),
                     autor, System.currentTimeMillis(), "",
                     etUrl.getText().toString().trim(), esOficial);
 
-            btnGuardar.setEnabled(false); // Para que no toquen dos veces
+            btnGuardar.setEnabled(false);
             btnGuardar.setText("Subiendo foto...");
 
             if (uriImagenSeleccionada != null) {
-                // Hay archivo: lo subimos a Firebase Storage
                 StorageReference ref = FirebaseStorage.getInstance().getReference("articulos").child(id + ".jpg");
                 ref.putFile(uriImagenSeleccionada).addOnSuccessListener(taskSnapshot -> {
-                    // Si se sube bien, le pedimos la URL a Google
                     ref.getDownloadUrl().addOnSuccessListener(uri -> {
-                        nuevo.setImagenPortadaBase64(uri.toString()); // Reutilizamos el nombre de la variable pero metemos la URL
+                        nuevo.setImagenPortadaBase64(uri.toString());
                         targetRef.child(id).setValue(nuevo).addOnSuccessListener(aVoid -> {
                             Toast.makeText(getContext(), "¡Publicado con éxito!", Toast.LENGTH_SHORT).show();
                             dialog.dismiss();
                         });
                     });
                 }).addOnFailureListener(e -> {
-                    // ✨ AHORA EL TOAST NOS DIRÁ EL ERROR EXACTO
                     Toast.makeText(getContext(), "Error Storage: " + e.getMessage(), Toast.LENGTH_LONG).show();
                     android.util.Log.e("FIREBASE_STORAGE", "Error al subir foto", e);
-
                     btnGuardar.setEnabled(true);
                     btnGuardar.setText("Guardar");
                 });
             } else {
-                // No hay archivo, se publica tal cual
                 targetRef.child(id).setValue(nuevo).addOnSuccessListener(aVoid -> {
                     Toast.makeText(getContext(), "¡Publicado sin imagen!", Toast.LENGTH_SHORT).show();
                     dialog.dismiss();
@@ -867,10 +934,9 @@ public class EducacionFragment extends Fragment {
         dialog.show();
     }
 
-    // ✨ EDICIÓN DE ARTÍCULO - ¡NUEVA LÓGICA CON FIREBASE STORAGE!
     private void mostrarDialogoEditarArticulo(Articulo articulo) {
         imagenSeleccionadaBase64 = articulo.getImagenPortadaBase64();
-        uriImagenSeleccionada = null; // Reiniciamos
+        uriImagenSeleccionada = null;
 
         View view = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_agregar_articulo, null);
         AlertDialog dialog = new AlertDialog.Builder(requireContext()).setView(view).create();
@@ -891,7 +957,6 @@ public class EducacionFragment extends Fragment {
         etContenido.setText(articulo.getContenidoCompleto());
         etUrl.setText(articulo.getUrlEnlace());
 
-        // Cargar imagen existente para previsualizar
         if (imagenSeleccionadaBase64 != null && !imagenSeleccionadaBase64.isEmpty()) {
             if (imagenSeleccionadaBase64.startsWith("http")) {
                 com.bumptech.glide.Glide.with(requireContext()).load(imagenSeleccionadaBase64).into(ivVistaPreviaDialogo);
@@ -921,7 +986,6 @@ public class EducacionFragment extends Fragment {
             btnGuardar.setText("Actualizando...");
 
             if (uriImagenSeleccionada != null) {
-                // Han elegido una imagen NUEVA, la subimos a Storage
                 StorageReference ref = FirebaseStorage.getInstance().getReference("articulos").child(articulo.getId() + ".jpg");
                 ref.putFile(uriImagenSeleccionada).addOnSuccessListener(taskSnapshot -> {
                     ref.getDownloadUrl().addOnSuccessListener(uri -> {
@@ -933,7 +997,6 @@ public class EducacionFragment extends Fragment {
                     });
                 });
             } else {
-                // No han elegido imagen nueva, se guarda lo que ya había (ya sea URL o Base64)
                 updates.put("imagenPortadaBase64", imagenSeleccionadaBase64);
                 comunidadRef.child(articulo.getId()).updateChildren(updates).addOnSuccessListener(aVoid -> {
                     Toast.makeText(getContext(), "Artículo actualizado", Toast.LENGTH_SHORT).show();
