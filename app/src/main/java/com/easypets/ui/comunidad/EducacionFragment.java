@@ -105,10 +105,11 @@ public class EducacionFragment extends Fragment {
 
     private static int tabGuardada = 0;
 
+    // ✨ VARIABLES PARA EL SCROLL INFINITO (PAGINACIÓN)
     private boolean isLoadingMore = false;
     private boolean hasMoreData = true;
     private long lastTimestamp = 0;
-    private final int PAGE_SIZE = 3; // Carga de 3 en 3 (ideal para producción)
+    private final int PAGE_SIZE = 3; // Carga de 10 en 10 (ideal para producción)
 
     @Nullable
     @Override
@@ -797,8 +798,6 @@ public class EducacionFragment extends Fragment {
     private void mostrarDialogoSubirMascota() {
         if (currentUser == null) return;
 
-        uriImagenSeleccionada = null;
-
         View view = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_subir_mascota, null);
         AlertDialog dialog = new AlertDialog.Builder(requireContext()).setView(view).create();
 
@@ -806,10 +805,6 @@ public class EducacionFragment extends Fragment {
         ImageView ivPreview = view.findViewById(R.id.ivDialogVistaPreviaMascota);
         TextInputEditText etDesc = view.findViewById(R.id.etDialogDescMascota);
         MaterialButton btnPublicar = view.findViewById(R.id.btnGuardarMascota);
-
-        ivVistaPreviaDialogo = ivPreview;
-
-        ivPreview.setOnClickListener(v -> galeriaLauncher.launch(new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)));
 
         List<com.easypets.models.Mascota> misMascotas = new ArrayList<>();
         List<String> nombresMascotas = new ArrayList<>();
@@ -839,8 +834,6 @@ public class EducacionFragment extends Fragment {
         spinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
-                if (uriImagenSeleccionada != null) return;
-
                 com.easypets.models.Mascota seleccionada = misMascotas.get(position);
                 if (seleccionada.getFotoPerfilUrl() != null && !seleccionada.getFotoPerfilUrl().isEmpty()) {
                     if (seleccionada.getFotoPerfilUrl().startsWith("http")) {
@@ -852,9 +845,6 @@ public class EducacionFragment extends Fragment {
                         } catch (Exception e) {}
                     }
                     ivPreview.setPadding(0, 0, 0, 0);
-                } else {
-                    ivPreview.setImageResource(R.drawable.huella);
-                    ivPreview.setPadding(70, 70, 70, 70);
                 }
             }
             @Override public void onNothingSelected(android.widget.AdapterView<?> parent) {}
@@ -866,33 +856,12 @@ public class EducacionFragment extends Fragment {
             com.easypets.models.Mascota m = misMascotas.get(pos);
             String desc = etDesc.getText().toString().trim();
             String pubId = galeriaRef.push().getKey();
+            PublicacionMascota nuevaPub = new PublicacionMascota(pubId, currentUser.getUid(), "@" + miNick, m.getNombre(), desc, m.getFotoPerfilUrl(), System.currentTimeMillis());
 
-            btnPublicar.setEnabled(false);
-            btnPublicar.setText("Subiendo...");
-
-            if (uriImagenSeleccionada != null) {
-                StorageReference ref = FirebaseStorage.getInstance().getReference("mascotas_comunidad").child(pubId + ".jpg");
-                ref.putFile(uriImagenSeleccionada).addOnSuccessListener(taskSnapshot -> {
-                    ref.getDownloadUrl().addOnSuccessListener(uri -> {
-                        PublicacionMascota nuevaPub = new PublicacionMascota(pubId, currentUser.getUid(), "@" + miNick, m.getNombre(), desc, uri.toString(), System.currentTimeMillis());
-                        galeriaRef.child(pubId).setValue(nuevaPub).addOnSuccessListener(aVoid -> {
-                            Toast.makeText(getContext(), "¡" + m.getNombre() + " ya está en la comunidad!", Toast.LENGTH_SHORT).show();
-                            dialog.dismiss();
-                        });
-                    });
-                }).addOnFailureListener(e -> {
-                    Toast.makeText(getContext(), "Error al subir la imagen", Toast.LENGTH_SHORT).show();
-                    btnPublicar.setEnabled(true);
-                    btnPublicar.setText("Publicar");
-                });
-            } else {
-                // Si no se eligió ninguna foto distinta, usa la de perfil por defecto de la mascota
-                PublicacionMascota nuevaPub = new PublicacionMascota(pubId, currentUser.getUid(), "@" + miNick, m.getNombre(), desc, m.getFotoPerfilUrl(), System.currentTimeMillis());
-                galeriaRef.child(pubId).setValue(nuevaPub).addOnSuccessListener(aVoid -> {
-                    Toast.makeText(getContext(), "¡" + m.getNombre() + " ya está en la comunidad!", Toast.LENGTH_SHORT).show();
-                    dialog.dismiss();
-                });
-            }
+            galeriaRef.child(pubId).setValue(nuevaPub).addOnSuccessListener(aVoid -> {
+                Toast.makeText(getContext(), "¡" + m.getNombre() + " ya está en la comunidad!", Toast.LENGTH_SHORT).show();
+                dialog.dismiss();
+            });
         });
 
         view.findViewById(R.id.btnCancelarMascota).setOnClickListener(v -> dialog.dismiss());

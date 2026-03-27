@@ -1,35 +1,33 @@
 package com.easypets.adapters;
 
-import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.text.format.DateUtils;
 import android.util.Base64;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
 import android.widget.ImageView;
-import android.widget.PopupMenu;
 import android.widget.TextView;
-
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
-
 import com.easypets.R;
 import com.easypets.models.Articulo;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
-public class ArticuloAdapter extends RecyclerView.Adapter<ArticuloAdapter.ViewHolder> {
-
-    private List<Articulo> listaArticulos;
+public class ArticuloAdapter extends RecyclerView.Adapter<ArticuloAdapter.ArticuloViewHolder> {
+    private List<Articulo> articulos;
     private OnArticuloClickListener listener;
-    private String currentUserId;
     private boolean mostrarOpciones = false;
 
+    // ✨ Interfaz actualizada para manejar las nuevas acciones
     public interface OnArticuloClickListener {
         void onArticuloClick(Articulo articulo);
         void onEditarClick(Articulo articulo);
@@ -37,100 +35,80 @@ public class ArticuloAdapter extends RecyclerView.Adapter<ArticuloAdapter.ViewHo
         void onReportarClick(Articulo articulo);
     }
 
-    public ArticuloAdapter(List<Articulo> listaArticulos, OnArticuloClickListener listener) {
-        this.listaArticulos = listaArticulos;
+    public ArticuloAdapter(List<Articulo> articulos, OnArticuloClickListener listener) {
+        this.articulos = articulos;
         this.listener = listener;
-        if (FirebaseAuth.getInstance().getCurrentUser() != null) {
-            this.currentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
-        }
     }
 
     public void setMostrarOpciones(boolean mostrarOpciones) {
         this.mostrarOpciones = mostrarOpciones;
-        notifyDataSetChanged();
     }
 
-    @NonNull
-    @Override
-    public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+    @NonNull @Override
+    public ArticuloViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_articulo, parent, false);
-        return new ViewHolder(view);
+        return new ArticuloViewHolder(view);
     }
 
     @Override
-    public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        Articulo articulo = listaArticulos.get(position);
-        if (articulo == null) return; // 🛡️ PROGRAMACIÓN DEFENSIVA: Evitar nulos
+    public void onBindViewHolder(@NonNull ArticuloViewHolder holder, int position) {
+        Articulo articulo = articulos.get(position);
+        holder.tvTitulo.setText(articulo.getTitulo());
+        holder.tvDescripcion.setText(articulo.getDescripcionCorta());
+        String fecha = new SimpleDateFormat("dd MMM", Locale.getDefault()).format(new Date(articulo.getTimestampCreacion()));
+        holder.tvAutor.setText(articulo.isEsOficial() ? "✓ Oficial • " + fecha : "Por: " + articulo.getAutor());
 
-        // Títulos y Descripciones seguros
-        holder.tvTitulo.setText(articulo.getTitulo() != null ? articulo.getTitulo() : "Sin título");
-        holder.tvDescripcion.setText(articulo.getDescripcionCorta() != null ? articulo.getDescripcionCorta() : "");
-
-        // Autor seguro
-        if (articulo.isEsOficial()) {
-            holder.tvAutor.setText("Por: EasyPets Oficial");
-            holder.tvAutor.setTextColor(android.graphics.Color.parseColor("#4CAF50")); // Verde
+        // Manejo de imagen
+        // LÓGICA HÍBRIDA PARA ARTÍCULOS
+        if (articulo.getImagenPortadaBase64() != null && !articulo.getImagenPortadaBase64().isEmpty()) {
+            if (articulo.getImagenPortadaBase64().startsWith("http")) {
+                // Usamos Glide para URLs modernas
+                com.bumptech.glide.Glide.with(holder.itemView.getContext())
+                        .load(articulo.getImagenPortadaBase64())
+                        .centerCrop()
+                        .into(holder.ivIcono);
+                holder.ivIcono.setImageTintList(null);
+            } else {
+                // Código antiguo (Base64)
+                try {
+                    byte[] decodedString = Base64.decode(articulo.getImagenPortadaBase64(), Base64.DEFAULT);
+                    holder.ivIcono.setImageBitmap(BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length));
+                    holder.ivIcono.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                    holder.ivIcono.setImageTintList(null);
+                } catch (Exception e) {
+                    holder.ivIcono.setImageResource(articulo.isEsOficial() ? R.drawable.consejos : R.drawable.profile);
+                }
+            }
         } else {
-            String nombreAutor = articulo.getAutor() != null ? articulo.getAutor() : "Usuario";
-            holder.tvAutor.setText("Por: " + nombreAutor);
-            holder.tvAutor.setTextColor(androidx.core.content.ContextCompat.getColor(holder.itemView.getContext(), R.color.color_acento_primario));
+            holder.ivIcono.setImageResource(articulo.isEsOficial() ? R.drawable.consejos : R.drawable.profile);
         }
 
-        // Tiempo relativo seguro
-        long timestamp = articulo.getTimestampCreacion() > 0 ? articulo.getTimestampCreacion() : System.currentTimeMillis();
-        CharSequence tiempoRelativo = DateUtils.getRelativeTimeSpanString(
-                timestamp,
-                System.currentTimeMillis(),
-                DateUtils.MINUTE_IN_MILLIS
-        );
-        holder.tvTiempo.setText(" • " + tiempoRelativo);
+        // Definimos quiénes somos una sola vez
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        String currentUserId = (currentUser != null) ? currentUser.getUid() : "";
+        boolean soyAutor = currentUser != null && articulo.getIdAutor() != null && articulo.getIdAutor().equals(currentUserId);
 
-        // Likes seguros
-        int likesCount = (articulo.getLikes() != null) ? articulo.getLikes().size() : 0;
-        holder.tvLikeCount.setText(String.valueOf(likesCount));
-
-        boolean leHeDadoLike = currentUserId != null && articulo.getLikes() != null && articulo.getLikes().containsKey(currentUserId);
-        if (leHeDadoLike) {
-            holder.btnLike.setImageResource(R.drawable.ic_heart_filled);
-            holder.btnLike.setColorFilter(android.graphics.Color.parseColor("#E53935"));
-        } else {
-            holder.btnLike.setImageResource(R.drawable.ic_heart_outline);
-            holder.btnLike.setColorFilter(android.graphics.Color.parseColor("#757575"));
-        }
-
-        holder.btnLike.setOnClickListener(v -> {
-            if (currentUserId == null || articulo.getId() == null) return;
-            DatabaseReference likeRef = FirebaseDatabase.getInstance()
-                    .getReference(articulo.isEsOficial() ? "articulos_oficiales" : "articulos_comunidad")
-                    .child(articulo.getId()).child("likes").child(currentUserId);
-
-            if (leHeDadoLike) likeRef.removeValue();
-            else likeRef.setValue(true);
-        });
-
-        // 🛡️ AQUÍ ESTABA EL CRASH: Comprobamos que el ID del autor NO SEA NULO antes de compararlo
-        String idAutor = articulo.getIdAutor();
-
-        if (mostrarOpciones && currentUserId != null && idAutor != null && idAutor.equals(currentUserId)) {
+        // Mostramos opciones si soy el autor, o si NO es oficial y estoy logueado (para reportar)
+        if (currentUser != null && (soyAutor || !articulo.isEsOficial())) {
             holder.btnMenu.setVisibility(View.VISIBLE);
             holder.btnMenu.setOnClickListener(v -> {
-                PopupMenu popup = new PopupMenu(v.getContext(), v);
-                popup.getMenu().add("Editar artículo");
-                popup.getMenu().add("Eliminar artículo");
+                android.widget.PopupMenu popup = new android.widget.PopupMenu(v.getContext(), v);
+
+                if (soyAutor) {
+                    popup.getMenu().add(0, 1, 0, "✏️ Editar");
+                    popup.getMenu().add(0, 2, 0, "🗑️ Eliminar");
+                } else {
+                    popup.getMenu().add(0, 3, 0, "🚩 Reportar contenido inapropiado");
+                }
+
                 popup.setOnMenuItemClickListener(item -> {
-                    if (item.getTitle().equals("Editar artículo")) listener.onEditarClick(articulo);
-                    else if (item.getTitle().equals("Eliminar artículo")) listener.onBorrarClick(articulo);
-                    return true;
-                });
-                popup.show();
-            });
-        } else if (!articulo.isEsOficial() && currentUserId != null && idAutor != null && !idAutor.equals(currentUserId)) {
-            holder.btnMenu.setVisibility(View.VISIBLE);
-            holder.btnMenu.setOnClickListener(v -> {
-                PopupMenu popup = new PopupMenu(v.getContext(), v);
-                popup.getMenu().add("🚩 Reportar artículo");
-                popup.setOnMenuItemClickListener(item -> {
-                    listener.onReportarClick(articulo);
+                    if (item.getItemId() == 1) {
+                        listener.onEditarClick(articulo);
+                    } else if (item.getItemId() == 2) {
+                        listener.onBorrarClick(articulo);
+                    } else if (item.getItemId() == 3) {
+                        listener.onReportarClick(articulo); // ✨ LLAMAMOS AL REPORTE
+                    }
                     return true;
                 });
                 popup.show();
@@ -139,48 +117,63 @@ public class ArticuloAdapter extends RecyclerView.Adapter<ArticuloAdapter.ViewHo
             holder.btnMenu.setVisibility(View.GONE);
         }
 
-        // Lógica Híbrida de Imagen segura
-        if (articulo.getImagenPortadaBase64() != null && !articulo.getImagenPortadaBase64().isEmpty()) {
-            if (articulo.getImagenPortadaBase64().startsWith("http")) {
-                com.bumptech.glide.Glide.with(holder.itemView.getContext())
-                        .load(articulo.getImagenPortadaBase64())
-                        .into(holder.ivIcono);
-            } else {
-                try {
-                    byte[] decodedString = Base64.decode(articulo.getImagenPortadaBase64(), Base64.DEFAULT);
-                    Bitmap decodedByte = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
-                    holder.ivIcono.setImageBitmap(decodedByte);
-                } catch (Exception e) {
-                    holder.ivIcono.setImageResource(R.drawable.consejos);
-                }
-            }
-        } else {
-            holder.ivIcono.setImageResource(R.drawable.consejos);
+        // Lógica de Likes usando la variable currentUserId que ya teníamos arriba
+        int numeroDeLikes = 0;
+        boolean isLikedByMe = false;
+
+        if (articulo.getLikes() != null) {
+            numeroDeLikes = articulo.getLikes().size();
+            isLikedByMe = articulo.getLikes().containsKey(currentUserId);
         }
+
+        if (numeroDeLikes == 0) {
+            holder.tvLikeCount.setVisibility(View.GONE);
+        } else {
+            holder.tvLikeCount.setVisibility(View.VISIBLE);
+            holder.tvLikeCount.setText(String.valueOf(numeroDeLikes));
+        }
+
+        if (isLikedByMe) {
+            holder.btnLike.setImageResource(R.drawable.ic_heart_filled);
+            holder.btnLike.setImageTintList(android.content.res.ColorStateList.valueOf(androidx.core.content.ContextCompat.getColor(holder.itemView.getContext(), R.color.color_acento_primario)));
+        } else {
+            holder.btnLike.setImageResource(R.drawable.ic_heart_outline);
+        }
+
+        boolean finalIsLikedByMe = isLikedByMe;
+        holder.btnLike.setOnClickListener(v -> {
+            if (currentUserId.isEmpty()) return;
+
+            String nodoFirebase = articulo.isEsOficial() ? "articulos_oficiales" : "articulos_comunidad";
+
+            DatabaseReference likesRef = FirebaseDatabase.getInstance().getReference(nodoFirebase)
+                    .child(articulo.getId()).child("likes").child(currentUserId);
+
+            if (finalIsLikedByMe) {
+                likesRef.removeValue();
+            } else {
+                likesRef.setValue(true);
+            }
+        });
 
         holder.itemView.setOnClickListener(v -> listener.onArticuloClick(articulo));
     }
 
-    @Override
-    public int getItemCount() {
-        return listaArticulos.size();
-    }
+    @Override public int getItemCount() { return articulos.size(); }
 
-    public static class ViewHolder extends RecyclerView.ViewHolder {
-        TextView tvTitulo, tvDescripcion, tvAutor, tvLikeCount, tvTiempo;
+    public static class ArticuloViewHolder extends RecyclerView.ViewHolder {
+        TextView tvTitulo, tvDescripcion, tvAutor, tvLikeCount;
         ImageView ivIcono;
-        ImageButton btnLike, btnMenu;
-
-        public ViewHolder(@NonNull View itemView) {
+        ImageButton btnMenu, btnLike;
+        public ArticuloViewHolder(@NonNull View itemView) {
             super(itemView);
             tvTitulo = itemView.findViewById(R.id.tvTituloArticulo);
             tvDescripcion = itemView.findViewById(R.id.tvDescripcionArticulo);
             tvAutor = itemView.findViewById(R.id.tvAutorArticulo);
-            tvTiempo = itemView.findViewById(R.id.tvTiempoArticulo);
-            tvLikeCount = itemView.findViewById(R.id.tvLikeCountArticulo);
             ivIcono = itemView.findViewById(R.id.ivIconoArticulo);
-            btnLike = itemView.findViewById(R.id.btnLikeArticulo);
             btnMenu = itemView.findViewById(R.id.btnMenuArticulo);
+            btnLike = itemView.findViewById(R.id.btnLikeArticulo);
+            tvLikeCount = itemView.findViewById(R.id.tvLikeCountArticulo);
         }
     }
 }
