@@ -16,8 +16,8 @@
             android:id="@+id/cardMisMascotas"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:cardCornerRadius="16dp"
-            app:cardElevation="3dp"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="4dp"
             android:layout_marginBottom="24dp"
             android:foreground="?attr/selectableItemBackground">
 
@@ -26,22 +26,53 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:padding="20dp"
-                android:gravity="center"
+                android:gravity="center_vertical"
                 android:background="@color/white">
 
-                <ImageView
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:src="@drawable/huella"
-                    android:layout_marginEnd="16dp"/>
+                <androidx.cardview.widget.CardView
+                    android:layout_width="60dp"
+                    android:layout_height="60dp"
+                    app:cardCornerRadius="30dp"
+                    app:cardElevation="0dp"
+                    app:cardBackgroundColor="#E8F5E9"
+                    android:layout_marginEnd="16dp">
 
-                <TextView
-                    android:layout_width="wrap_content"
+                    <ImageView
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/huella"
+                        app:tint="@color/color_acento_primario"/>
+                </androidx.cardview.widget.CardView>
+
+                <LinearLayout
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:text="Mis Mascotas"
-                    android:textStyle="bold"
-                    android:textSize="18sp"
-                    android:textColor="@color/color_acento_primario"/>
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Mis Mascotas"
+                        android:textStyle="bold"
+                        android:textSize="20sp"
+                        android:textColor="@color/black"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Ver perfiles y cartillas"
+                        android:textSize="13sp"
+                        android:textColor="@color/grey"
+                        android:layout_marginTop="2dp"/>
+                </LinearLayout>
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="wrap_content"
+                    android:src="@drawable/ic_arrow_forward_ios"
+                    app:tint="@color/grey"
+                    android:alpha="0.5"/>
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
@@ -54,7 +85,7 @@
             <androidx.cardview.widget.CardView
                 android:id="@+id/cardVeterinarios"
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="110dp"
                 android:layout_weight="1"
                 android:layout_marginEnd="6dp"
                 app:cardCornerRadius="16dp"
@@ -63,19 +94,19 @@
 
                 <LinearLayout
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
+                    android:layout_height="match_parent"
                     android:orientation="vertical"
                     android:gravity="center"
-                    android:padding="16dp">
-                    <ImageView android:layout_width="32dp" android:layout_height="32dp" android:src="@drawable/veterinario" app:tint="@color/color_acento_primario" android:layout_marginBottom="8dp"/>
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Veterinarios" android:textStyle="bold" android:textSize="13sp" android:textColor="@color/black"/>
+                    android:background="@color/white">
+                    <ImageView android:layout_width="40dp" android:layout_height="40dp" android:src="@drawable/veterinario" app:tint="@color/color_acento_primario" android:layout_marginBottom="12dp"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Veterinarios" android:textStyle="bold" android:textSize="14sp" android:textColor="@color/black"/>
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
             <androidx.cardview.widget.CardView
                 android:id="@+id/cardCalendario"
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="110dp"
                 android:layout_weight="1"
                 android:layout_marginStart="6dp"
                 app:cardCornerRadius="16dp"
@@ -84,12 +115,12 @@
 
                 <LinearLayout
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
+                    android:layout_height="match_parent"
                     android:orientation="vertical"
                     android:gravity="center"
-                    android:padding="16dp">
-                    <ImageView android:layout_width="32dp" android:layout_height="32dp" android:src="@drawable/calendario" android:layout_marginBottom="8dp" app:tint="@color/color_acento_primario"/>
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Calendario" android:textStyle="bold" android:textSize="13sp" android:textColor="@color/black"/>
+                    android:background="@color/white">
+                    <ImageView android:layout_width="40dp" android:layout_height="40dp" android:src="@drawable/calendario" app:tint="@color/color_acento_primario" android:layout_marginBottom="12dp"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Calendario" android:textStyle="bold" android:textSize="14sp" android:textColor="@color/black"/>
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
         </LinearLayout>
@@ -98,12 +129,12 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginBottom="24dp">
+            android:layout_marginBottom="32dp">
 
             <androidx.cardview.widget.CardView
                 android:id="@+id/cardEducacion"
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="110dp"
                 android:layout_weight="1"
                 android:layout_marginEnd="6dp"
                 app:cardCornerRadius="16dp"
@@ -112,19 +143,19 @@
 
                 <LinearLayout
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
+                    android:layout_height="match_parent"
                     android:orientation="vertical"
                     android:gravity="center"
-                    android:padding="16dp">
-                    <ImageView android:layout_width="32dp" android:layout_height="32dp" android:src="@drawable/consejos" app:tint="@color/color_acento_primario" android:layout_marginBottom="8dp"/>
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Educación" android:textStyle="bold" android:textSize="13sp" android:textColor="@color/black"/>
+                    android:background="@color/white">
+                    <ImageView android:layout_width="40dp" android:layout_height="40dp" android:src="@drawable/consejos" app:tint="@color/color_acento_primario" android:layout_marginBottom="12dp"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Educación" android:textStyle="bold" android:textSize="14sp" android:textColor="@color/black"/>
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
             <androidx.cardview.widget.CardView
                 android:id="@+id/cardTiendas"
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="110dp"
                 android:layout_weight="1"
                 android:layout_marginStart="6dp"
                 app:cardCornerRadius="16dp"
@@ -133,12 +164,12 @@
 
                 <LinearLayout
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
+                    android:layout_height="match_parent"
                     android:orientation="vertical"
                     android:gravity="center"
-                    android:padding="16dp">
-                    <ImageView android:layout_width="32dp" android:layout_height="32dp" android:src="@drawable/servicios" app:tint="@color/color_acento_primario" android:layout_marginBottom="8dp"/>
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Servicios" android:textStyle="bold" android:textSize="13sp" android:textColor="@color/black"/>
+                    android:background="@color/white">
+                    <ImageView android:layout_width="40dp" android:layout_height="40dp" android:src="@drawable/servicios" app:tint="@color/color_acento_primario" android:layout_marginBottom="12dp"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Servicios" android:textStyle="bold" android:textSize="14sp" android:textColor="@color/black"/>
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
         </LinearLayout>
@@ -153,10 +184,10 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Próximos Eventos"
-                android:textSize="16sp"
+                android:textSize="18sp"
                 android:textStyle="bold"
                 android:textColor="@color/color_acento_primario"
-                android:layout_marginBottom="12dp"/>
+                android:layout_marginBottom="16dp"/>
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rvProximosEventos"
@@ -169,9 +200,9 @@
                 android:id="@+id/tvSinEventosProximos"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Tienes tu agenda libre. ¡Disfruta!"
+                android:text="Tienes tu agenda vacia. ¡Disfruta!"
                 android:textAlignment="center"
-                android:textColor="#757575"
+                android:textColor="@color/grey"
                 android:layout_marginBottom="24dp"
                 android:visibility="gone"/>
 
@@ -179,17 +210,17 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Añadir Nota Rápida"
-                android:textSize="16sp"
+                android:textSize="18sp"
                 android:textStyle="bold"
                 android:textColor="@color/color_acento_primario"
-                android:layout_marginBottom="12dp"/>
+                android:layout_marginBottom="16dp"/>
 
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 app:cardCornerRadius="16dp"
                 app:cardElevation="2dp"
-                android:layout_marginBottom="24dp">
+                android:layout_marginBottom="32dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -206,7 +237,7 @@
                         android:background="@android:color/transparent"
                         android:padding="8dp"
                         android:textSize="16sp"
-                        android:layout_marginBottom="8dp"/>
+                        android:layout_marginBottom="12dp"/>
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -222,7 +253,8 @@
                             android:layout_weight="1"
                             android:layout_marginEnd="12dp"
                             android:text="Hoy"
-                            app:strokeColor="#E0E0E0"/>
+                            app:strokeColor="#E0E0E0"
+                            android:textColor="@color/grey"/>
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/btnGuardarNota"
@@ -249,13 +281,14 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:padding="32dp"
-                android:gravity="center">
+                android:gravity="center"
+                android:background="@color/white">
 
                 <ImageView
                     android:layout_width="64dp"
                     android:layout_height="64dp"
                     android:src="@drawable/huella"
-                    android:alpha="0.5"
+                    android:alpha="0.2"
                     app:tint="@color/color_acento_primario"
                     android:layout_marginBottom="16dp"/>
 
@@ -264,7 +297,7 @@
                     android:layout_height="wrap_content"
                     android:text="Funciones Privadas"
                     android:textStyle="bold"
-                    android:textSize="16sp"
+                    android:textSize="18sp"
                     android:textColor="@color/black"/>
 
                 <TextView
@@ -273,7 +306,7 @@
                     android:text="Inicia sesión para usar la agenda y gestionar a tus mascotas."
                     android:gravity="center"
                     android:textSize="14sp"
-                    android:textColor="#757575"
+                    android:textColor="@color/grey"
                     android:layout_marginTop="8dp"/>
 
                 <com.google.android.material.button.MaterialButton
@@ -281,7 +314,7 @@
                     style="@style/Widget.MaterialComponents.Button.TextButton"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
+                    android:layout_marginTop="12dp"
                     android:text="Iniciar Sesión"
                     android:textColor="@color/color_acento_primario" />
 
@@ -320,7 +353,7 @@
                         android:layout_height="wrap_content"
                         android:text="Sabías que..."
                         android:textStyle="bold"
-                        android:textSize="12sp"
+                        android:textSize="13sp"
                         android:textColor="#2E7D32"
                         android:layout_marginBottom="4dp"/>
 
@@ -330,7 +363,7 @@
                         android:layout_height="wrap_content"
                         android:text="Los perros también pueden quemarse con el sol. Las zonas sin pelo son especialmente sensibles."
                         android:textSize="14sp"
-                        android:textColor="#2E7D32"
+                        android:textColor="#1B5E20"
                         android:lineSpacingExtra="4dp"/>
                 </LinearLayout>
             </LinearLayout>
