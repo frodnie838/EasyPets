@@ -23,7 +23,6 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
-import java.util.HashMap;
 import java.util.List;
 
 public class GaleriaAdapter extends RecyclerView.Adapter<GaleriaAdapter.ViewHolder> {
@@ -67,13 +66,15 @@ public class GaleriaAdapter extends RecyclerView.Adapter<GaleriaAdapter.ViewHold
         holder.tvAutor.setText(publicacion.getAutorNick());
         holder.tvDescripcion.setText(publicacion.getDescripcion());
 
+        // ✨ CÁLCULO DEL TIEMPO (ESTILO INSTAGRAM) ✨
         CharSequence tiempoRelativo = DateUtils.getRelativeTimeSpanString(
                 publicacion.getTimestamp(),
                 System.currentTimeMillis(),
-                DateUtils.MINUTE_IN_MILLIS
+                DateUtils.MINUTE_IN_MILLIS // Mostrará al menos "minutos"
         );
         holder.tvTiempo.setText(tiempoRelativo);
 
+        // Carga URLs modernas o Base64 antiguos
         if (publicacion.getFotoBase64() != null && !publicacion.getFotoBase64().isEmpty()) {
             if (publicacion.getFotoBase64().startsWith("http")) {
                 com.bumptech.glide.Glide.with(holder.itemView.getContext())
@@ -111,11 +112,8 @@ public class GaleriaAdapter extends RecyclerView.Adapter<GaleriaAdapter.ViewHold
         };
         holder.comentariosRef.addValueEventListener(holder.comentariosListener);
 
+
         boolean leHeDadoLike = miUid != null && publicacion.getLikes() != null && publicacion.getLikes().containsKey(miUid);
-
-        // Limpiamos los colores por defecto del diseño antes de aplicar el nuevo
-        holder.btnLike.setImageTintList(null);
-
         if (leHeDadoLike) {
             holder.btnLike.setImageResource(R.drawable.ic_heart_filled);
             holder.btnLike.setColorFilter(android.graphics.Color.parseColor("#E53935"));
@@ -130,28 +128,7 @@ public class GaleriaAdapter extends RecyclerView.Adapter<GaleriaAdapter.ViewHold
             holder.btnOpciones.setVisibility(View.GONE);
         }
 
-        // ✨ NUEVA LÓGICA DE LIKE: ACTUALIZACIÓN OPTIMISTA ✨
-        holder.btnLike.setOnClickListener(v -> {
-            if (miUid == null) return;
-
-            // 1. Envía la orden real a Firebase a través del Fragment
-            listener.onLikeClick(publicacion);
-
-            // 2. Modifica los datos localmente al instante
-            if (publicacion.getLikes() == null) {
-                publicacion.setLikes(new HashMap<>());
-            }
-
-            if (publicacion.getLikes().containsKey(miUid)) {
-                publicacion.getLikes().remove(miUid); // Le quita el Like local
-            } else {
-                publicacion.getLikes().put(miUid, true); // Le da el Like local
-            }
-
-            // 3. Ordena repintar SOLO esta tarjeta (es súper rápido y fluido)
-            notifyItemChanged(position);
-        });
-
+        holder.btnLike.setOnClickListener(v -> listener.onLikeClick(publicacion));
         holder.btnComentar.setOnClickListener(v -> listener.onComentarClick(publicacion));
         holder.btnOpciones.setOnClickListener(v -> listener.onOpcionesClick(publicacion, v));
     }
@@ -170,7 +147,7 @@ public class GaleriaAdapter extends RecyclerView.Adapter<GaleriaAdapter.ViewHold
     }
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
-        TextView tvNombreMascota, tvAutor, tvDescripcion, tvLikesCount, tvComentariosCount, tvTiempo;
+        TextView tvNombreMascota, tvAutor, tvDescripcion, tvLikesCount, tvComentariosCount, tvTiempo; // ✨ tvTiempo añadido
         ImageView ivFoto;
         ImageButton btnLike, btnComentar, btnOpciones;
 
@@ -184,7 +161,7 @@ public class GaleriaAdapter extends RecyclerView.Adapter<GaleriaAdapter.ViewHold
             tvDescripcion = itemView.findViewById(R.id.tvDescripcionGaleria);
             tvLikesCount = itemView.findViewById(R.id.tvLikesCountGaleria);
             tvComentariosCount = itemView.findViewById(R.id.tvComentariosCountGaleria);
-            tvTiempo = itemView.findViewById(R.id.tvTiempoGaleria);
+            tvTiempo = itemView.findViewById(R.id.tvTiempoGaleria); // ✨ Vinculamos la vista
             ivFoto = itemView.findViewById(R.id.ivFotoGaleria);
             btnLike = itemView.findViewById(R.id.btnLikeGaleria);
             btnComentar = itemView.findViewById(R.id.btnComentarGaleria);
