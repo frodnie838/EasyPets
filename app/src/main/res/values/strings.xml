@@ -36,4 +36,6 @@
         <item>Otro</item>
     </string-array>
     <string name="cloudinary_url">cloudinary://839665213444776:8zzzbT-oUpsygyycdJ-MrqgniN4@ds3fwdvn0</string>
+    <string name="terminos_condiciones_texto">Bienvenido a EasyPets. Al usar esta app, aceptas que...\n\n1. Uso de la cuenta: Eres responsable de tu mascota.\n2. Comunidad: Respeta a los demás usuarios.\n3. Datos: Almacenamos tus eventos en Firebase.</string>
+    <string name="politica_privacidad_texto">En EasyPets nos tomamos en serio tu privacidad.\n\n- No vendemos tus datos a terceros.\n- Las fotos de tus mascotas se guardan en Firebase Storage.\n- Puedes eliminar tu cuenta y datos en cualquier momento desde estos ajustes.</string>
 </resources>

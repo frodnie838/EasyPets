@@ -5,8 +5,10 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.media.RingtoneManager;
 import android.os.Build;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
@@ -22,6 +24,17 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
     public void onMessageReceived(@NonNull RemoteMessage remoteMessage) {
         super.onMessageReceived(remoteMessage);
 
+        // ✨ EL GUARDIÁN: Miramos los Ajustes del usuario antes de hacer nada ✨
+        SharedPreferences prefs = getSharedPreferences("AjustesEasyPets", Context.MODE_PRIVATE);
+        boolean notificacionesActivadas = prefs.getBoolean("notificaciones", true);
+
+        if (!notificacionesActivadas) {
+            // Si el interruptor está apagado, abortamos misión de forma silenciosa.
+            Log.d("FIREBASE_AVISOS", "Notificación Push (Foro/Comunidad) bloqueada por los ajustes del usuario.");
+            return;
+        }
+
+        // --- A partir de aquí, el código original que lanza el aviso en el móvil ---
         String titulo = remoteMessage.getNotification() != null ? remoteMessage.getNotification().getTitle() : "EasyPets";
         String mensaje = remoteMessage.getNotification() != null ? remoteMessage.getNotification().getBody() : "Nueva notificación";
 
@@ -57,5 +70,6 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             manager.createNotificationChannel(channel);
         }
         manager.notify(requestID, builder.build());
+        Log.d("FIREBASE_AVISOS", "Notificación Push mostrada con éxito.");
     }
 }

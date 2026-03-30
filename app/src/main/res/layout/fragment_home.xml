@@ -29,21 +29,14 @@
                 android:gravity="center_vertical"
                 android:background="@color/white">
 
-                <androidx.cardview.widget.CardView
-                    android:layout_width="60dp"
-                    android:layout_height="60dp"
-                    app:cardCornerRadius="30dp"
-                    app:cardElevation="0dp"
-                    app:cardBackgroundColor="#E8F5E9"
-                    android:layout_marginEnd="16dp">
-
-                    <ImageView
-                        android:layout_width="32dp"
-                        android:layout_height="32dp"
-                        android:layout_gravity="center"
-                        android:src="@drawable/huella"
-                        app:tint="@color/color_acento_primario"/>
-                </androidx.cardview.widget.CardView>
+                <ImageView
+                    android:layout_width="50dp"
+                    android:layout_height="50dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/huella"
+                    android:layout_marginLeft="20dp"
+                    android:layout_marginRight="30dp"
+                    app:tint="@color/color_acento_primario"/>
 
                 <LinearLayout
                     android:layout_width="0dp"

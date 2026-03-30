@@ -6,6 +6,7 @@ import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Build;
@@ -25,21 +26,30 @@ public class NotificacionReceiver extends BroadcastReceiver {
     public void onReceive(Context context, Intent intent) {
         Log.d("ALARMAS", "¡BroadcastReceiver ejecutado!");
 
-        // 1. Despertar la pantalla a la fuerza
-        despertarPantalla(context);
-
-        // 2. Recuperamos los datos que programamos
+        // 1. Recuperamos los datos que programamos
         String titulo = intent.getStringExtra("titulo");
         String mensaje = intent.getStringExtra("mensaje");
-        String uid = intent.getStringExtra("uid"); // ✨ NUEVO: Recuperamos el ID del usuario
+        String uid = intent.getStringExtra("uid"); // Recuperamos el ID del usuario
 
         if (titulo == null) titulo = "¡Recordatorio EasyPets!";
         if (mensaje == null) mensaje = "Tienes un evento pendiente para tu mascota.";
 
-        // 3. Lanzamos la notificación Push/Local en el teléfono
-        mostrarNotificacionExacata(context, titulo, mensaje);
+        // ✨ 2. EL GUARDIÁN: Leemos los Ajustes del usuario ✨
+        SharedPreferences prefs = context.getSharedPreferences("AjustesEasyPets", Context.MODE_PRIVATE);
+        boolean notificacionesActivadas = prefs.getBoolean("notificaciones", true);
 
-        // ✨ 4. NUEVO: Guardamos una copia en el buzón de Firebase para el desplegable de la app
+        // Si están activadas, despertamos la pantalla y hacemos ruido
+        if (notificacionesActivadas) {
+            despertarPantalla(context);
+            mostrarNotificacionExacata(context, titulo, mensaje);
+            Log.d("ALARMAS", "Notificación Push mostrada al usuario.");
+        } else {
+            // Si están desactivadas, no hacemos nada en el móvil (modo silencio)
+            Log.d("ALARMAS", "Notificación Push silenciada por los ajustes.");
+        }
+
+        // ✨ 3. LA CAMPANITA (Se ejecuta SIEMPRE, esté silenciado o no) ✨
+        // Guardamos una copia en el buzón de Firebase para el desplegable de la app
         if (uid != null && !uid.isEmpty()) {
             DatabaseReference buzonRef = FirebaseDatabase.getInstance().getReference()
                     .child("notificaciones")
@@ -56,7 +66,7 @@ public class NotificacionReceiver extends BroadcastReceiver {
 
             if (idNotificacion != null) {
                 buzonRef.child(idNotificacion).setValue(carta);
-                Log.d("ALARMAS", "Notificación guardada en el buzón de Firebase");
+                Log.d("ALARMAS", "Notificación guardada en el buzón de Firebase de forma silenciosa.");
             }
         }
     }

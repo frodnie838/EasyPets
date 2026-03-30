@@ -2,9 +2,11 @@ package com.easypets.ui.perfil;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -30,9 +32,9 @@ import com.google.firebase.database.ValueEventListener;
 
 public class AjustesActivity extends AppCompatActivity {
 
-    private SwitchMaterial switchNotificaciones, switchModoOscuro;
+    private SwitchMaterial switchNotificaciones;
     private View layoutSoporte;
-    private TextView tvEliminarCuenta;
+    private TextView tvEliminarCuenta, tvTerminos, tvPrivacidad;
     private SharedPreferences prefs;
     private FirebaseAuth mAuth;
 
@@ -45,13 +47,21 @@ public class AjustesActivity extends AppCompatActivity {
         prefs = getSharedPreferences("AjustesEasyPets", MODE_PRIVATE);
 
         switchNotificaciones = findViewById(R.id.switchNotificaciones);
-        switchModoOscuro = findViewById(R.id.switchModoOscuro);
         layoutSoporte = findViewById(R.id.layoutSoporte);
         tvEliminarCuenta = findViewById(R.id.tvEliminarCuentaLink);
+        tvTerminos = findViewById(R.id.tvTerminos);
+        tvPrivacidad = findViewById(R.id.tvPrivacidad);
 
+        ImageView btnVolverAjustes = findViewById(R.id.btnVolverAjustes);
+        btnVolverAjustes.setOnClickListener(v -> finish());
+
+        tvTerminos.setOnClickListener(v -> mostrarDialogoLegal("Términos y Condiciones", getString(R.string.terminos_condiciones_texto)));
+        tvPrivacidad.setOnClickListener(v -> mostrarDialogoLegal("Política de Privacidad", getString(R.string.politica_privacidad_texto)));
+
+        // Carga el estado actual
         switchNotificaciones.setChecked(prefs.getBoolean("notificaciones", true));
-        switchModoOscuro.setChecked(prefs.getBoolean("oscuro", false));
 
+        // Guarda el estado cuando se cambia
         switchNotificaciones.setOnCheckedChangeListener((v, isChecked) -> {
             prefs.edit().putBoolean("notificaciones", isChecked).apply();
             Toast.makeText(this, isChecked ? "Notificaciones activadas" : "Notificaciones desactivadas", Toast.LENGTH_SHORT).show();
@@ -80,6 +90,26 @@ public class AjustesActivity extends AppCompatActivity {
                 .show();
     }
 
+    private void mostrarDialogoLegal(String titulo, String mensaje) {
+        TextView customTitle = new TextView(this);
+        customTitle.setText(titulo);
+        customTitle.setPadding(60, 60, 60, 0);
+        customTitle.setTextSize(20);
+        customTitle.setTypeface(null, android.graphics.Typeface.BOLD);
+        customTitle.setTextColor(ContextCompat.getColor(this, R.color.color_acento_primario));
+
+        AlertDialog dialog = new AlertDialog.Builder(this, R.style.AlertDialogCustom)
+                .setCustomTitle(customTitle)
+                .setMessage(mensaje)
+                .setPositiveButton("Entendido", (d, which) -> d.dismiss())
+                .show();
+
+        TextView tvMensaje = dialog.findViewById(android.R.id.message);
+        if (tvMensaje != null) {
+            tvMensaje.setTextColor(Color.BLACK);
+        }
+    }
+
     private void procesoBorradoCascada() {
         FirebaseUser user = mAuth.getCurrentUser();
         if (user == null) return;
@@ -103,9 +133,7 @@ public class AjustesActivity extends AppCompatActivity {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot snapshot) {
                         for (DataSnapshot ds : snapshot.getChildren()) {
-                            // Borramos las respuestas de ese hilo concreto
                             db.child("foro_respuestas").child(ds.getKey()).removeValue();
-                            // Borramos el hilo
                             ds.getRef().removeValue();
                         }
                     }
