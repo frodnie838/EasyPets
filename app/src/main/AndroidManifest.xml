@@ -56,5 +56,4 @@
         </service>
         <receiver android:name=".services.NotificacionReceiver" android:exported="false" />
     </application>
-
 </manifest>
