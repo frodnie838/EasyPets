@@ -2,6 +2,11 @@ package com.easypets.adapters;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Typeface;
+import android.text.SpannableString;
+import android.text.Spanned;
+import android.text.style.ForegroundColorSpan;
+import android.text.style.StyleSpan;
 import android.util.Base64;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -10,8 +15,10 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.bumptech.glide.Glide;
 import com.easypets.R;
 import com.easypets.models.ComentarioMascota;
 
@@ -19,13 +26,24 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class ComentarioMascotaAdapter extends RecyclerView.Adapter<ComentarioMascotaAdapter.ViewHolder> {
 
     private List<ComentarioMascota> listaComentarios;
+    private OnComentarioLongClickListener listener;
+
+    public interface OnComentarioLongClickListener {
+        void onLongClick(ComentarioMascota comentario);
+    }
 
     public ComentarioMascotaAdapter(List<ComentarioMascota> listaComentarios) {
         this.listaComentarios = listaComentarios;
+    }
+
+    public void setOnComentarioLongClickListener(OnComentarioLongClickListener listener) {
+        this.listener = listener;
     }
 
     @NonNull
@@ -41,17 +59,15 @@ public class ComentarioMascotaAdapter extends RecyclerView.Adapter<ComentarioMas
 
         holder.tvNick.setText(comentario.getAutorNick());
         String texto = comentario.getTexto();
-        android.text.SpannableString spannable = new android.text.SpannableString(texto);
-        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("@\\w+"); // Busca palabras que empiecen por @
-        java.util.regex.Matcher matcher = pattern.matcher(texto);
+        SpannableString spannable = new SpannableString(texto);
+        Pattern pattern = Pattern.compile("@\\w+");
+        Matcher matcher = pattern.matcher(texto);
 
-        // Obtenemos el color primario de tu app
-        int colorPrimario = androidx.core.content.ContextCompat.getColor(holder.itemView.getContext(), R.color.color_acento_primario);
+        int colorPrimario = ContextCompat.getColor(holder.itemView.getContext(), R.color.color_acento_primario);
 
         while (matcher.find()) {
-            // Ponemos el color y negrita a la mención
-            spannable.setSpan(new android.text.style.ForegroundColorSpan(colorPrimario), matcher.start(), matcher.end(), android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-            spannable.setSpan(new android.text.style.StyleSpan(android.graphics.Typeface.BOLD), matcher.start(), matcher.end(), android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            spannable.setSpan(new ForegroundColorSpan(colorPrimario), matcher.start(), matcher.end(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            spannable.setSpan(new StyleSpan(Typeface.BOLD), matcher.start(), matcher.end(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
         holder.tvTexto.setText(spannable);
 
@@ -59,18 +75,15 @@ public class ComentarioMascotaAdapter extends RecyclerView.Adapter<ComentarioMas
         String fechaStr = sdf.format(new Date(comentario.getTimestamp()));
         holder.tvFecha.setText(fechaStr);
 
-        // ✨ LÓGICA HÍBRIDA PARA LA FOTO DEL COMENTARIO
         String foto = comentario.getAutorFoto();
         if (foto != null && !foto.isEmpty()) {
             if (foto.startsWith("http")) {
-                // Foto de Firebase Storage
-                com.bumptech.glide.Glide.with(holder.itemView.getContext())
+                Glide.with(holder.itemView.getContext())
                         .load(foto)
-                        .circleCrop() // ✨ Hace la foto redondita
+                        .circleCrop()
                         .into(holder.ivPerfil);
                 holder.ivPerfil.setPadding(0, 0, 0, 0);
             } else {
-                // Foto antigua en Base64
                 try {
                     byte[] decodedString = Base64.decode(foto, Base64.DEFAULT);
                     Bitmap bitmap = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
@@ -81,9 +94,15 @@ public class ComentarioMascotaAdapter extends RecyclerView.Adapter<ComentarioMas
                 }
             }
         } else {
-            // Si no tiene foto, ponemos la de por defecto
             holder.ivPerfil.setImageResource(R.drawable.profile);
         }
+
+        holder.itemView.setOnLongClickListener(v -> {
+            if (listener != null) {
+                listener.onLongClick(comentario);
+            }
+            return true;
+        });
     }
 
     @Override

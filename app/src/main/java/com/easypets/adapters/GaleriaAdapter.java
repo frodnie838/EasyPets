@@ -9,13 +9,16 @@ import android.view.ViewGroup;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.bumptech.glide.Glide;
 import com.easypets.R;
 import com.easypets.models.PublicacionMascota;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -40,8 +43,12 @@ public class GaleriaAdapter extends RecyclerView.Adapter<GaleriaAdapter.ViewHold
     public GaleriaAdapter(List<PublicacionMascota> listaPublicaciones, OnGaleriaClickListener listener) {
         this.listaPublicaciones = listaPublicaciones;
         this.listener = listener;
-        if (FirebaseAuth.getInstance().getCurrentUser() != null) {
-            miUid = FirebaseAuth.getInstance().getCurrentUser().getUid();
+
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser != null && !currentUser.isAnonymous()) {
+            miUid = currentUser.getUid();
+        } else {
+            miUid = null; // Modo invitado
         }
     }
 
@@ -65,15 +72,12 @@ public class GaleriaAdapter extends RecyclerView.Adapter<GaleriaAdapter.ViewHold
         holder.tvAutor.setText(publicacion.getAutorNick());
         holder.tvDescripcion.setText(publicacion.getDescripcion());
 
-        // Carga URLs modernas o Base64 antiguos
         if (publicacion.getFotoBase64() != null && !publicacion.getFotoBase64().isEmpty()) {
             if (publicacion.getFotoBase64().startsWith("http")) {
-                // Es un enlace de Firebase Storage: Usamos la librería Glide (súper rápida)
-                com.bumptech.glide.Glide.with(holder.itemView.getContext())
+                Glide.with(holder.itemView.getContext())
                         .load(publicacion.getFotoBase64())
                         .into(holder.ivFoto);
             } else {
-                // Es una foto antigua en Base64: La decodificamos como antes
                 try {
                     byte[] decodedString = Base64.decode(publicacion.getFotoBase64(), Base64.DEFAULT);
                     Bitmap decodedByte = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
@@ -83,32 +87,31 @@ public class GaleriaAdapter extends RecyclerView.Adapter<GaleriaAdapter.ViewHold
                 }
             }
         } else {
-            // Imagen por defecto si falla
             holder.ivFoto.setImageResource(R.drawable.logo_sin_letra_trans);
         }
 
         int totalLikes = (publicacion.getLikes() != null) ? publicacion.getLikes().size() : 0;
         holder.tvLikesCount.setText(String.valueOf(totalLikes));
 
-        // 1. Si la tarjeta se está reciclando (el usuario hace scroll rápido), matamos el oyente viejo
         if (holder.comentariosRef != null && holder.comentariosListener != null) {
             holder.comentariosRef.removeEventListener(holder.comentariosListener);
         }
 
-        // 2. Le ponemos la oreja a Firebase solo para esta foto exacta
+        // ✨ TAREA 3: OPCIÓN "Mirar pero no tocar"
+        // Siempre mostramos el botón y contamos los comentarios para generar interés
+        holder.btnComentar.setVisibility(View.VISIBLE);
+        holder.tvComentariosCount.setVisibility(View.VISIBLE);
+
         holder.comentariosRef = FirebaseDatabase.getInstance().getReference("mascotas_comentarios").child(publicacion.getId());
         holder.comentariosListener = new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
-                // Cuenta exactamente cuántos comentarios hijos hay ahora mismo
-                long contadorReal = snapshot.getChildrenCount();
-                holder.tvComentariosCount.setText(String.valueOf(contadorReal));
+                holder.tvComentariosCount.setText(String.valueOf(snapshot.getChildrenCount()));
             }
             @Override
             public void onCancelled(@NonNull DatabaseError error) {}
         };
         holder.comentariosRef.addValueEventListener(holder.comentariosListener);
-
 
         boolean leHeDadoLike = miUid != null && publicacion.getLikes() != null && publicacion.getLikes().containsKey(miUid);
         if (leHeDadoLike) {
@@ -119,19 +122,23 @@ public class GaleriaAdapter extends RecyclerView.Adapter<GaleriaAdapter.ViewHold
             holder.btnLike.setColorFilter(android.graphics.Color.parseColor("#757575"));
         }
 
-        if (miUid != null) {
-            holder.btnOpciones.setVisibility(View.VISIBLE);
-        } else {
-            holder.btnOpciones.setVisibility(View.GONE);
-        }
+        holder.btnOpciones.setVisibility(miUid != null ? View.VISIBLE : View.GONE);
 
-        holder.btnLike.setOnClickListener(v -> listener.onLikeClick(publicacion));
+        // Bloqueamos el clic de "Me gusta" si es invitado
+        holder.btnLike.setOnClickListener(v -> {
+            if (miUid == null) {
+                Toast.makeText(v.getContext(), "Inicia sesión para dar 'Me gusta' ❤️", Toast.LENGTH_SHORT).show();
+            } else {
+                listener.onLikeClick(publicacion);
+            }
+        });
+
+        // Dejamos que abran los comentarios para que lean
         holder.btnComentar.setOnClickListener(v -> listener.onComentarClick(publicacion));
+
         holder.btnOpciones.setOnClickListener(v -> listener.onOpcionesClick(publicacion, v));
     }
 
-    // Evitar fugas de memoria
-    // Cuando el usuario baja la pantalla y la foto deja de verse, desenchufamos la conexión
     @Override
     public void onViewRecycled(@NonNull ViewHolder holder) {
         super.onViewRecycled(holder);

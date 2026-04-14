@@ -107,7 +107,7 @@ public class ArticuloAdapter extends RecyclerView.Adapter<ArticuloAdapter.Articu
                     } else if (item.getItemId() == 2) {
                         listener.onBorrarClick(articulo);
                     } else if (item.getItemId() == 3) {
-                        listener.onReportarClick(articulo); // ✨ LLAMAMOS AL REPORTE
+                        listener.onReportarClick(articulo);
                     }
                     return true;
                 });
@@ -117,7 +117,6 @@ public class ArticuloAdapter extends RecyclerView.Adapter<ArticuloAdapter.Articu
             holder.btnMenu.setVisibility(View.GONE);
         }
 
-        // Lógica de Likes usando la variable currentUserId que ya teníamos arriba
         int numeroDeLikes = 0;
         boolean isLikedByMe = false;
 
@@ -126,12 +125,8 @@ public class ArticuloAdapter extends RecyclerView.Adapter<ArticuloAdapter.Articu
             isLikedByMe = articulo.getLikes().containsKey(currentUserId);
         }
 
-        if (numeroDeLikes == 0) {
-            holder.tvLikeCount.setVisibility(View.GONE);
-        } else {
-            holder.tvLikeCount.setVisibility(View.VISIBLE);
-            holder.tvLikeCount.setText(String.valueOf(numeroDeLikes));
-        }
+        holder.tvLikeCount.setVisibility(View.VISIBLE);
+        holder.tvLikeCount.setText(String.valueOf(numeroDeLikes));
 
         if (isLikedByMe) {
             holder.btnLike.setImageResource(R.drawable.ic_heart_filled);
