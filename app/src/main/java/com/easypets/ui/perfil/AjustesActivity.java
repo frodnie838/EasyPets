@@ -29,6 +29,9 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
+import com.google.firebase.messaging.FirebaseMessaging;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
 
 public class AjustesActivity extends AppCompatActivity {
 
@@ -37,6 +40,7 @@ public class AjustesActivity extends AppCompatActivity {
     private TextView tvEliminarCuenta, tvTerminos, tvPrivacidad;
     private SharedPreferences prefs;
     private FirebaseAuth mAuth;
+    private DatabaseReference mDatabase;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,6 +48,7 @@ public class AjustesActivity extends AppCompatActivity {
         setContentView(R.layout.activity_ajustes);
 
         mAuth = FirebaseAuth.getInstance();
+        mDatabase = FirebaseDatabase.getInstance().getReference();
         prefs = getSharedPreferences("AjustesEasyPets", MODE_PRIVATE);
 
         switchNotificaciones = findViewById(R.id.switchNotificaciones);
@@ -58,15 +63,6 @@ public class AjustesActivity extends AppCompatActivity {
         tvTerminos.setOnClickListener(v -> mostrarDialogoLegal("Términos y Condiciones", getString(R.string.terminos_condiciones_texto)));
         tvPrivacidad.setOnClickListener(v -> mostrarDialogoLegal("Política de Privacidad", getString(R.string.politica_privacidad_texto)));
 
-        // Carga el estado actual
-        switchNotificaciones.setChecked(prefs.getBoolean("notificaciones", true));
-
-        // Guarda el estado cuando se cambia
-        switchNotificaciones.setOnCheckedChangeListener((v, isChecked) -> {
-            prefs.edit().putBoolean("notificaciones", isChecked).apply();
-            Toast.makeText(this, isChecked ? "Notificaciones activadas" : "Notificaciones desactivadas", Toast.LENGTH_SHORT).show();
-        });
-
         layoutSoporte.setOnClickListener(v -> {
             Intent intent = new Intent(Intent.ACTION_SENDTO);
             intent.setData(Uri.parse("mailto:frodnie838@g.educaand.es"));
@@ -76,15 +72,48 @@ public class AjustesActivity extends AppCompatActivity {
 
         tvEliminarCuenta.setOnClickListener(v -> mostrarConfirmacionBorrado());
 
-        if (mAuth.getCurrentUser() == null) {
+        FirebaseUser user = mAuth.getCurrentUser();
+        if (user == null || user.isAnonymous()) {
             tvEliminarCuenta.setVisibility(View.GONE);
+            switchNotificaciones.setEnabled(false);
+        } else {
+            configurarSwitchNotificaciones(user);
         }
+    }
+
+    private void configurarSwitchNotificaciones(FirebaseUser user) {
+        // 1. Verificamos en Firebase si realmente tiene el token guardado (estado real)
+        mDatabase.child("usuarios").child(user.getUid()).child("fcmToken")
+                .addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        switchNotificaciones.setChecked(snapshot.exists());
+                    }
+                    @Override public void onCancelled(@NonNull DatabaseError error) {}
+                });
+
+        // 2. Controlamos el cambio
+        switchNotificaciones.setOnCheckedChangeListener((v, isChecked) -> {
+            prefs.edit().putBoolean("notificaciones", isChecked).apply();
+
+            if (isChecked) {
+                // Generar y subir el token a Firebase para recibir push
+                FirebaseMessaging.getInstance().getToken().addOnSuccessListener(token -> {
+                    mDatabase.child("usuarios").child(user.getUid()).child("fcmToken").setValue(token);
+                    Toast.makeText(this, "Notificaciones activadas", Toast.LENGTH_SHORT).show();
+                });
+            } else {
+                // Borrar el token de Firebase (Corte real de notificaciones)
+                mDatabase.child("usuarios").child(user.getUid()).child("fcmToken").removeValue();
+                Toast.makeText(this, "Notificaciones desactivadas", Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     private void mostrarConfirmacionBorrado() {
         new AlertDialog.Builder(this)
                 .setTitle("⚠️ Acción Crítica")
-                .setMessage("¿Deseas eliminar tu cuenta para siempre? Se borrarán todos tus datos (mascotas, eventos, hilos y artículos).")
+                .setMessage("¿Deseas eliminar tu cuenta para siempre? Se borrarán todos tus datos (mascotas, eventos, hilos, fotos de comunidad y artículos).")
                 .setPositiveButton("Eliminar", (dialog, which) -> procesoBorradoCascada())
                 .setNegativeButton("Cancelar", null)
                 .show();
@@ -117,7 +146,27 @@ public class AjustesActivity extends AppCompatActivity {
         String uid = user.getUid();
         DatabaseReference db = FirebaseDatabase.getInstance().getReference();
 
-        // 1. Borrar artículos del usuario
+        // 1. Borrar foto de perfil de Storage (Ahorro de servidor)
+        StorageReference refPerfil = FirebaseStorage.getInstance().getReference("perfiles").child(uid + ".jpg");
+        refPerfil.delete().addOnCompleteListener(task -> {}); // Ignoramos si no tenía foto
+
+        // 2. Borrar publicaciones de Mascotas en Galería y sus comentarios
+        db.child("mascotas_comunidad").orderByChild("idAutor").equalTo(uid)
+                .addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        for (DataSnapshot ds : snapshot.getChildren()) {
+                            db.child("mascotas_comentarios").child(ds.getKey()).removeValue();
+                            ds.getRef().removeValue();
+                        }
+                    }
+                    @Override public void onCancelled(@NonNull DatabaseError error) {}
+                });
+
+        // 3. Borrar buzón de notificaciones
+        db.child("notificaciones").child(uid).removeValue();
+
+        // 4. Borrar artículos del usuario
         db.child("articulos_comunidad").orderByChild("idAutor").equalTo(uid)
                 .addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
@@ -127,7 +176,7 @@ public class AjustesActivity extends AppCompatActivity {
                     @Override public void onCancelled(@NonNull DatabaseError error) {}
                 });
 
-        // 2. Borrar hilos del usuario (y las respuestas asociadas a esos hilos)
+        // 5. Borrar hilos del usuario (y las respuestas asociadas a esos hilos)
         db.child("foro_hilos").orderByChild("idAutor").equalTo(uid)
                 .addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
@@ -140,7 +189,7 @@ public class AjustesActivity extends AppCompatActivity {
                     @Override public void onCancelled(@NonNull DatabaseError error) {}
                 });
 
-        // 3. Borrado Lógico de las respuestas en hilos de OTRAS personas
+        // 6. Borrado Lógico de las respuestas en hilos de OTRAS personas
         db.child("foro_respuestas").addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
@@ -159,7 +208,7 @@ public class AjustesActivity extends AppCompatActivity {
             @Override public void onCancelled(@NonNull DatabaseError error) {}
         });
 
-        // 4. Borrado final en cascada: Eventos -> Mascotas -> Perfil -> Cuenta Firebase
+        // 7. Borrado final en cascada: Eventos -> Mascotas -> Perfil -> Cuenta Firebase Auth
         db.child("eventos").child(uid).removeValue().addOnCompleteListener(tEventos -> {
             db.child("mascotas").child(uid).removeValue().addOnCompleteListener(tMascotas -> {
                 db.child("usuarios").child(uid).removeValue().addOnCompleteListener(tUser -> {
