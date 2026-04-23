@@ -30,9 +30,8 @@ import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-// ✨ IMPORTS DE LA NUEVA LIBRERÍA DE CALENDARIO ACTUALIZADOS A LA VERSIÓN 1.9.0
 import com.applandeo.materialcalendarview.CalendarView;
-import com.applandeo.materialcalendarview.CalendarDay; // ✨ NUEVO
+import com.applandeo.materialcalendarview.CalendarDay;
 import com.applandeo.materialcalendarview.exceptions.OutOfDateRangeException;
 
 import com.easypets.R;
@@ -48,8 +47,6 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
-
-// IMPORTS PARA FIREBASE
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -58,6 +55,7 @@ import com.google.firebase.database.ValueEventListener;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
@@ -81,6 +79,11 @@ public class CalendarioFragment extends Fragment {
     private List<String> nombresMascotas;
     private List<Mascota> listaMascotasUsuario;
     private EventoAdapter eventoAdapter;
+
+    private List<Evento> listaEventosDiaOriginal = new ArrayList<>();
+    private String filtroTipoActual = "Todos";
+    private String filtroMascotaActual = "Todas";
+    private boolean verTodosLosEventos = false;
 
     @Nullable
     @Override
@@ -136,20 +139,19 @@ public class CalendarioFragment extends Fragment {
         cargarMascotasDelUsuario(user);
         configurarSwipe(requireContext());
 
-        // ✨ NUEVO LISTENER MODERNIZADO: setOnCalendarDayClickListener (Ver. 1.9.0)
         calendarView.setOnCalendarDayClickListener(calendarDay -> {
-            Calendar clickedDayCalendar = calendarDay.getCalendar();
+            Calendar clickedDayCalendar = (Calendar) calendarDay.getCalendar().clone();
             calendarioActual = clickedDayCalendar;
 
             try {
-                calendarView.setDate(clickedDayCalendar);
+                calendarView.setDate(calendarioActual);
             } catch (OutOfDateRangeException e) {
                 e.printStackTrace();
             }
 
-            int dayOfMonth = clickedDayCalendar.get(Calendar.DAY_OF_MONTH);
-            int month = clickedDayCalendar.get(Calendar.MONTH);
-            int year = clickedDayCalendar.get(Calendar.YEAR);
+            int dayOfMonth = calendarioActual.get(Calendar.DAY_OF_MONTH);
+            int month = calendarioActual.get(Calendar.MONTH);
+            int year = calendarioActual.get(Calendar.YEAR);
 
             actualizarTextoFecha(dayOfMonth, month, year);
             cargarEventosDeFecha(user.getUid(), dayOfMonth, month, year);
@@ -172,18 +174,18 @@ public class CalendarioFragment extends Fragment {
         fabAgregarEvento.setVisibility(View.GONE);
 
         calendarView.setOnCalendarDayClickListener(calendarDay -> {
-            Calendar clickedDayCalendar = calendarDay.getCalendar();
+            Calendar clickedDayCalendar = (Calendar) calendarDay.getCalendar().clone();
             calendarioActual = clickedDayCalendar;
 
             try {
-                calendarView.setDate(clickedDayCalendar);
+                calendarView.setDate(calendarioActual);
             } catch (OutOfDateRangeException e) {
                 e.printStackTrace();
             }
 
-            int dayOfMonth = clickedDayCalendar.get(Calendar.DAY_OF_MONTH);
-            int month = clickedDayCalendar.get(Calendar.MONTH);
-            int year = clickedDayCalendar.get(Calendar.YEAR);
+            int dayOfMonth = calendarioActual.get(Calendar.DAY_OF_MONTH);
+            int month = calendarioActual.get(Calendar.MONTH);
+            int year = calendarioActual.get(Calendar.YEAR);
 
             actualizarTextoFecha(dayOfMonth, month, year);
         });
@@ -220,12 +222,10 @@ public class CalendarioFragment extends Fragment {
                             String[] partes = evt.getFecha().split("/");
                             if (partes.length == 3) {
                                 Calendar cal = Calendar.getInstance();
-
                                 cal.set(Calendar.HOUR_OF_DAY, 0);
                                 cal.set(Calendar.MINUTE, 0);
                                 cal.set(Calendar.SECOND, 0);
                                 cal.set(Calendar.MILLISECOND, 0);
-
                                 cal.set(Calendar.DAY_OF_MONTH, Integer.parseInt(partes[0]));
                                 cal.set(Calendar.MONTH, Integer.parseInt(partes[1]) - 1);
                                 cal.set(Calendar.YEAR, Integer.parseInt(partes[2]));
@@ -242,9 +242,7 @@ public class CalendarioFragment extends Fragment {
                     }
                 }
 
-                // Cargamos los eventos
                 calendarView.setCalendarDays(eventosCalendario);
-
                 calendarView.post(() -> {
                     try {
                         List<Calendar> fechasSeleccionadas = calendarView.getSelectedDates();
@@ -262,7 +260,6 @@ public class CalendarioFragment extends Fragment {
         });
     }
 
-    // Método definitivo y agresivo para Alarmas Exactas
     private void programarNotificacion(long tiempoEventoMillis, String titulo, String mensaje, long milisegundosAntes) {
         long tiempoActual = System.currentTimeMillis();
         long tiempoAlarma = tiempoEventoMillis - milisegundosAntes;
@@ -291,7 +288,7 @@ public class CalendarioFragment extends Fragment {
                 alarmManager.setExact(android.app.AlarmManager.RTC_WAKEUP, tiempoAlarma, pendingIntent);
             }
 
-            Log.d("ALARMAS", "Alarma EXACTA programada para: " + new java.util.Date(tiempoAlarma).toString());
+            Log.d("ALARMAS", "Alarma programada para: " + new java.util.Date(tiempoAlarma).toString());
         }
     }
 
@@ -322,11 +319,11 @@ public class CalendarioFragment extends Fragment {
                 GradientDrawable background = new GradientDrawable();
                 background.setCornerRadius(radius);
 
-                if (dX > 0) { // Editar (Derecha)
-                    background.setColor(Color.parseColor("#CCFFB300")); // Ámbar traslúcido
+                if (dX > 0) {
+                    background.setColor(Color.parseColor("#CCFFB300"));
                     background.setBounds(itemView.getLeft(), itemView.getTop(), itemView.getLeft() + ((int) dX) + (int) radius, itemView.getBottom());
-                } else if (dX < 0) { // Eliminar (Izquierda)
-                    background.setColor(Color.parseColor("#CCE53935")); // Rojo traslúcido
+                } else if (dX < 0) {
+                    background.setColor(Color.parseColor("#CCE53935"));
                     background.setBounds(itemView.getRight() + ((int) dX) - (int) radius, itemView.getTop(), itemView.getRight(), itemView.getBottom());
                 }
                 background.draw(c);
@@ -352,30 +349,161 @@ public class CalendarioFragment extends Fragment {
         eventoRepository.obtenerEventosPorFecha(uid, fechaBuscada, new EventoRepository.LeerEventosCallback() {
             @Override
             public void onResultado(List<Evento> listaEventos) {
-                if (listaEventos.isEmpty()) {
-                    rvEventos.setVisibility(View.GONE);
-                    layoutSinEventos.setVisibility(View.VISIBLE);
-                } else {
-                    eventoAdapter.setEventos(listaEventos);
-                    rvEventos.setVisibility(View.VISIBLE);
-                    layoutSinEventos.setVisibility(View.GONE);
-                }
+                listaEventosDiaOriginal.clear();
+                listaEventosDiaOriginal.addAll(listaEventos);
+                aplicarFiltros();
             }
             @Override
             public void onError(String error) {}
         });
     }
 
+    private void aplicarFiltros() {
+        if (verTodosLosEventos) {
+            actualizarInterfaz(listaEventosDiaOriginal);
+            return;
+        }
+
+        List<Evento> listaFiltrada = new ArrayList<>();
+
+        for (Evento e : listaEventosDiaOriginal) {
+            String tipoEv = e.getTipo() != null ? e.getTipo().trim() : "";
+            String idMascEv = e.getIdMascota() != null ? e.getIdMascota().trim() : "";
+
+            // Filtro de Tipo
+            boolean pasaTipo = filtroTipoActual.equalsIgnoreCase("Todos") || tipoEv.equalsIgnoreCase(filtroTipoActual.trim());
+
+            // Filtro de Mascota
+            boolean pasaMascota = false;
+            if (filtroMascotaActual.equalsIgnoreCase("Todas")) {
+                pasaMascota = true;
+            } else if (filtroMascotaActual.equalsIgnoreCase("General")) {
+                if (idMascEv.isEmpty()) pasaMascota = true;
+            } else {
+                for (Mascota m : listaMascotasUsuario) {
+                    if (m.getNombre() != null && m.getNombre().trim().equalsIgnoreCase(filtroMascotaActual.trim())) {
+                        if (m.getIdMascota() != null && m.getIdMascota().trim().equalsIgnoreCase(idMascEv)) {
+                            pasaMascota = true;
+                        }
+                        break;
+                    }
+                }
+            }
+
+            if (pasaTipo && pasaMascota) {
+                listaFiltrada.add(e);
+            }
+        }
+
+        actualizarInterfaz(listaFiltrada);
+    }
+
+    // 🛠️ 3. FORZAR ACTUALIZACIÓN DE INTERFAZ GRÁFICA
+    private void actualizarInterfaz(List<Evento> lista) {
+        // Creamos una nueva instancia de memoria obligatoria para que el RecyclerView no se vuelva perezoso
+        List<Evento> listaClonada = new ArrayList<>(lista);
+
+        if (listaClonada.isEmpty()) {
+            rvEventos.setVisibility(View.GONE);
+            layoutSinEventos.setVisibility(View.VISIBLE);
+        } else {
+            eventoAdapter.setEventos(listaClonada);
+            eventoAdapter.notifyDataSetChanged(); // El grito para que la pantalla se repinte
+            rvEventos.setVisibility(View.VISIBLE);
+            layoutSinEventos.setVisibility(View.GONE);
+        }
+    }
+
+    private void mostrarDialogoFiltros() {
+        BottomSheetDialog bottomSheet = new BottomSheetDialog(requireContext());
+        View v = getLayoutInflater().inflate(R.layout.dialog_filtros, null);
+        bottomSheet.setContentView(v);
+
+        AutoCompleteTextView spinnerTipo = v.findViewById(R.id.spinnerFiltroTipo);
+        AutoCompleteTextView spinnerMascotas = v.findViewById(R.id.spinnerFiltroMascota);
+        MaterialButton btnAplicar = v.findViewById(R.id.btnAplicarFiltros);
+        MaterialButton btnLimpiar = v.findViewById(R.id.btnLimpiarFiltros);
+        com.google.android.material.switchmaterial.SwitchMaterial switchVerTodos = v.findViewById(R.id.switchVerTodos);
+
+        if (spinnerTipo == null || spinnerMascotas == null || btnAplicar == null) return;
+        if (switchVerTodos != null) switchVerTodos.setChecked(verTodosLosEventos);
+
+        // Adaptadores
+        List<String> opcionesTipo = new ArrayList<>();
+        opcionesTipo.add("Todos");
+        opcionesTipo.addAll(java.util.Arrays.asList(com.easypets.models.TipoEvento.obtenerTodosLosNombres()));
+        ArrayAdapter<String> adapterTipo = new ArrayAdapter<>(requireContext(), android.R.layout.simple_dropdown_item_1line, opcionesTipo);
+        spinnerTipo.setAdapter(adapterTipo);
+
+        List<String> opcionesMascotas = new ArrayList<>();
+        opcionesMascotas.add("Todas");
+        if (nombresMascotas != null) {
+            for (String nombre : nombresMascotas) {
+                if (!opcionesMascotas.contains(nombre)) opcionesMascotas.add(nombre);
+            }
+        }
+        ArrayAdapter<String> adapterMascotas = new ArrayAdapter<>(requireContext(), android.R.layout.simple_dropdown_item_1line, opcionesMascotas);
+        spinnerMascotas.setAdapter(adapterMascotas);
+
+        // Restauramos los textos visuales
+        spinnerTipo.setText(filtroTipoActual, false);
+        spinnerMascotas.setText(filtroMascotaActual, false);
+
+        // 🔥 EL TRUCO SENIOR: Guardamos la selección en el momento del click, no al pulsar el botón
+        final String[] seleccionSegura = {filtroTipoActual, filtroMascotaActual};
+
+        spinnerTipo.setOnItemClickListener((parent, view, position, id) -> {
+            seleccionSegura[0] = adapterTipo.getItem(position);
+        });
+
+        spinnerMascotas.setOnItemClickListener((parent, view, position, id) -> {
+            seleccionSegura[1] = adapterMascotas.getItem(position);
+        });
+
+        btnAplicar.setOnClickListener(view -> {
+            if (switchVerTodos != null) verTodosLosEventos = switchVerTodos.isChecked();
+
+            // Asignamos las variables globales directamente desde lo que hemos "espiado"
+            filtroTipoActual = seleccionSegura[0];
+            filtroMascotaActual = seleccionSegura[1];
+
+            aplicarFiltros();
+            bottomSheet.dismiss();
+        });
+
+        btnLimpiar.setOnClickListener(view -> {
+            verTodosLosEventos = false;
+            filtroTipoActual = "Todos";
+            filtroMascotaActual = "Todas";
+            aplicarFiltros();
+            bottomSheet.dismiss();
+        });
+
+        bottomSheet.show();
+    }
+
     private void mostrarBuscadorDeFecha(String uid) {
         DatePickerDialog datePicker = new DatePickerDialog(requireContext(), R.style.TemaPickerVerde, (view, year, month, dayOfMonth) -> {
-            calendarioActual.set(year, month, dayOfMonth);
+            Calendar nuevaFecha = Calendar.getInstance();
+            nuevaFecha.set(Calendar.YEAR, year);
+            nuevaFecha.set(Calendar.MONTH, month);
+            nuevaFecha.set(Calendar.DAY_OF_MONTH, dayOfMonth);
+            nuevaFecha.set(Calendar.HOUR_OF_DAY, 0);
+            nuevaFecha.set(Calendar.MINUTE, 0);
+            nuevaFecha.set(Calendar.SECOND, 0);
+            nuevaFecha.set(Calendar.MILLISECOND, 0);
+
+            calendarioActual = nuevaFecha;
+
             try {
                 calendarView.setDate(calendarioActual);
             } catch (OutOfDateRangeException e) {
                 e.printStackTrace();
             }
+
             actualizarTextoFecha(dayOfMonth, month, year);
             cargarEventosDeFecha(uid, dayOfMonth, month, year);
+
         }, calendarioActual.get(Calendar.YEAR), calendarioActual.get(Calendar.MONTH), calendarioActual.get(Calendar.DAY_OF_MONTH));
 
         datePicker.show();
@@ -516,7 +644,6 @@ public class CalendarioFragment extends Fragment {
             String horaSeleccionada = btnHora.getText().toString();
             String tipoEvento = spinnerTipo.getText().toString();
 
-            // LÓGICA DE NOTIFICACIONES INTELIGENTES Y PERSONALIZADAS
             if (switchNoti.isChecked()) {
                 try {
                     SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
@@ -525,21 +652,17 @@ public class CalendarioFragment extends Fragment {
 
                     if (dateEvento != null) {
                         long tiempoEventoMillis = dateEvento.getTime();
-
-                        // Constantes de tiempo en milisegundos
                         long UN_DIA = 24L * 60L * 60L * 1000L;
                         long DOS_HORAS = 2L * 60L * 60L * 1000L;
                         long UNA_HORA = 60L * 60L * 1000L;
                         long QUINCE_MIN = 15L * 60L * 1000L;
 
                         boolean esGeneral = mascotaTxt.equals("General") || mascotaTxt.isEmpty();
-
                         String deMascota = esGeneral ? "" : " de " + mascotaTxt;
                         String paraMascota = esGeneral ? "" : " para " + mascotaTxt;
                         String conMascota = esGeneral ? "" : " con " + mascotaTxt;
                         String aMascota = esGeneral ? "" : " a " + mascotaTxt;
 
-                        // Clasificamos usando nuestro Enum seguro
                         com.easypets.models.TipoEvento tipoEnum = com.easypets.models.TipoEvento.desdeString(tipoEvento);
 
                         switch (tipoEnum) {
@@ -547,27 +670,21 @@ public class CalendarioFragment extends Fragment {
                                 programarNotificacion(tiempoEventoMillis, "🩺 Mañana: " + titulo, "Recuerda la cita médica" + deMascota + ".", UN_DIA);
                                 programarNotificacion(tiempoEventoMillis, "🚨 ¡Cita Veterinaria hoy!", "Tienes cita en 2 horas" + paraMascota + ": " + titulo, DOS_HORAS);
                                 break;
-
                             case PELUQUERIA:
                             case GUARDERIA:
                                 programarNotificacion(tiempoEventoMillis, "✂️ Mañana: " + titulo, "Recuerda la cita" + deMascota + ".", UN_DIA);
                                 programarNotificacion(tiempoEventoMillis, "⏰ ¡Cita en 1 hora!", "Prepárate para salir" + conMascota + ": " + titulo, UNA_HORA);
                                 break;
-
                             case PASEO:
                                 programarNotificacion(tiempoEventoMillis, "🦮 ¡Hora del paseo!", "Ve cogiendo la correa" + deMascota + ".", QUINCE_MIN);
                                 break;
-
                             case MEDICACION:
-                                // Para el título usamos una variable rápida
                                 String tituloMed = esGeneral ? "💊 ¡Hora de su medicina!" : "💊 ¡Medicina para " + mascotaTxt + "!";
                                 programarNotificacion(tiempoEventoMillis, tituloMed, "Toca administrar: " + titulo, 0L);
                                 break;
-
                             case COMIDA:
                                 programarNotificacion(tiempoEventoMillis, "🦴 ¡Hora de comer!", "Toca servir la comida" + aMascota + ".", 0L);
                                 break;
-
                             case NOTA:
                             default:
                                 String tituloNota = esGeneral ? "📌 Recordatorio" : "📌 Recordatorio para " + mascotaTxt;
@@ -577,7 +694,6 @@ public class CalendarioFragment extends Fragment {
                     }
                 } catch (Exception ex) {
                     ex.printStackTrace();
-                    Log.e("NOTIFICACIONES", "Error calculando la fecha de la notificación");
                 }
             }
 
@@ -597,13 +713,6 @@ public class CalendarioFragment extends Fragment {
                     public void onExito() {
                         dialog.dismiss();
                         cargarEventosDeFecha(userC.getUid(), calendarioActual.get(Calendar.DAY_OF_MONTH), calendarioActual.get(Calendar.MONTH), calendarioActual.get(Calendar.YEAR));
-
-                        // Opcional: Avisar al usuario de que la alarma se ha guardado
-                        if(switchNoti.isChecked()) {
-                            Toast.makeText(getContext(), "Evento guardado con recordatorio 🔔", Toast.LENGTH_SHORT).show();
-                        } else {
-                            Toast.makeText(getContext(), "Evento guardado (Sin alerta)", Toast.LENGTH_SHORT).show();
-                        }
                     }
                     @Override
                     public void onError(String error) {
@@ -614,12 +723,5 @@ public class CalendarioFragment extends Fragment {
         });
 
         dialog.show();
-    }
-
-    private void mostrarDialogoFiltros() {
-        BottomSheetDialog bottomSheet = new BottomSheetDialog(requireContext());
-        View v = getLayoutInflater().inflate(R.layout.dialog_filtros, null);
-        bottomSheet.setContentView(v);
-        bottomSheet.show();
     }
 }

@@ -21,6 +21,8 @@ import androidx.credentials.exceptions.ClearCredentialException;
 
 import com.easypets.R;
 import com.easypets.ui.auth.LoginActivity;
+import com.google.android.gms.tasks.Task;
+import com.google.android.gms.tasks.Tasks;
 import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -32,6 +34,9 @@ import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class AjustesActivity extends AppCompatActivity {
 
@@ -146,93 +151,84 @@ public class AjustesActivity extends AppCompatActivity {
         String uid = user.getUid();
         DatabaseReference db = FirebaseDatabase.getInstance().getReference();
 
-        // 1. Borrar foto de perfil de Storage (Ahorro de servidor)
-        StorageReference refPerfil = FirebaseStorage.getInstance().getReference("perfiles").child(uid + ".jpg");
-        refPerfil.delete().addOnCompleteListener(task -> {}); // Ignoramos si no tenía foto
+        Toast.makeText(this, "Iniciando borrado seguro. Por favor, espera...", Toast.LENGTH_LONG).show();
 
-        // 2. Borrar publicaciones de Mascotas en Galería y sus comentarios
-        db.child("mascotas_comunidad").orderByChild("idAutor").equalTo(uid)
-                .addListenerForSingleValueEvent(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(@NonNull DataSnapshot snapshot) {
-                        for (DataSnapshot ds : snapshot.getChildren()) {
-                            db.child("mascotas_comentarios").child(ds.getKey()).removeValue();
-                            ds.getRef().removeValue();
-                        }
-                    }
-                    @Override public void onCancelled(@NonNull DatabaseError error) {}
-                });
+        List<Task<?>> tareasDeBorrado = new ArrayList<>();
 
-        // 3. Borrar buzón de notificaciones
-        db.child("notificaciones").child(uid).removeValue();
+        // 1. Limpieza de Storage
+        tareasDeBorrado.add(FirebaseStorage.getInstance().getReference("perfiles")
+                .child(uid + ".jpg").delete().continueWith(task -> null));
 
-        // 4. Borrar artículos del usuario
-        db.child("articulos_comunidad").orderByChild("idAutor").equalTo(uid)
-                .addListenerForSingleValueEvent(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(@NonNull DataSnapshot snapshot) {
-                        for (DataSnapshot ds : snapshot.getChildren()) ds.getRef().removeValue();
-                    }
-                    @Override public void onCancelled(@NonNull DatabaseError error) {}
-                });
+        tareasDeBorrado.add(FirebaseStorage.getInstance().getReference("mascotas_privadas").child(uid).listAll().continueWithTask(task -> {
+            if (!task.isSuccessful() || task.getResult() == null) return Tasks.forResult(null);
+            List<Task<Void>> deletes = new ArrayList<>();
+            for (StorageReference item : task.getResult().getItems()) deletes.add(item.delete());
+            return Tasks.whenAll(deletes);
+        }));
 
-        // 5. Borrar hilos del usuario (y las respuestas asociadas a esos hilos)
-        db.child("foro_hilos").orderByChild("idAutor").equalTo(uid)
-                .addListenerForSingleValueEvent(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(@NonNull DataSnapshot snapshot) {
-                        for (DataSnapshot ds : snapshot.getChildren()) {
-                            db.child("foro_respuestas").child(ds.getKey()).removeValue();
-                            ds.getRef().removeValue();
-                        }
-                    }
-                    @Override public void onCancelled(@NonNull DatabaseError error) {}
-                });
+        tareasDeBorrado.add(FirebaseStorage.getInstance().getReference("mascotas_comunidad").child(uid).listAll().continueWithTask(task -> {
+            if (!task.isSuccessful() || task.getResult() == null) return Tasks.forResult(null);
+            List<Task<Void>> deletes = new ArrayList<>();
+            for (StorageReference item : task.getResult().getItems()) deletes.add(item.delete());
+            return Tasks.whenAll(deletes);
+        }));
 
-        // 6. Borrado Lógico de las respuestas en hilos de OTRAS personas
-        db.child("foro_respuestas").addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                for (DataSnapshot hiloSnapshot : snapshot.getChildren()) {
-                    for (DataSnapshot respuestaSnapshot : hiloSnapshot.getChildren()) {
-                        String autorId = respuestaSnapshot.child("idAutor").getValue(String.class);
-                        if (uid.equals(autorId)) {
-                            respuestaSnapshot.getRef().child("eliminado").setValue(true);
-                            respuestaSnapshot.getRef().child("texto").setValue("🚫 Este mensaje ha sido eliminado porque el usuario borró su cuenta.");
-                            respuestaSnapshot.getRef().child("idAutor").setValue("deleted");
-                            respuestaSnapshot.getRef().child("editado").setValue(false);
-                        }
+        tareasDeBorrado.add(FirebaseStorage.getInstance().getReference("foro_imagenes").child(uid).listAll().continueWithTask(task -> {
+            if (!task.isSuccessful() || task.getResult() == null) return Tasks.forResult(null);
+            List<Task<Void>> deletes = new ArrayList<>();
+            for (StorageReference item : task.getResult().getItems()) deletes.add(item.delete());
+            return Tasks.whenAll(deletes);
+        }));
+
+        // 2. Limpieza de Base de Datos
+        tareasDeBorrado.add(db.child("notificaciones").child(uid).removeValue());
+        tareasDeBorrado.add(db.child("eventos").child(uid).removeValue());
+        tareasDeBorrado.add(db.child("mascotas").child(uid).removeValue());
+
+        tareasDeBorrado.add(db.child("articulos_comunidad").orderByChild("idAutor").equalTo(uid).get().continueWithTask(task -> {
+            if (!task.isSuccessful() || task.getResult() == null) return Tasks.forResult(null);
+            List<Task<Void>> deletes = new ArrayList<>();
+            for (DataSnapshot ds : task.getResult().getChildren()) deletes.add(ds.getRef().removeValue());
+            return Tasks.whenAll(deletes);
+        }));
+
+        tareasDeBorrado.add(db.child("foro_respuestas").get().continueWithTask(task -> {
+            if (!task.isSuccessful() || task.getResult() == null) return Tasks.forResult(null);
+            List<Task<Void>> updates = new ArrayList<>();
+            for (DataSnapshot hiloSnapshot : task.getResult().getChildren()) {
+                for (DataSnapshot respuestaSnapshot : hiloSnapshot.getChildren()) {
+                    String autorId = respuestaSnapshot.child("idAutor").getValue(String.class);
+                    if (uid.equals(autorId)) {
+                        updates.add(respuestaSnapshot.getRef().child("eliminado").setValue(true));
+                        updates.add(respuestaSnapshot.getRef().child("texto").setValue("🚫 Este mensaje ha sido eliminado por privacidad."));
+                        updates.add(respuestaSnapshot.getRef().child("idAutor").setValue("deleted"));
                     }
                 }
             }
-            @Override public void onCancelled(@NonNull DatabaseError error) {}
-        });
+            return Tasks.whenAll(updates);
+        }));
 
-        // 7. Borrado final en cascada: Eventos -> Mascotas -> Perfil -> Cuenta Firebase Auth
-        db.child("eventos").child(uid).removeValue().addOnCompleteListener(tEventos -> {
-            db.child("mascotas").child(uid).removeValue().addOnCompleteListener(tMascotas -> {
-                db.child("usuarios").child(uid).removeValue().addOnCompleteListener(tUser -> {
-                    user.delete().addOnCompleteListener(tAuth -> {
-                        if (tAuth.isSuccessful()) {
-                            Toast.makeText(AjustesActivity.this, "Cuenta y datos eliminados correctamente", Toast.LENGTH_SHORT).show();
-                            mAuth.signOut();
-                            limpiarYSalir();
-                        } else {
-                            Toast.makeText(AjustesActivity.this, "Por seguridad, cierra sesión, vuelve a entrar y repite este paso.", Toast.LENGTH_LONG).show();
-                        }
-                    });
+        // 3. Ejecución final
+        Tasks.whenAll(tareasDeBorrado).addOnCompleteListener(tareaGlobal -> {
+            db.child("usuarios").child(uid).removeValue().addOnCompleteListener(tUser -> {
+                user.delete().addOnCompleteListener(tAuth -> {
+                    if (tAuth.isSuccessful()) {
+                        Toast.makeText(AjustesActivity.this, "Cuenta eliminada de forma segura", Toast.LENGTH_SHORT).show();
+                        mAuth.signOut();
+                        limpiarYSalir();
+                    } else {
+                        Toast.makeText(AjustesActivity.this, "Por seguridad, cierra sesión, vuelve a entrar y repite la acción.", Toast.LENGTH_LONG).show();
+                    }
                 });
             });
         });
     }
 
     private void limpiarYSalir() {
-        CredentialManager cm = CredentialManager.create(this);
-        cm.clearCredentialStateAsync(new ClearCredentialStateRequest(), new android.os.CancellationSignal(),
-                ContextCompat.getMainExecutor(this), new CredentialManagerCallback<Void, ClearCredentialException>() {
-                    @Override public void onResult(Void result) { irALogin(); }
-                    @Override public void onError(ClearCredentialException e) { irALogin(); }
-                });
+        Intent intent = new Intent(AjustesActivity.this, LoginActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finish();
     }
 
     private void irALogin() {
