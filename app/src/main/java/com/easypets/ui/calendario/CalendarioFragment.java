@@ -10,7 +10,6 @@ import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -63,8 +62,6 @@ import java.util.Locale;
 
 public class CalendarioFragment extends Fragment {
 
-    private static final String TAG = "CalendarioFragment";
-
     private CalendarView calendarView;
     private ImageButton btnFiltrarEventos;
     private TextView tvFechaSeleccionada;
@@ -82,7 +79,7 @@ public class CalendarioFragment extends Fragment {
     private List<Mascota> listaMascotasUsuario;
     private EventoAdapter eventoAdapter;
 
-    private List<Evento> listaEventosDiaOriginal = new ArrayList<>();
+    private List<Evento> listaEventosMemoria = new ArrayList<>();
     private String filtroTipoActual = "Todos";
     private String filtroMascotaActual = "Todas";
     private boolean verTodosLosEventos = false;
@@ -142,8 +139,7 @@ public class CalendarioFragment extends Fragment {
         configurarSwipe(requireContext());
 
         calendarView.setOnCalendarDayClickListener(calendarDay -> {
-            Calendar clickedDayCalendar = (Calendar) calendarDay.getCalendar().clone();
-            calendarioActual = clickedDayCalendar;
+            calendarioActual = (Calendar) calendarDay.getCalendar().clone();
 
             try {
                 calendarView.setDate(calendarioActual);
@@ -151,21 +147,24 @@ public class CalendarioFragment extends Fragment {
                 e.printStackTrace();
             }
 
+            // Al tocar un día concreto, desactivamos los filtros
+            verTodosLosEventos = false;
+            filtroTipoActual = "Todos";
+            filtroMascotaActual = "Todas";
+
             int dayOfMonth = calendarioActual.get(Calendar.DAY_OF_MONTH);
             int month = calendarioActual.get(Calendar.MONTH);
             int year = calendarioActual.get(Calendar.YEAR);
 
             actualizarTextoFecha(dayOfMonth, month, year);
-            cargarEventosDeFecha(user.getUid(), dayOfMonth, month, year);
+            refrescarEventos(user.getUid());
         });
 
         btnIrAFecha.setOnClickListener(v -> mostrarBuscadorDeFecha(user.getUid()));
         btnFiltrarEventos.setOnClickListener(v -> mostrarDialogoFiltros());
         fabAgregarEvento.setOnClickListener(v -> mostrarDialogoAgregarEvento(null));
 
-        cargarEventosDeFecha(user.getUid(), calendarioActual.get(Calendar.DAY_OF_MONTH),
-                calendarioActual.get(Calendar.MONTH), calendarioActual.get(Calendar.YEAR));
-
+        refrescarEventos(user.getUid());
         cargarPuntitosEnCalendario(user.getUid());
     }
 
@@ -176,8 +175,182 @@ public class CalendarioFragment extends Fragment {
         fabAgregarEvento.setVisibility(View.GONE);
 
         calendarView.setOnCalendarDayClickListener(calendarDay -> {
-            Calendar clickedDayCalendar = (Calendar) calendarDay.getCalendar().clone();
-            calendarioActual = clickedDayCalendar;
+            calendarioActual = (Calendar) calendarDay.getCalendar().clone();
+            try {
+                calendarView.setDate(calendarioActual);
+            } catch (OutOfDateRangeException e) {
+                e.printStackTrace();
+            }
+            actualizarTextoFecha(calendarioActual.get(Calendar.DAY_OF_MONTH), calendarioActual.get(Calendar.MONTH), calendarioActual.get(Calendar.YEAR));
+        });
+
+        View.OnClickListener aviso = v -> Toast.makeText(getContext(), "Función solo para usuarios registrados", Toast.LENGTH_SHORT).show();
+
+        btnIrAFecha.setOnClickListener(aviso);
+        btnFiltrarEventos.setOnClickListener(aviso);
+
+        MaterialButton btnLogin = layoutAvisoInvitado.findViewById(R.id.btnIrALoginCalendario);
+        if (btnLogin != null) {
+            btnLogin.setOnClickListener(v -> startActivity(new Intent(getActivity(), LoginActivity.class)));
+        }
+    }
+
+    private void refrescarEventos(String uid) {
+        if (verTodosLosEventos) {
+            eventoRepository.obtenerTodosLosEventos(uid, new EventoRepository.LeerEventosCallback() {
+                @Override
+                public void onResultado(List<Evento> listaEventos) {
+                    listaEventosMemoria.clear();
+                    listaEventosMemoria.addAll(listaEventos);
+                    ejecutarFiltroEnMemoria();
+                }
+                @Override
+                public void onError(String error) {}
+            });
+        } else {
+            int dia = calendarioActual.get(Calendar.DAY_OF_MONTH);
+            int mes = calendarioActual.get(Calendar.MONTH);
+            int anio = calendarioActual.get(Calendar.YEAR);
+            String fechaBuscada = String.format(Locale.getDefault(), "%02d/%02d/%d", dia, mes + 1, anio);
+
+            eventoRepository.obtenerEventosPorFecha(uid, fechaBuscada, new EventoRepository.LeerEventosCallback() {
+                @Override
+                public void onResultado(List<Evento> listaEventos) {
+                    listaEventosMemoria.clear();
+                    listaEventosMemoria.addAll(listaEventos);
+                    ejecutarFiltroEnMemoria();
+                }
+                @Override
+                public void onError(String error) {}
+            });
+        }
+    }
+
+    private void ejecutarFiltroEnMemoria() {
+        List<Evento> listaFiltrada = new ArrayList<>();
+
+        for (Evento e : listaEventosMemoria) {
+            String tipoEv = (e.getTipo() != null) ? e.getTipo().trim() : "";
+            String idMascEv = (e.getIdMascota() != null) ? e.getIdMascota().trim() : "";
+
+            boolean pasaTipo = filtroTipoActual.equalsIgnoreCase("Todos") || tipoEv.equalsIgnoreCase(filtroTipoActual);
+            boolean pasaMascota = false;
+
+            if (filtroMascotaActual.equalsIgnoreCase("Todas")) {
+                pasaMascota = true;
+            } else if (filtroMascotaActual.equalsIgnoreCase("General")) {
+                if (idMascEv.isEmpty() || idMascEv.equalsIgnoreCase("General")) pasaMascota = true;
+            } else {
+                for (Mascota m : listaMascotasUsuario) {
+                    String nomMasc = m.getNombre() != null ? m.getNombre().trim() : "";
+                    String idMasc = m.getIdMascota() != null ? m.getIdMascota().trim() : "";
+
+                    if (nomMasc.equalsIgnoreCase(filtroMascotaActual)) {
+                        if (idMascEv.equalsIgnoreCase(idMasc) || idMascEv.equalsIgnoreCase(nomMasc)) {
+                            pasaMascota = true;
+                        }
+                        break;
+                    }
+                }
+            }
+
+            if (pasaTipo && pasaMascota) {
+                listaFiltrada.add(e);
+            }
+        }
+
+        if (listaFiltrada.isEmpty()) {
+            rvEventos.setVisibility(View.GONE);
+            layoutSinEventos.setVisibility(View.VISIBLE);
+        } else {
+            eventoAdapter.setEventos(new ArrayList<>(listaFiltrada));
+            eventoAdapter.notifyDataSetChanged();
+            rvEventos.setVisibility(View.VISIBLE);
+            layoutSinEventos.setVisibility(View.GONE);
+        }
+    }
+
+    private void mostrarDialogoFiltros() {
+        BottomSheetDialog bottomSheet = new BottomSheetDialog(requireContext());
+        View v = getLayoutInflater().inflate(R.layout.dialog_filtros, null);
+        bottomSheet.setContentView(v);
+
+        AutoCompleteTextView spinnerTipo = v.findViewById(R.id.spinnerFiltroTipo);
+        AutoCompleteTextView spinnerMascotas = v.findViewById(R.id.spinnerFiltroMascota);
+        MaterialButton btnAplicar = v.findViewById(R.id.btnAplicarFiltros);
+        MaterialButton btnLimpiar = v.findViewById(R.id.btnLimpiarFiltros);
+        com.google.android.material.switchmaterial.SwitchMaterial switchVerTodos = v.findViewById(R.id.switchVerTodos);
+
+        if (spinnerTipo == null || spinnerMascotas == null || btnAplicar == null) return;
+
+        if (switchVerTodos != null) switchVerTodos.setChecked(verTodosLosEventos);
+
+        List<String> opcionesTipo = new ArrayList<>();
+        opcionesTipo.add("Todos");
+        opcionesTipo.addAll(Arrays.asList(com.easypets.models.TipoEvento.obtenerTodosLosNombres()));
+        ArrayAdapter<String> adapterTipo = new ArrayAdapter<>(requireContext(), android.R.layout.simple_dropdown_item_1line, opcionesTipo);
+        spinnerTipo.setAdapter(adapterTipo);
+
+        List<String> opcionesMascotas = new ArrayList<>();
+        opcionesMascotas.add("Todas");
+        opcionesMascotas.add("General");
+        if (nombresMascotas != null) {
+            for (String nombre : nombresMascotas) {
+                if (!opcionesMascotas.contains(nombre)) opcionesMascotas.add(nombre);
+            }
+        }
+        ArrayAdapter<String> adapterMascotas = new ArrayAdapter<>(requireContext(), android.R.layout.simple_dropdown_item_1line, opcionesMascotas);
+        spinnerMascotas.setAdapter(adapterMascotas);
+
+        spinnerTipo.setText(filtroTipoActual, false);
+        spinnerMascotas.setText(filtroMascotaActual, false);
+
+        btnAplicar.setOnClickListener(view -> {
+            String tipoSeleccionado = spinnerTipo.getText().toString().trim();
+            String mascotaSeleccionada = spinnerMascotas.getText().toString().trim();
+
+            filtroTipoActual = tipoSeleccionado.isEmpty() ? "Todos" : tipoSeleccionado;
+            filtroMascotaActual = mascotaSeleccionada.isEmpty() ? "Todas" : mascotaSeleccionada;
+
+            if (switchVerTodos != null) {
+                verTodosLosEventos = switchVerTodos.isChecked();
+            }
+
+            if (verTodosLosEventos) {
+                tvFechaSeleccionada.setText("Eventos filtrados (Todos los días)");
+            } else {
+                actualizarTextoFecha(calendarioActual.get(Calendar.DAY_OF_MONTH), calendarioActual.get(Calendar.MONTH), calendarioActual.get(Calendar.YEAR));
+            }
+
+            refrescarEventos(mAuth.getCurrentUser().getUid());
+            bottomSheet.dismiss();
+        });
+
+        btnLimpiar.setOnClickListener(view -> {
+            verTodosLosEventos = false;
+            filtroTipoActual = "Todos";
+            filtroMascotaActual = "Todas";
+
+            actualizarTextoFecha(calendarioActual.get(Calendar.DAY_OF_MONTH), calendarioActual.get(Calendar.MONTH), calendarioActual.get(Calendar.YEAR));
+            refrescarEventos(mAuth.getCurrentUser().getUid());
+            bottomSheet.dismiss();
+        });
+
+        bottomSheet.show();
+    }
+
+    private void mostrarBuscadorDeFecha(String uid) {
+        DatePickerDialog datePicker = new DatePickerDialog(requireContext(), R.style.TemaPickerVerde, (view, year, month, dayOfMonth) -> {
+            Calendar nuevaFecha = Calendar.getInstance();
+            nuevaFecha.set(Calendar.YEAR, year);
+            nuevaFecha.set(Calendar.MONTH, month);
+            nuevaFecha.set(Calendar.DAY_OF_MONTH, dayOfMonth);
+            nuevaFecha.set(Calendar.HOUR_OF_DAY, 0);
+            nuevaFecha.set(Calendar.MINUTE, 0);
+            nuevaFecha.set(Calendar.SECOND, 0);
+            nuevaFecha.set(Calendar.MILLISECOND, 0);
+
+            calendarioActual = nuevaFecha;
 
             try {
                 calendarView.setDate(calendarioActual);
@@ -185,38 +358,32 @@ public class CalendarioFragment extends Fragment {
                 e.printStackTrace();
             }
 
-            int dayOfMonth = calendarioActual.get(Calendar.DAY_OF_MONTH);
-            int month = calendarioActual.get(Calendar.MONTH);
-            int year = calendarioActual.get(Calendar.YEAR);
+            verTodosLosEventos = false;
+            filtroTipoActual = "Todos";
+            filtroMascotaActual = "Todas";
 
             actualizarTextoFecha(dayOfMonth, month, year);
-        });
+            refrescarEventos(uid);
 
-        View.OnClickListener aviso = v ->
-                Toast.makeText(getContext(), "Función solo para usuarios registrados", Toast.LENGTH_SHORT).show();
+        }, calendarioActual.get(Calendar.YEAR), calendarioActual.get(Calendar.MONTH), calendarioActual.get(Calendar.DAY_OF_MONTH));
 
-        btnIrAFecha.setOnClickListener(aviso);
-        btnFiltrarEventos.setOnClickListener(aviso);
+        datePicker.show();
+        datePicker.getButton(DatePickerDialog.BUTTON_POSITIVE).setTextColor(ContextCompat.getColor(requireContext(), R.color.color_acento_primario));
+        datePicker.getButton(DatePickerDialog.BUTTON_NEGATIVE).setTextColor(ContextCompat.getColor(requireContext(), R.color.color_acento_primario));
+    }
 
-        MaterialButton btnLogin = layoutAvisoInvitado.findViewById(R.id.btnIrALoginCalendario);
-        if (btnLogin != null) {
-            btnLogin.setOnClickListener(v -> {
-                Intent intent = new Intent(getActivity(), LoginActivity.class);
-                startActivity(intent);
-            });
-        }
+    private void actualizarTextoFecha(int dia, int mes, int anio) {
+        tvFechaSeleccionada.setText(String.format(Locale.getDefault(), "Eventos para el %02d/%02d/%d", dia, mes + 1, anio));
     }
 
     private void cargarPuntitosEnCalendario(String uid) {
         DatabaseReference ref = FirebaseDatabase.getInstance().getReference().child("eventos").child(uid);
-
         ref.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 if (!isAdded()) return;
 
                 List<CalendarDay> eventosCalendario = new ArrayList<>();
-
                 for (DataSnapshot ds : snapshot.getChildren()) {
                     Evento evt = ds.getValue(Evento.class);
                     if (evt != null && evt.getFecha() != null) {
@@ -235,12 +402,9 @@ public class CalendarioFragment extends Fragment {
                                 CalendarDay calendarDay = new CalendarDay(cal);
                                 calendarDay.setImageResource(R.drawable.huella);
                                 calendarDay.setLabelColor(R.color.color_acento_primario);
-
                                 eventosCalendario.add(calendarDay);
                             }
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
+                        } catch (Exception e) {}
                     }
                 }
 
@@ -251,9 +415,7 @@ public class CalendarioFragment extends Fragment {
                         if (fechasSeleccionadas != null) {
                             calendarView.setSelectedDates(fechasSeleccionadas);
                         }
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
+                    } catch (Exception e) {}
                 });
             }
 
@@ -289,8 +451,6 @@ public class CalendarioFragment extends Fragment {
             } else {
                 alarmManager.setExact(android.app.AlarmManager.RTC_WAKEUP, tiempoAlarma, pendingIntent);
             }
-
-            Log.d("ALARMAS", "Alarma programada para: " + new java.util.Date(tiempoAlarma).toString());
         }
     }
 
@@ -346,225 +506,13 @@ public class CalendarioFragment extends Fragment {
         new ItemTouchHelper(simpleCallback).attachToRecyclerView(rvEventos);
     }
 
-    private void cargarEventosDeFecha(String uid, int dia, int mes, int anio) {
-        String fechaBuscada = String.format(Locale.getDefault(), "%02d/%02d/%d", dia, mes + 1, anio);
-        Log.d(TAG, "Cargando eventos para: " + fechaBuscada);
-
-        eventoRepository.obtenerEventosPorFecha(uid, fechaBuscada, new EventoRepository.LeerEventosCallback() {
-            @Override
-            public void onResultado(List<Evento> listaEventos) {
-                Log.d(TAG, "Eventos obtenidos: " + listaEventos.size());
-                listaEventosDiaOriginal.clear();
-                listaEventosDiaOriginal.addAll(listaEventos);
-                aplicarFiltros();
-            }
-            @Override
-            public void onError(String error) {
-                Log.e(TAG, "Error cargando eventos: " + error);
-            }
-        });
-    }
-
-    // 🔥 MÉTODO CRÍTICO: Aplicar filtros correctamente
-    private void aplicarFiltros() {
-        Log.d(TAG, "Aplicando filtros - Tipo: " + filtroTipoActual + ", Mascota: " + filtroMascotaActual + ", Ver todos: " + verTodosLosEventos);
-
-        if (verTodosLosEventos) {
-            Log.d(TAG, "Ver todos habilitado, mostrando " + listaEventosDiaOriginal.size() + " eventos");
-            actualizarInterfaz(listaEventosDiaOriginal);
-            return;
-        }
-
-        List<Evento> listaFiltrada = new ArrayList<>();
-
-        for (Evento e : listaEventosDiaOriginal) {
-            String tipoEv = e.getTipo() != null ? e.getTipo().trim() : "";
-            String idMascEv = e.getIdMascota() != null ? e.getIdMascota().trim() : "";
-
-            Log.d(TAG, "Evaluando evento: Tipo=" + tipoEv + ", IdMasc=" + idMascEv);
-
-            // Filtro de Tipo
-            boolean pasaTipo = filtroTipoActual.equalsIgnoreCase("Todos") || tipoEv.equalsIgnoreCase(filtroTipoActual.trim());
-            Log.d(TAG, "  ├─ Pasa tipo? " + pasaTipo + " (buscando: " + filtroTipoActual + ")");
-
-            // Filtro de Mascota
-            boolean pasaMascota = false;
-            if (filtroMascotaActual.equalsIgnoreCase("Todas")) {
-                pasaMascota = true;
-                Log.d(TAG, "  ├─ Filtro mascota 'Todas' = INCLUYE");
-            } else if (filtroMascotaActual.equalsIgnoreCase("General")) {
-                pasaMascota = idMascEv.isEmpty();
-                Log.d(TAG, "  ├─ Buscando 'General' (sin mascota). IdMasc vacío? " + pasaMascota);
-            } else {
-                // Buscar por nombre de mascota
-                for (Mascota m : listaMascotasUsuario) {
-                    String nomMasc = m.getNombre() != null ? m.getNombre().trim() : "";
-                    String idMasc = m.getIdMascota() != null ? m.getIdMascota().trim() : "";
-
-                    if (nomMasc.equalsIgnoreCase(filtroMascotaActual.trim())) {
-                        pasaMascota = idMasc.equalsIgnoreCase(idMascEv);
-                        Log.d(TAG, "  ├─ Coincide mascota: " + nomMasc + " (ID " + idMasc + "), pasaMascota=" + pasaMascota);
-                        break;
-                    }
-                }
-            }
-
-            if (pasaTipo && pasaMascota) {
-                Log.d(TAG, "  └─ ✅ INCLUÍDO en resultados");
-                listaFiltrada.add(e);
-            } else {
-                Log.d(TAG, "  └─ ❌ EXCLUÍDO");
-            }
-        }
-
-        Log.d(TAG, "Resultado final: " + listaFiltrada.size() + " de " + listaEventosDiaOriginal.size() + " eventos");
-        actualizarInterfaz(listaFiltrada);
-    }
-
-    // 🛠️ Actualizar interfaz con nuevos eventos
-    private void actualizarInterfaz(List<Evento> lista) {
-        List<Evento> listaClonada = new ArrayList<>(lista);
-
-        if (listaClonada.isEmpty()) {
-            rvEventos.setVisibility(View.GONE);
-            layoutSinEventos.setVisibility(View.VISIBLE);
-        } else {
-            eventoAdapter.setEventos(listaClonada);
-            eventoAdapter.notifyDataSetChanged();
-            rvEventos.setVisibility(View.VISIBLE);
-            layoutSinEventos.setVisibility(View.GONE);
-        }
-    }
-
-    // 🎯 DIÁLOGO DE FILTROS - VERSIÓN CORREGIDA
-    private void mostrarDialogoFiltros() {
-        BottomSheetDialog bottomSheet = new BottomSheetDialog(requireContext());
-        View v = getLayoutInflater().inflate(R.layout.dialog_filtros, null);
-        bottomSheet.setContentView(v);
-
-        AutoCompleteTextView spinnerTipo = v.findViewById(R.id.spinnerFiltroTipo);
-        AutoCompleteTextView spinnerMascotas = v.findViewById(R.id.spinnerFiltroMascota);
-        MaterialButton btnAplicar = v.findViewById(R.id.btnAplicarFiltros);
-        MaterialButton btnLimpiar = v.findViewById(R.id.btnLimpiarFiltros);
-        com.google.android.material.switchmaterial.SwitchMaterial switchVerTodos = v.findViewById(R.id.switchVerTodos);
-
-        if (spinnerTipo == null || spinnerMascotas == null || btnAplicar == null) {
-            Log.e(TAG, "Error: No se encontraron vistas del diálogo de filtros");
-            return;
-        }
-
-        if (switchVerTodos != null) switchVerTodos.setChecked(verTodosLosEventos);
-
-        // ========== ADAPTADORES ==========
-        List<String> opcionesTipo = new ArrayList<>();
-        opcionesTipo.add("Todos");
-        opcionesTipo.addAll(Arrays.asList(com.easypets.models.TipoEvento.obtenerTodosLosNombres()));
-        ArrayAdapter<String> adapterTipo = new ArrayAdapter<>(requireContext(), android.R.layout.simple_dropdown_item_1line, opcionesTipo);
-        spinnerTipo.setAdapter(adapterTipo);
-
-        List<String> opcionesMascotas = new ArrayList<>();
-        opcionesMascotas.add("Todas");
-        opcionesMascotas.add("General");
-        if (nombresMascotas != null) {
-            for (String nombre : nombresMascotas) {
-                if (!opcionesMascotas.contains(nombre)) {
-                    opcionesMascotas.add(nombre);
-                }
-            }
-        }
-        ArrayAdapter<String> adapterMascotas = new ArrayAdapter<>(requireContext(), android.R.layout.simple_dropdown_item_1line, opcionesMascotas);
-        spinnerMascotas.setAdapter(adapterMascotas);
-
-        // ========== RESTAURAR VALORES ACTUALES ==========
-        spinnerTipo.setText(filtroTipoActual, false);
-        spinnerMascotas.setText(filtroMascotaActual, false);
-
-        Log.d(TAG, "Diálogo abierto - Tipo actual: " + filtroTipoActual + ", Mascota actual: " + filtroMascotaActual);
-
-        // ========== APLICAR FILTROS ==========
-        btnAplicar.setOnClickListener(view -> {
-            // Capturar valores DIRECTAMENTE del texto de los spinners
-            String tipoSeleccionado = spinnerTipo.getText().toString().trim();
-            String mascotaSeleccionada = spinnerMascotas.getText().toString().trim();
-
-            // Validar que no estén vacíos
-            if (tipoSeleccionado.isEmpty() || mascotaSeleccionada.isEmpty()) {
-                Toast.makeText(requireContext(), "Por favor selecciona filtros válidos", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            Log.d(TAG, "Aplicando filtros - Tipo: " + tipoSeleccionado + ", Mascota: " + mascotaSeleccionada);
-
-            // Asignar a variables globales
-            filtroTipoActual = tipoSeleccionado;
-            filtroMascotaActual = mascotaSeleccionada;
-
-            // Capturar estado del switch
-            if (switchVerTodos != null) {
-                verTodosLosEventos = switchVerTodos.isChecked();
-                Log.d(TAG, "Ver todos eventos: " + verTodosLosEventos);
-            }
-
-            // Aplicar filtros y cerrar
-            aplicarFiltros();
-            bottomSheet.dismiss();
-        });
-
-        // ========== LIMPIAR FILTROS ==========
-        btnLimpiar.setOnClickListener(view -> {
-            Log.d(TAG, "Limpiando filtros");
-            verTodosLosEventos = false;
-            filtroTipoActual = "Todos";
-            filtroMascotaActual = "Todas";
-
-            if (switchVerTodos != null) switchVerTodos.setChecked(false);
-
-            aplicarFiltros();
-            bottomSheet.dismiss();
-        });
-
-        bottomSheet.show();
-    }
-
-    private void mostrarBuscadorDeFecha(String uid) {
-        DatePickerDialog datePicker = new DatePickerDialog(requireContext(), R.style.TemaPickerVerde, (view, year, month, dayOfMonth) -> {
-            Calendar nuevaFecha = Calendar.getInstance();
-            nuevaFecha.set(Calendar.YEAR, year);
-            nuevaFecha.set(Calendar.MONTH, month);
-            nuevaFecha.set(Calendar.DAY_OF_MONTH, dayOfMonth);
-            nuevaFecha.set(Calendar.HOUR_OF_DAY, 0);
-            nuevaFecha.set(Calendar.MINUTE, 0);
-            nuevaFecha.set(Calendar.SECOND, 0);
-            nuevaFecha.set(Calendar.MILLISECOND, 0);
-
-            calendarioActual = nuevaFecha;
-
-            try {
-                calendarView.setDate(calendarioActual);
-            } catch (OutOfDateRangeException e) {
-                e.printStackTrace();
-            }
-
-            actualizarTextoFecha(dayOfMonth, month, year);
-            cargarEventosDeFecha(uid, dayOfMonth, month, year);
-
-        }, calendarioActual.get(Calendar.YEAR), calendarioActual.get(Calendar.MONTH), calendarioActual.get(Calendar.DAY_OF_MONTH));
-
-        datePicker.show();
-        datePicker.getButton(DatePickerDialog.BUTTON_POSITIVE).setTextColor(ContextCompat.getColor(requireContext(), R.color.color_acento_primario));
-        datePicker.getButton(DatePickerDialog.BUTTON_NEGATIVE).setTextColor(ContextCompat.getColor(requireContext(), R.color.color_acento_primario));
-    }
-
-    private void actualizarTextoFecha(int dia, int mes, int anio) {
-        tvFechaSeleccionada.setText(String.format(Locale.getDefault(), "Eventos para el %02d/%02d/%d", dia, mes + 1, anio));
-    }
-
     private void cargarMascotasDelUsuario(FirebaseUser user) {
         mascotaRepository.escucharMascotas(user.getUid(), new MascotaRepository.LeerMascotasCallback() {
             @Override
             public void onResultado(List<Mascota> listaMascotas) {
                 nombresMascotas.clear();
                 listaMascotasUsuario.clear();
+                nombresMascotas.add("General");
                 listaMascotasUsuario.addAll(listaMascotas);
                 if (eventoAdapter != null) eventoAdapter.setMascotas(listaMascotasUsuario);
                 for (Mascota m : listaMascotas) {
@@ -572,12 +520,9 @@ public class CalendarioFragment extends Fragment {
                         nombresMascotas.add(m.getNombre());
                     }
                 }
-                Log.d(TAG, "Mascotas cargadas: " + nombresMascotas.size());
             }
             @Override
-            public void onError(String error) {
-                Log.e(TAG, "Error cargando mascotas: " + error);
-            }
+            public void onError(String error) {}
         });
     }
 
@@ -589,7 +534,7 @@ public class CalendarioFragment extends Fragment {
                     eventoRepository.eliminarEvento(mAuth.getCurrentUser().getUid(), evento.getId(), new EventoRepository.AccionCallback() {
                         @Override
                         public void onExito() {
-                            cargarEventosDeFecha(mAuth.getCurrentUser().getUid(), calendarioActual.get(Calendar.DAY_OF_MONTH), calendarioActual.get(Calendar.MONTH), calendarioActual.get(Calendar.YEAR));
+                            refrescarEventos(mAuth.getCurrentUser().getUid());
                         }
                         @Override
                         public void onError(String error) {
@@ -766,7 +711,7 @@ public class CalendarioFragment extends Fragment {
                     @Override
                     public void onExito() {
                         dialog.dismiss();
-                        cargarEventosDeFecha(userC.getUid(), calendarioActual.get(Calendar.DAY_OF_MONTH), calendarioActual.get(Calendar.MONTH), calendarioActual.get(Calendar.YEAR));
+                        refrescarEventos(userC.getUid());
                     }
                     @Override
                     public void onError(String error) {
