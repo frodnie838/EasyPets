@@ -11,7 +11,6 @@ import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.PowerManager;
-import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
 
@@ -20,57 +19,46 @@ import com.easypets.ui.base.MainActivity;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * Receptor de difusiones (BroadcastReceiver) encargado de gestionar las alarmas y recordatorios locales.
+ * Evalúa las preferencias de privacidad del usuario antes de emitir notificaciones push
+ * y sincroniza el historial de notificaciones con Firebase Realtime Database.
+ */
 public class NotificacionReceiver extends BroadcastReceiver {
+
+    private static final String CHANNEL_ID = "easypets_alarmas";
+    private static final String PREFS_NAME = "AjustesEasyPets";
+    private static final String PREF_NOTIFICACIONES = "notificaciones";
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        Log.d("ALARMAS", "¡BroadcastReceiver ejecutado!");
-
-        // 1. Recuperamos los datos que programamos
         String titulo = intent.getStringExtra("titulo");
         String mensaje = intent.getStringExtra("mensaje");
-        String uid = intent.getStringExtra("uid"); // Recuperamos el ID del usuario
+        String uid = intent.getStringExtra("uid");
 
         if (titulo == null) titulo = "¡Recordatorio EasyPets!";
         if (mensaje == null) mensaje = "Tienes un evento pendiente para tu mascota.";
 
-        // ✨ 2. EL GUARDIÁN: Leemos los Ajustes del usuario ✨
-        SharedPreferences prefs = context.getSharedPreferences("AjustesEasyPets", Context.MODE_PRIVATE);
-        boolean notificacionesActivadas = prefs.getBoolean("notificaciones", true);
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        boolean notificacionesActivadas = prefs.getBoolean(PREF_NOTIFICACIONES, true);
 
-        // Si están activadas, despertamos la pantalla y hacemos ruido
         if (notificacionesActivadas) {
             despertarPantalla(context);
-            mostrarNotificacionExacata(context, titulo, mensaje);
-            Log.d("ALARMAS", "Notificación Push mostrada al usuario.");
-        } else {
-            // Si están desactivadas, no hacemos nada en el móvil (modo silencio)
-            Log.d("ALARMAS", "Notificación Push silenciada por los ajustes.");
+            mostrarNotificacionExacta(context, titulo, mensaje);
         }
 
-        // ✨ 3. LA CAMPANITA (Se ejecuta SIEMPRE, esté silenciado o no) ✨
-        // Guardamos una copia en el buzón de Firebase para el desplegable de la app
-        if (uid != null && !uid.isEmpty()) {
-            DatabaseReference buzonRef = FirebaseDatabase.getInstance().getReference()
-                    .child("notificaciones")
-                    .child(uid);
-
-            String idNotificacion = buzonRef.push().getKey();
-
-            // Preparamos la carta igual que en el foro
-            java.util.HashMap<String, Object> carta = new java.util.HashMap<>();
-            carta.put("titulo", "📅 " + titulo); // Le pongo un emoji de calendario para diferenciarlo del foro
-            carta.put("mensaje", mensaje);
-            carta.put("mostrada", false); // Esto encenderá el puntito rojo de la campana
-            carta.put("tipo", "evento_calendario");
-
-            if (idNotificacion != null) {
-                buzonRef.child(idNotificacion).setValue(carta);
-                Log.d("ALARMAS", "Notificación guardada en el buzón de Firebase de forma silenciosa.");
-            }
-        }
+        sincronizarNotificacionFirebase(uid, titulo, mensaje);
     }
 
+    /**
+     * Enciende temporalmente la pantalla del dispositivo utilizando WakeLock para
+     * asegurar que el usuario visualice alertas críticas programadas.
+     *
+     * @param context Contexto de la aplicación.
+     */
     private void despertarPantalla(Context context) {
         PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
         if (pm != null && !pm.isInteractive()) {
@@ -84,18 +72,28 @@ public class NotificacionReceiver extends BroadcastReceiver {
         }
     }
 
-    private void mostrarNotificacionExacata(Context context, String titulo, String mensaje) {
-        String channelId = "easypets_alarmas";
-
+    /**
+     * Construye y despliega la notificación local en el sistema operativo Android.
+     *
+     * @param context Contexto de la aplicación.
+     * @param titulo  Título de la notificación.
+     * @param mensaje Cuerpo del mensaje de la notificación.
+     */
+    private void mostrarNotificacionExacta(Context context, String titulo, String mensaje) {
         Intent mainIntent = new Intent(context, MainActivity.class);
         mainIntent.putExtra("abrirFragment", "calendario");
         mainIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-        PendingIntent pendingIntent = PendingIntent.getActivity(context, (int)System.currentTimeMillis(), mainIntent,
-                PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_IMMUTABLE);
+
+        PendingIntent pendingIntent = PendingIntent.getActivity(
+                context,
+                (int) System.currentTimeMillis(),
+                mainIntent,
+                PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_IMMUTABLE
+        );
 
         Uri sonidoFuerte = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
 
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, channelId)
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.logo_sin_fondo)
                 .setContentTitle(titulo)
                 .setContentText(mensaje)
@@ -107,15 +105,47 @@ public class NotificacionReceiver extends BroadcastReceiver {
 
         NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(channelId,
-                    "Alarmas de EasyPets",
-                    NotificationManager.IMPORTANCE_HIGH);
-            channel.enableVibration(true);
-            notificationManager.createNotificationChannel(channel);
-        }
+        if (notificationManager != null) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                NotificationChannel channel = new NotificationChannel(
+                        CHANNEL_ID,
+                        "Alarmas de EasyPets",
+                        NotificationManager.IMPORTANCE_HIGH
+                );
+                channel.enableVibration(true);
+                notificationManager.createNotificationChannel(channel);
+            }
 
-        int idAleatorio = (int) System.currentTimeMillis();
-        notificationManager.notify(idAleatorio, builder.build());
+            int idAleatorio = (int) System.currentTimeMillis();
+            notificationManager.notify(idAleatorio, builder.build());
+        }
+    }
+
+    /**
+     * Registra la notificación en la base de datos en tiempo real para que esté disponible
+     * en el historial (campana) dentro de la aplicación de manera persistente.
+     *
+     * @param uid     Identificador del usuario.
+     * @param titulo  Título del evento.
+     * @param mensaje Detalle del evento.
+     */
+    private void sincronizarNotificacionFirebase(String uid, String titulo, String mensaje) {
+        if (uid != null && !uid.isEmpty()) {
+            DatabaseReference buzonRef = FirebaseDatabase.getInstance().getReference()
+                    .child("notificaciones")
+                    .child(uid);
+
+            String idNotificacion = buzonRef.push().getKey();
+
+            if (idNotificacion != null) {
+                Map<String, Object> notificacionData = new HashMap<>();
+                notificacionData.put("titulo", "📅 " + titulo);
+                notificacionData.put("mensaje", mensaje);
+                notificacionData.put("mostrada", false);
+                notificacionData.put("tipo", "evento_calendario");
+
+                buzonRef.child(idNotificacion).setValue(notificacionData);
+            }
+        }
     }
 }

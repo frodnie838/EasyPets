@@ -22,6 +22,12 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
+/**
+ * Adaptador para el RecyclerView encargado de renderizar la agenda de eventos.
+ * Vincula dinámicamente la información del evento con el listado de mascotas del usuario
+ * para resolver dependencias de nombres. Aplica lógica de parseo temporal para
+ * formatear el calendario y altera el estilo visual si detecta que la cita ha caducado.
+ */
 public class EventoAdapter extends RecyclerView.Adapter<EventoAdapter.EventoViewHolder> {
 
     private List<Evento> listaEventos = new ArrayList<>();
@@ -55,7 +61,6 @@ public class EventoAdapter extends RecyclerView.Adapter<EventoAdapter.EventoView
         boolean esPasado = false;
 
         if (fechaOriginal != null && fechaOriginal.contains("/")) {
-            // Comprobar si la fecha ya ha pasado
             try {
                 SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
                 Date fechaDelEvento = sdf.parse(fechaOriginal);
@@ -67,13 +72,12 @@ public class EventoAdapter extends RecyclerView.Adapter<EventoAdapter.EventoView
                 hoyCal.set(Calendar.MILLISECOND, 0);
 
                 if (fechaDelEvento != null && fechaDelEvento.getTime() < hoyCal.getTimeInMillis()) {
-                    esPasado = true; // El evento es anterior a hoy
+                    esPasado = true;
                 }
             } catch (Exception e) {
                 e.printStackTrace();
             }
 
-            // Formatear la fecha para mostrar el bloque
             String[] partes = fechaOriginal.split("/");
             if (partes.length >= 2) {
                 String[] meses = {"Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"};
@@ -101,12 +105,10 @@ public class EventoAdapter extends RecyclerView.Adapter<EventoAdapter.EventoView
             holder.tvDia.setTextColor(ContextCompat.getColor(context, R.color.red));
             holder.tvMes.setTextColor(ContextCompat.getColor(context, R.color.red));
         } else {
-            // Restaurar los colores normales para eventos de hoy o del futuro
             holder.tvDia.setTextColor(ContextCompat.getColor(context, R.color.color_acento_primario));
             holder.tvMes.setTextColor(ContextCompat.getColor(context, R.color.grey));
         }
 
-        // 3. Detalle (Hora y Tipo)
         String detalle = "";
         if (evento.getHora() != null && !evento.getHora().isEmpty()) {
             detalle += evento.getHora() + " - ";
@@ -114,7 +116,6 @@ public class EventoAdapter extends RecyclerView.Adapter<EventoAdapter.EventoView
         detalle += evento.getTipo();
         holder.tvDetalle.setText(detalle);
 
-        // 4. Mostrar el nombre de la mascota
         String idMascota = evento.getIdMascota();
         if (idMascota != null && !idMascota.isEmpty()) {
             String nombreMascota = "Mascota borrada o desconocida";
@@ -132,7 +133,6 @@ public class EventoAdapter extends RecyclerView.Adapter<EventoAdapter.EventoView
             holder.tvMascota.setVisibility(View.GONE);
         }
 
-        // 5. Icono
         if ("Veterinario".equals(evento.getTipo())) {
             holder.ivIcono.setImageResource(R.drawable.veterinario);
         } else if ("Peluquería".equals(evento.getTipo())) {

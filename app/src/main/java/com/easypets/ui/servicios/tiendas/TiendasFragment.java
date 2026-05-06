@@ -32,6 +32,11 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Fragmento encargado de listar los establecimientos de venta de productos para mascotas.
+ * Consume la API de Google Places (Text Search) de forma asíncrona mediante Volley
+ * para recuperar datos geolocalizados en base a la ciudad emitida por el ViewModel.
+ */
 public class TiendasFragment extends Fragment {
 
     private ProgressBar progressBarTiendas;
@@ -62,6 +67,14 @@ public class TiendasFragment extends Fragment {
         return root;
     }
 
+    /**
+     * Realiza una petición GET a la API de Google Places Search.
+     * Procesa la respuesta en formato JSON para extraer los detalles de cada establecimiento comercial
+     * (nombre, dirección, valoración, estado de apertura y referencias fotográficas)
+     * e inyecta los resultados en el adaptador del RecyclerView.
+     *
+     * @param ciudad Nombre de la ubicación geográfica sobre la cual acotar la búsqueda.
+     */
     private void cargarDeGoogle(String ciudad) {
         progressBarTiendas.setVisibility(View.VISIBLE);
         layoutSinTiendas.setVisibility(View.GONE);
@@ -100,7 +113,6 @@ public class TiendasFragment extends Fragment {
                             double rating = place.optDouble("rating", 0.0);
                             int totalResenas = place.optInt("user_ratings_total", 0);
 
-                            // Foto genérica de tienda de mascotas
                             String imageUrl = "https://images.unsplash.com/photo-1583337130417-3346a1be7dee?w=500&q=80";
                             if (place.has("photos")) {
                                 String photoRef = place.getJSONArray("photos").getJSONObject(0).getString("photo_reference");
@@ -143,6 +155,12 @@ public class TiendasFragment extends Fragment {
         Volley.newRequestQueue(requireContext()).add(request);
     }
 
+    /**
+     * Actualiza la interfaz de usuario para reflejar estados de error o listas vacías,
+     * ocultando el RecyclerView y desplegando un mensaje de contingencia.
+     *
+     * @param mensaje Texto descriptivo del error a presentar al usuario.
+     */
     private void mostrarError(String mensaje) {
         tvMensajeTiendas.setText(mensaje);
         layoutSinTiendas.setVisibility(View.VISIBLE);

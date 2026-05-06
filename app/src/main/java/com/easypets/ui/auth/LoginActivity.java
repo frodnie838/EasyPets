@@ -32,6 +32,11 @@ import com.google.firebase.database.FirebaseDatabase;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Actividad responsable de gestionar la autenticación de usuarios en el sistema.
+ * Implementa inicio de sesión mediante correo y contraseña, autenticación federada (Google),
+ * opciones de recuperación de cuenta y acceso como invitado.
+ */
 public class LoginActivity extends AppCompatActivity {
 
     private EditText emailEditText, passwordEditText;
@@ -39,7 +44,6 @@ public class LoginActivity extends AppCompatActivity {
     private TextView registerTextView, forgotPasswordTextView, guestTextView;
 
     private FirebaseAuth mAuth;
-    // LA NUEVA HERRAMIENTA DE GOOGLE (ANDROID 14+)
     private CredentialManager credentialManager;
 
     @Override
@@ -47,13 +51,9 @@ public class LoginActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
 
-        // 1. Inicializar Firebase Auth
         mAuth = FirebaseAuth.getInstance();
-
-        // 2. Inicializar el nuevo Credential Manager
         credentialManager = CredentialManager.create(this);
 
-        // 3. Vincular Vistas
         emailEditText = findViewById(R.id.emailEditText);
         passwordEditText = findViewById(R.id.passwordEditText);
         btnLogin = findViewById(R.id.btnLogin);
@@ -62,12 +62,8 @@ public class LoginActivity extends AppCompatActivity {
         guestTextView = findViewById(R.id.guestTextView);
         forgotPasswordTextView = findViewById(R.id.forgotPasswordTextView);
 
-        // 4. Listeners (Botones)
-
-        // Botón Login Normal
         btnLogin.setOnClickListener(v -> loginUsuario());
 
-        // Configurar el "Enter" en el teclado
         passwordEditText.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_DONE || actionId == EditorInfo.IME_ACTION_GO) {
                 loginUsuario();
@@ -76,29 +72,26 @@ public class LoginActivity extends AppCompatActivity {
             return false;
         });
 
-        // Botón Login Google
         btnGoogle.setOnClickListener(v -> signInConGoogle());
 
-        // Ir a Registro
         registerTextView.setOnClickListener(v -> {
             Intent i = new Intent(LoginActivity.this, RegisterActivity.class);
             startActivity(i);
         });
 
-        // Ir al Main (Invitado)
         guestTextView.setOnClickListener(v -> {
             Intent i = new Intent(LoginActivity.this, MainActivity.class);
             startActivity(i);
             finish();
         });
 
-        // Olvidé contraseña
         forgotPasswordTextView.setOnClickListener(v -> mostrarDialogoRecuperarPassword());
     }
 
-    // ------------------------------------------------------------
-    // LÓGICA DE LOGIN EMAIL / PASSWORD
-    // ------------------------------------------------------------
+    /**
+     * Valida las credenciales introducidas y solicita la autenticación a Firebase Auth.
+     * Procesa y notifica los posibles errores de conexión o credenciales inválidas.
+     */
     private void loginUsuario() {
         String email = emailEditText.getText().toString().trim();
         String password = passwordEditText.getText().toString().trim();
@@ -112,7 +105,6 @@ public class LoginActivity extends AppCompatActivity {
             return;
         }
 
-        // Intento de login en Firebase
         mAuth.signInWithEmailAndPassword(email, password)
                 .addOnCompleteListener(this, task -> {
                     if (task.isSuccessful()) {
@@ -122,18 +114,14 @@ public class LoginActivity extends AppCompatActivity {
                         Exception e = task.getException();
 
                         if (e instanceof com.google.firebase.auth.FirebaseAuthInvalidUserException) {
-                            // El usuario no existe o está deshabilitado
                             mensajeError = "Esta cuenta no existe o ha sido deshabilitada.";
                         } else if (e instanceof com.google.firebase.auth.FirebaseAuthInvalidCredentialsException) {
-                            // La contraseña no coincide o el email está mal formado
                             mensajeError = "El correo o la contraseña son incorrectos.";
                         } else if (e instanceof com.google.firebase.FirebaseNetworkException) {
-                            // Error de conexión (modo avión, sin datos...)
                             mensajeError = "No hay conexión a internet.";
                         } else if (e instanceof com.google.firebase.auth.FirebaseAuthUserCollisionException) {
                             mensajeError = "Este correo ya está en uso con otro método de acceso.";
                         } else {
-                            // Si es un error raro (como demasiados intentos), lo capturamos aquí
                             mensajeError = "Error al iniciar sesión. Inténtalo de nuevo más tarde.";
                         }
 
@@ -142,11 +130,11 @@ public class LoginActivity extends AppCompatActivity {
                 });
     }
 
-    // ------------------------------------------------------------
-    // LÓGICA DE LOGIN CON GOOGLE (NUEVO SISTEMA)
-    // ------------------------------------------------------------
+    /**
+     * Inicializa el flujo de autenticación mediante Google Sign-In utilizando CredentialManager.
+     * En caso de no encontrar credenciales almacenadas, redirige al registro como método de contingencia.
+     */
     private void signInConGoogle() {
-        // Configuramos la petición para obtener el ID de Google
         GetGoogleIdOption googleIdOption = new GetGoogleIdOption.Builder()
                 .setFilterByAuthorizedAccounts(false)
                 .setServerClientId(getString(R.string.default_web_client_id))
@@ -157,7 +145,6 @@ public class LoginActivity extends AppCompatActivity {
                 .addCredentialOption(googleIdOption)
                 .build();
 
-        // Lanzamos la nueva interfaz nativa de Android
         credentialManager.getCredentialAsync(
                 this,
                 request,
@@ -171,25 +158,16 @@ public class LoginActivity extends AppCompatActivity {
 
                     @Override
                     public void onError(GetCredentialException e) {
-                        // ✨ AQUÍ ESTÁ LA MAGIA ✨
-                        // Si nos dice que no hay credenciales (No credentials available)
-                        // o el usuario cierra la ventana, intentamos el modo "Registro" como fallback.
                         if (e instanceof androidx.credentials.exceptions.NoCredentialException ||
                                 e.getMessage().contains("No credentials available")) {
 
-                            // Mostramos un mensajito amable al usuario
                             Toast.makeText(LoginActivity.this, "No se encontraron cuentas guardadas. Vamos a añadir una.", Toast.LENGTH_SHORT).show();
 
-                            // Redirigimos al usuario a la pantalla de Registro,
-                            // que sabemos que SÍ funciona para emuladores vacíos.
                             Intent intent = new Intent(LoginActivity.this, RegisterActivity.class);
-                            // Le pasamos un aviso a RegisterActivity de que venimos de un fallo de Login
                             intent.putExtra("abrirGoogleAutomatico", true);
                             startActivity(intent);
-                            finish(); // Cerramos el login actual
-
+                            finish();
                         } else {
-                            // Para cualquier otro error (sin internet, etc), mostramos el mensaje normal
                             Toast.makeText(LoginActivity.this, "Error de Google: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                         }
                     }
@@ -197,6 +175,11 @@ public class LoginActivity extends AppCompatActivity {
         );
     }
 
+    /**
+     * Procesa la respuesta exitosa del proveedor de credenciales y autentica al usuario en Firebase.
+     *
+     * @param result Respuesta de credenciales obtenida de Google.
+     */
     private void manejarRespuestaGoogle(GetCredentialResponse result) {
         try {
             androidx.credentials.Credential credential = result.getCredential();
@@ -210,28 +193,32 @@ public class LoginActivity extends AppCompatActivity {
                 mAuth.signInWithCredential(authCredential).addOnCompleteListener(this, task -> {
                     if (task.isSuccessful()) {
                         FirebaseUser user = mAuth.getCurrentUser();
+                        if (user != null) {
+                            DatabaseReference userRef = FirebaseDatabase.getInstance().getReference().child("usuarios").child(user.getUid());
 
-                        DatabaseReference userRef = FirebaseDatabase.getInstance().getReference().child("usuarios").child(user.getUid());
+                            userRef.get().addOnCompleteListener(dbTask -> {
+                                if (dbTask.isSuccessful() && !dbTask.getResult().exists()) {
+                                    String nombre = googleCredential.getGivenName();
+                                    String apellidos = googleCredential.getFamilyName();
+                                    String urlFoto = "";
 
-                        userRef.get().addOnCompleteListener(dbTask -> {
-                            if (dbTask.isSuccessful() && !dbTask.getResult().exists()) {
-                                String nombre = googleCredential.getGivenName();
-                                String apellidos = googleCredential.getFamilyName();
-                                String urlFoto = "";
-                                if (user.getPhotoUrl() != null) {
-                                    urlFoto = user.getPhotoUrl().toString();
-                                } else if (googleCredential.getProfilePictureUri() != null) {
-                                    urlFoto = googleCredential.getProfilePictureUri().toString();
+                                    if (user.getPhotoUrl() != null) {
+                                        urlFoto = user.getPhotoUrl().toString();
+                                    } else if (googleCredential.getProfilePictureUri() != null) {
+                                        urlFoto = googleCredential.getProfilePictureUri().toString();
+                                    }
+
+                                    if (nombre == null) nombre = user.getDisplayName();
+                                    if (nombre == null) nombre = "Usuario";
+                                    if (apellidos == null) apellidos = "";
+
+                                    String nickGenerado = nombre.replaceAll("\\s+", "") + (System.currentTimeMillis() % 10000);
+                                    guardarDatosEnBaseDeDatos(user.getUid(), nombre, apellidos, nickGenerado, user.getEmail(), urlFoto);
+                                } else {
+                                    irAMainActivity();
                                 }
-                                if (nombre == null) nombre = user.getDisplayName();
-                                if (nombre == null) nombre = "Usuario";
-                                if (apellidos == null) apellidos = "";
-                                String nickGenerado = nombre.replaceAll("\\s+", "") + (System.currentTimeMillis() % 10000);
-                                guardarDatosEnBaseDeDatos(user.getUid(), nombre, apellidos, nickGenerado, user.getEmail(), urlFoto);
-                            } else {
-                                irAMainActivity();
-                            }
-                        });
+                            });
+                        }
                     } else {
                         Toast.makeText(LoginActivity.this, "Error Auth: " + task.getException().getMessage(), Toast.LENGTH_SHORT).show();
                     }
@@ -242,6 +229,16 @@ public class LoginActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Persiste la información inicial del usuario en la base de datos tras un registro exitoso.
+     *
+     * @param uid       Identificador de usuario proporcionado por Firebase Auth.
+     * @param nombre    Nombre del usuario.
+     * @param apellidos Apellidos del usuario.
+     * @param nick      Nickname generado automáticamente.
+     * @param email     Correo electrónico del usuario.
+     * @param fotoUrl   URL de la fotografía de perfil obtenida del proveedor.
+     */
     private void guardarDatosEnBaseDeDatos(String uid, String nombre, String apellidos, String nick, String email, String fotoUrl) {
         long timestamp = System.currentTimeMillis();
 
@@ -273,17 +270,16 @@ public class LoginActivity extends AppCompatActivity {
                 });
     }
 
-    // ------------------------------------------------------------
-    // LÓGICA DE RECUPERAR CONTRASEÑA
-    // ------------------------------------------------------------
+    /**
+     * Despliega un cuadro de diálogo nativo permitiendo al usuario solicitar
+     * un restablecimiento de contraseña vía correo electrónico.
+     */
     private void mostrarDialogoRecuperarPassword() {
         EditText resetMail = new EditText(this);
         AlertDialog.Builder passwordResetDialog = new AlertDialog.Builder(this);
         passwordResetDialog.setTitle("Recuperar Contraseña");
 
-        // Fíjate que aquí uso una string externa si la tienes, o pongo el texto normal
         passwordResetDialog.setMessage(getString(R.string.correo_recuperar_pass) != null ? getString(R.string.correo_recuperar_pass) : "Introduce tu correo para recibir el enlace.");
-
         passwordResetDialog.setView(resetMail);
 
         passwordResetDialog.setPositiveButton("Enviar", (dialog, which) -> {
@@ -301,15 +297,12 @@ public class LoginActivity extends AppCompatActivity {
         });
 
         passwordResetDialog.setNegativeButton(getString(R.string.cancelar) != null ? getString(R.string.cancelar) : "Cancelar", (dialog, which) -> {
-            // No hacer nada
+            // Acción cancelada por el usuario
         });
 
         passwordResetDialog.create().show();
     }
 
-    // ------------------------------------------------------------
-    // NAVEGACIÓN
-    // ------------------------------------------------------------
     private void irAMainActivity() {
         Intent intent = new Intent(LoginActivity.this, MainActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK);

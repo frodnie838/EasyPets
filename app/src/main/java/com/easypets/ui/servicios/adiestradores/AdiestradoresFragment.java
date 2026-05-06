@@ -32,6 +32,11 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Fragmento encargado de listar los servicios de adiestramiento canino y educación.
+ * Consume la API de Google Places (Text Search) mediante la librería Volley para
+ * obtener establecimientos geolocalizados en base a la ciudad seleccionada en el ViewModel.
+ */
 public class AdiestradoresFragment extends Fragment {
 
     private ProgressBar progressBarAdiestradores;
@@ -62,6 +67,13 @@ public class AdiestradoresFragment extends Fragment {
         return root;
     }
 
+    /**
+     * Realiza una petición asíncrona GET a la API de Google Places Search.
+     * Analiza el JSON de respuesta para extraer información relevante (nombre, dirección,
+     * valoración, estado de apertura y referencias fotográficas) y la inyecta en el RecyclerView.
+     *
+     * @param ciudad Nombre de la ciudad para la cual se desean buscar adiestradores.
+     */
     private void cargarDeGoogle(String ciudad) {
         progressBarAdiestradores.setVisibility(View.VISIBLE);
         layoutSinAdiestradores.setVisibility(View.GONE);
@@ -75,7 +87,6 @@ public class AdiestradoresFragment extends Fragment {
             return;
         }
 
-        // Búsqueda específica para educación y adiestramiento
         String query = "adiestrador canino en " + ciudad.trim();
         String url = "https://maps.googleapis.com/maps/api/place/textsearch/json?query="
                 + Uri.encode(query) + "&key=" + apiKey + "&language=es";
@@ -101,7 +112,6 @@ public class AdiestradoresFragment extends Fragment {
                             double rating = place.optDouble("rating", 0.0);
                             int totalResenas = place.optInt("user_ratings_total", 0);
 
-                            // Foto temática de adiestramiento canino
                             String imageUrl = "https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=500&q=80";
                             if (place.has("photos")) {
                                 String photoRef = place.getJSONArray("photos").getJSONObject(0).getString("photo_reference");
@@ -144,6 +154,11 @@ public class AdiestradoresFragment extends Fragment {
         Volley.newRequestQueue(requireContext()).add(request);
     }
 
+    /**
+     * Actualiza la interfaz de usuario para mostrar estados de error o listas vacías.
+     *
+     * @param mensaje Texto descriptivo del error a presentar al usuario.
+     */
     private void mostrarError(String mensaje) {
         tvMensajeAdiestradores.setText(mensaje);
         layoutSinAdiestradores.setVisibility(View.VISIBLE);

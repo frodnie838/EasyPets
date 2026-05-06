@@ -29,11 +29,20 @@ import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * Adaptador encargado de gestionar y renderizar la lista de comentarios asociados a una mascota.
+ * Implementa un sistema de resaltado dinámico para menciones (ej. @usuario) utilizando
+ * expresiones regulares y delegando eventos de interacción prolongada mediante interfaces.
+ */
 public class ComentarioMascotaAdapter extends RecyclerView.Adapter<ComentarioMascotaAdapter.ViewHolder> {
 
     private List<ComentarioMascota> listaComentarios;
     private OnComentarioLongClickListener listener;
 
+    /**
+     * Interfaz para interceptar y delegar eventos de pulsación prolongada
+     * sobre los elementos de la lista, típicamente usada para desplegar menús contextuales.
+     */
     public interface OnComentarioLongClickListener {
         void onLongClick(ComentarioMascota comentario);
     }
@@ -53,6 +62,12 @@ public class ComentarioMascotaAdapter extends RecyclerView.Adapter<ComentarioMas
         return new ViewHolder(view);
     }
 
+    /**
+     * Vincula los datos del modelo a las vistas correspondientes.
+     * Procesa el texto del comentario para aplicar estilos (negrita y color de acento)
+     * a las menciones de usuarios y resuelve la retrocompatibilidad visual en la
+     * carga de avatares (Base64 heredado vs. URLs de Firebase Storage).
+     */
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         ComentarioMascota comentario = listaComentarios.get(position);

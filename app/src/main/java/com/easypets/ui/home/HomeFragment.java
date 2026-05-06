@@ -48,6 +48,12 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Random;
 
+/**
+ * Fragmento principal (Dashboard) de la aplicación.
+ * Muestra accesos directos a los módulos principales, consejos dinámicos y,
+ * para usuarios autenticados, un resumen de los próximos eventos y una herramienta
+ * de notas rápidas vinculadas al calendario.
+ */
 public class HomeFragment extends Fragment {
 
     private FirebaseAuth mAuth;
@@ -56,7 +62,6 @@ public class HomeFragment extends Fragment {
     private EventoRepository eventoRepository;
     private MascotaRepository mascotaRepository;
 
-    // Vistas Privadas/Públicas
     private CardView cardMisMascotas, cardVeterinarios, cardCalendario, cardEducacion, cardTiendas, cardAvisoInvitado;
     private LinearLayout layoutFuncionesPrivadas;
     private TextView tvConsejoDia, tvSinEventosProximos;
@@ -79,11 +84,9 @@ public class HomeFragment extends Fragment {
 
         vincularVistas(view);
 
-        // Fecha por defecto para la nota
         Calendar hoy = Calendar.getInstance();
         fechaNotaSeleccionada = String.format(Locale.getDefault(), "%02d/%02d/%d", hoy.get(Calendar.DAY_OF_MONTH), hoy.get(Calendar.MONTH) + 1, hoy.get(Calendar.YEAR));
 
-        // Lógica de visualización según el tipo de usuario
         if (currentUser == null) {
             configurarModoInvitado();
         } else {
@@ -95,10 +98,13 @@ public class HomeFragment extends Fragment {
 
         return view;
     }
+
+    /**
+     * Sincroniza el estado visual del BottomNavigationView al retomar el fragmento.
+     */
     @Override
     public void onResume() {
         super.onResume();
-        // Forzamos al menú a marcar el icono de Home al volver a esta pantalla
         if (getActivity() != null) {
             BottomNavigationView bottomNav = getActivity().findViewById(R.id.bottom_navigation);
             if (bottomNav != null) {
@@ -106,49 +112,50 @@ public class HomeFragment extends Fragment {
             }
         }
     }
+
     private void vincularVistas(View view) {
-        // Secciones principales
         layoutFuncionesPrivadas = view.findViewById(R.id.layoutFuncionesPrivadas);
         cardAvisoInvitado = view.findViewById(R.id.cardAvisoInvitadoHome);
         btnIrALoginHome = view.findViewById(R.id.btnIrALoginHome);
 
-        // Cards de navegación
         cardMisMascotas = view.findViewById(R.id.cardMisMascotas);
         cardVeterinarios = view.findViewById(R.id.cardVeterinarios);
         cardCalendario = view.findViewById(R.id.cardCalendario);
         cardEducacion = view.findViewById(R.id.cardEducacion);
         cardTiendas = view.findViewById(R.id.cardTiendas);
 
-        // Zona de consejos y eventos
         tvConsejoDia = view.findViewById(R.id.tvConsejoDia);
         tvSinEventosProximos = view.findViewById(R.id.tvSinEventosProximos);
         rvProximosEventos = view.findViewById(R.id.rvProximosEventos);
 
-        // Nota rápida
         etNotaRapida = view.findViewById(R.id.etNotaRapida);
         btnSeleccionarFecha = view.findViewById(R.id.btnSeleccionarFecha);
         btnGuardarNota = view.findViewById(R.id.btnGuardarNota);
 
-        // Configuración inicial RecyclerView
         eventoAdapter = new EventoAdapter();
         rvProximosEventos.setLayoutManager(new LinearLayoutManager(getContext()));
         rvProximosEventos.setAdapter(eventoAdapter);
     }
 
+    /**
+     * Ajusta la interfaz para usuarios no registrados, limitando las funcionalidades
+     * y mostrando accesos directos al flujo de autenticación.
+     */
     private void configurarModoInvitado() {
-        // Ocultar sección de eventos y notas personales
         layoutFuncionesPrivadas.setVisibility(View.GONE);
-        // Mostrar tarjeta informativa de invitación al login
         cardAvisoInvitado.setVisibility(View.VISIBLE);
 
         btnIrALoginHome.setOnClickListener(v -> irALogin());
     }
 
+    /**
+     * Habilita los componentes interactivos del panel principal para usuarios registrados,
+     * inicializando los listeners de datos y configurando la inserción de notas rápidas.
+     */
     private void configurarModoUsuario() {
         layoutFuncionesPrivadas.setVisibility(View.VISIBLE);
         cardAvisoInvitado.setVisibility(View.GONE);
 
-        // Cargar nombres de mascotas para el adaptador
         mascotaRepository.escucharMascotas(currentUser.getUid(), new MascotaRepository.LeerMascotasCallback() {
             @Override
             public void onResultado(List<Mascota> listaMascotas) {
@@ -160,7 +167,6 @@ public class HomeFragment extends Fragment {
 
         cargarProximosEventos();
 
-        // Lógica de fecha para nota
         btnSeleccionarFecha.setOnClickListener(v -> {
             Calendar c = Calendar.getInstance();
             new DatePickerDialog(requireContext(), (dp, year, month, day) -> {
@@ -169,7 +175,6 @@ public class HomeFragment extends Fragment {
             }, c.get(Calendar.YEAR), c.get(Calendar.MONTH), c.get(Calendar.DAY_OF_MONTH)).show();
         });
 
-        // Lógica de guardar nota
         btnGuardarNota.setOnClickListener(v -> {
             String texto = etNotaRapida.getText().toString().trim();
             if (texto.isEmpty()) {
@@ -193,6 +198,9 @@ public class HomeFragment extends Fragment {
         });
     }
 
+    /**
+     * Asigna los eventos de enrutamiento a las diferentes tarjetas del dashboard.
+     */
     private void configurarNavegacionBotones() {
         cardMisMascotas.setOnClickListener(v -> { cambiarTab(R.id.nav_pets); });
         cardCalendario.setOnClickListener(v -> { cambiarTab(R.id.nav_calendar); });
@@ -223,6 +231,11 @@ public class HomeFragment extends Fragment {
         startActivity(intent);
         if (getActivity() != null) getActivity().finish();
     }
+
+    /**
+     * Consulta el repositorio de eventos y filtra la colección para extraer
+     * y mostrar únicamente los 3 eventos cronológicamente más próximos a la fecha actual.
+     */
     private void cargarProximosEventos() {
         eventoRepository.obtenerTodosLosEventos(currentUser.getUid(), new EventoRepository.LeerEventosCallback() {
             @Override
@@ -231,7 +244,10 @@ public class HomeFragment extends Fragment {
 
                 SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
                 Calendar hoyCal = Calendar.getInstance();
-                hoyCal.set(Calendar.HOUR_OF_DAY, 0); hoyCal.set(Calendar.MINUTE, 0); hoyCal.set(Calendar.SECOND, 0); hoyCal.set(Calendar.MILLISECOND, 0);
+                hoyCal.set(Calendar.HOUR_OF_DAY, 0);
+                hoyCal.set(Calendar.MINUTE, 0);
+                hoyCal.set(Calendar.SECOND, 0);
+                hoyCal.set(Calendar.MILLISECOND, 0);
                 long inicioHoyMs = hoyCal.getTimeInMillis();
 
                 List<Evento> eventosFuturos = new ArrayList<>();
@@ -267,6 +283,10 @@ public class HomeFragment extends Fragment {
         tvSinEventosProximos.setVisibility(View.VISIBLE);
     }
 
+    /**
+     * Recupera un consejo o curiosidad aleatoria desde Firebase Database
+     * para mostrarla en el banner destacado del inicio.
+     */
     private void cargarConsejoAleatorio() {
         DatabaseReference curiosidadesRef = FirebaseDatabase.getInstance().getReference("curiosidades");
         curiosidadesRef.addListenerForSingleValueEvent(new ValueEventListener() {

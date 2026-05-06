@@ -38,6 +38,11 @@ import com.google.firebase.storage.StorageReference;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Actividad encargada de la configuración de la cuenta del usuario.
+ * Gestiona las preferencias de notificaciones Push (FCM), el acceso a la información
+ * legal (Privacidad y Términos) y ejecuta la eliminación total (RGPD) de la cuenta en cascada.
+ */
 public class AjustesActivity extends AppCompatActivity {
 
     private SwitchMaterial switchNotificaciones;
@@ -86,8 +91,13 @@ public class AjustesActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Sincroniza el estado del componente UI con el registro real del token FCM
+     * en Firebase Database. Administra la suscripción y desuscripción a notificaciones push.
+     *
+     * @param user Instancia del usuario autenticado actualmente.
+     */
     private void configurarSwitchNotificaciones(FirebaseUser user) {
-        // 1. Verificamos en Firebase si realmente tiene el token guardado (estado real)
         mDatabase.child("usuarios").child(user.getUid()).child("fcmToken")
                 .addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
@@ -97,24 +107,25 @@ public class AjustesActivity extends AppCompatActivity {
                     @Override public void onCancelled(@NonNull DatabaseError error) {}
                 });
 
-        // 2. Controlamos el cambio
         switchNotificaciones.setOnCheckedChangeListener((v, isChecked) -> {
             prefs.edit().putBoolean("notificaciones", isChecked).apply();
 
             if (isChecked) {
-                // Generar y subir el token a Firebase para recibir push
                 FirebaseMessaging.getInstance().getToken().addOnSuccessListener(token -> {
                     mDatabase.child("usuarios").child(user.getUid()).child("fcmToken").setValue(token);
                     Toast.makeText(this, "Notificaciones activadas", Toast.LENGTH_SHORT).show();
                 });
             } else {
-                // Borrar el token de Firebase (Corte real de notificaciones)
                 mDatabase.child("usuarios").child(user.getUid()).child("fcmToken").removeValue();
                 Toast.makeText(this, "Notificaciones desactivadas", Toast.LENGTH_SHORT).show();
             }
         });
     }
 
+    /**
+     * Despliega una alerta de confirmación previa a la ejecución de procesos críticos
+     * de eliminación de datos.
+     */
     private void mostrarConfirmacionBorrado() {
         new AlertDialog.Builder(this)
                 .setTitle("⚠️ Acción Crítica")
@@ -124,6 +135,13 @@ public class AjustesActivity extends AppCompatActivity {
                 .show();
     }
 
+    /**
+     * Renderiza un diálogo nativo personalizado para presentar textos legales extensos
+     * aplicando estilos corporativos en las cabeceras.
+     *
+     * @param titulo  Cabecera del documento legal.
+     * @param mensaje Cuerpo completo del documento.
+     */
     private void mostrarDialogoLegal(String titulo, String mensaje) {
         TextView customTitle = new TextView(this);
         customTitle.setText(titulo);
@@ -144,6 +162,12 @@ public class AjustesActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Ejecuta una transacción masiva de borrado estructurado en Firebase (Storage y Realtime DB).
+     * Compila todas las promesas asíncronas de eliminación de activos multimedia, nodos privados
+     * y aplica un borrado lógico (Soft Delete) en las interacciones comunitarias antes de purgar
+     * finalmente la cuenta de Authentication.
+     */
     private void procesoBorradoCascada() {
         FirebaseUser user = mAuth.getCurrentUser();
         if (user == null) return;
@@ -155,7 +179,6 @@ public class AjustesActivity extends AppCompatActivity {
 
         List<Task<?>> tareasDeBorrado = new ArrayList<>();
 
-        // 1. Limpieza de Storage
         tareasDeBorrado.add(FirebaseStorage.getInstance().getReference("perfiles")
                 .child(uid + ".jpg").delete().continueWith(task -> null));
 
@@ -180,7 +203,6 @@ public class AjustesActivity extends AppCompatActivity {
             return Tasks.whenAll(deletes);
         }));
 
-        // 2. Limpieza de Base de Datos
         tareasDeBorrado.add(db.child("notificaciones").child(uid).removeValue());
         tareasDeBorrado.add(db.child("eventos").child(uid).removeValue());
         tareasDeBorrado.add(db.child("mascotas").child(uid).removeValue());
@@ -208,7 +230,6 @@ public class AjustesActivity extends AppCompatActivity {
             return Tasks.whenAll(updates);
         }));
 
-        // 3. Ejecución final
         Tasks.whenAll(tareasDeBorrado).addOnCompleteListener(tareaGlobal -> {
             db.child("usuarios").child(uid).removeValue().addOnCompleteListener(tUser -> {
                 user.delete().addOnCompleteListener(tAuth -> {
@@ -224,6 +245,9 @@ public class AjustesActivity extends AppCompatActivity {
         });
     }
 
+    /**
+     * Limpia la pila de navegación de la aplicación y redirige a la pantalla de Login.
+     */
     private void limpiarYSalir() {
         Intent intent = new Intent(AjustesActivity.this, LoginActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);

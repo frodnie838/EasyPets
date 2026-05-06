@@ -68,6 +68,12 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 
+/**
+ * Actividad principal de la aplicación.
+ * Actúa como contenedor (Host) para la navegación por fragmentos mediante BottomNavigationView.
+ * Gestiona el ciclo de vida global, el buzón de notificaciones en tiempo real,
+ * y la cabecera dinámica de la interfaz.
+ */
 public class MainActivity extends AppCompatActivity {
 
     private BottomNavigationView bottomNav;
@@ -154,6 +160,10 @@ public class MainActivity extends AppCompatActivity {
         manejarDeepLinkDePush(getIntent());
     }
 
+    /**
+     * Inicializa un listener en tiempo real sobre Firebase Database para capturar
+     * y almacenar temporalmente las notificaciones dirigidas al usuario en sesión.
+     */
     private void activarBuzonDeNotificaciones() {
         FrameLayout layoutCampanita = findViewById(R.id.layoutCampanita);
         layoutCampanita.setOnClickListener(v -> mostrarDesplegableNotificaciones());
@@ -190,6 +200,10 @@ public class MainActivity extends AppCompatActivity {
         buzonRef.addValueEventListener(notificacionesListener);
     }
 
+    /**
+     * Instancia y muestra una ventana emergente (PopupWindow) con el listado
+     * de notificaciones pendientes del usuario.
+     */
     private void mostrarDesplegableNotificaciones() {
         View popupView = getLayoutInflater().inflate(R.layout.layout_popup_notificaciones, null);
         PopupWindow popupWindow = new PopupWindow(popupView, dpToPx(280), ViewGroup.LayoutParams.WRAP_CONTENT, true);
@@ -239,6 +253,11 @@ public class MainActivity extends AppCompatActivity {
         popupWindow.showAsDropDown(findViewById(R.id.layoutCampanita), -dpToPx(240), 10);
     }
 
+    /**
+     * Enruta al usuario hacia el fragmento correspondiente según el origen de la notificación.
+     *
+     * @param n Objeto Notificacion seleccionado.
+     */
     private void navegarDesdeNotificacion(Notificacion n) {
         if ("foro_respuesta".equals(n.tipo) && n.hiloId != null) {
             bottomNav.getMenu().findItem(R.id.nav_comunidad).setChecked(true);
@@ -271,6 +290,11 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Registra un callback en el FragmentManager para actualizar dinámicamente
+     * la cabecera (TopBar) dependiendo del Fragment actualmente visible.
+     * También configura el comportamiento del botón físico 'Atrás' del sistema.
+     */
     private void configurarNavegacionSuperior() {
         getSupportFragmentManager().registerFragmentLifecycleCallbacks(new FragmentManager.FragmentLifecycleCallbacks() {
             @Override
@@ -352,6 +376,10 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Genera y almacena el token de Firebase Cloud Messaging necesario para
+     * enviar notificaciones Push individuales a este dispositivo.
+     */
     private void guardarTokenFCM() {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user != null && !user.isAnonymous()) {

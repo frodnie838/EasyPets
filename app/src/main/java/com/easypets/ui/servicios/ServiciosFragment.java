@@ -22,13 +22,17 @@ import com.easypets.ui.servicios.protectoras.ProtectorasFragment;
 import com.easypets.ui.servicios.tiendas.TiendasFragment;
 import com.easypets.ui.servicios.veterinarios.VeterinariosFragment;
 
+/**
+ * Fragmento contenedor que actúa como panel principal (Dashboard) para el módulo de servicios.
+ * Orquesta la navegación hacia los diferentes sub-fragmentos especializados mediante
+ * un sistema de tarjetas interactivas clasificadas por tipología de servicio.
+ */
 public class ServiciosFragment extends Fragment {
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View root = inflater.inflate(R.layout.fragment_servicios, container, false);
 
-        // --- SALUD Y URGENCIAS ---
         configurarTarjeta(root.findViewById(R.id.cardVeterinarios), "Veterinarios", R.drawable.veterinario, v ->
                 abrirFragmento(new VeterinariosFragment())
         );
@@ -36,7 +40,6 @@ public class ServiciosFragment extends Fragment {
                 abrirFragmento(new FarmaciasFragment())
         );
 
-        // --- CUIDADO Y ESTÉTICA ---
         configurarTarjeta(root.findViewById(R.id.cardGuarderias), "Guarderías", R.drawable.guarderia, v ->
                 abrirFragmento(new GuarderiasFragment())
         );
@@ -44,7 +47,6 @@ public class ServiciosFragment extends Fragment {
                 abrirFragmento(new PeluqueriasFragment())
         );
 
-        // --- EDUCACIÓN Y PASEO ---
         configurarTarjeta(root.findViewById(R.id.cardAdiestradores), "Adiestradores", R.drawable.adiestrador, v ->
                 abrirFragmento(new AdiestradoresFragment())
         );
@@ -52,7 +54,6 @@ public class ServiciosFragment extends Fragment {
                 abrirFragmento(new PaseadoresFragment())
         );
 
-        // --- TIENDAS Y COMUNIDAD ---
         configurarTarjeta(root.findViewById(R.id.cardTiendas), "Tiendas", R.drawable.tienda, v ->
                 abrirFragmento(new TiendasFragment())
         );
@@ -60,7 +61,6 @@ public class ServiciosFragment extends Fragment {
                 abrirFragmento(new ParquesFragment())
         );
 
-        // --- PROTECTORAS (Ancho completo) ---
         configurarTarjeta(root.findViewById(R.id.cardProtectoras), "Protectoras y Adopción", R.drawable.protectora, v ->
                 abrirFragmento(new ProtectorasFragment())
         );
@@ -68,6 +68,15 @@ public class ServiciosFragment extends Fragment {
         return root;
     }
 
+    /**
+     * Inicializa los componentes visuales de una tarjeta interactiva, inyectando el
+     * icono, el título y el manejador de eventos correspondiente.
+     *
+     * @param cardView Contenedor principal de la tarjeta a configurar.
+     * @param titulo Cadena de texto a mostrar en la tarjeta.
+     * @param iconoRes Identificador del recurso gráfico a inyectar.
+     * @param listener Manejador de clics para ejecutar la navegación.
+     */
     private void configurarTarjeta(View cardView, String titulo, int iconoRes, View.OnClickListener listener) {
         if (cardView == null) return;
         ImageView icono = cardView.findViewById(R.id.ivIconoDashboard);
@@ -78,6 +87,12 @@ public class ServiciosFragment extends Fragment {
         cardView.setOnClickListener(listener);
     }
 
+    /**
+     * Gestiona la transacción del gestor de fragmentos para apilar la nueva vista
+     * en la pila de navegación (BackStack), permitiendo el retorno a este menú principal.
+     *
+     * @param fragment Instancia del nuevo fragmento a cargar en el contenedor principal.
+     */
     private void abrirFragmento(Fragment fragment) {
         requireActivity().getSupportFragmentManager().beginTransaction()
                 .replace(R.id.frame_container, fragment)

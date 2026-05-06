@@ -60,6 +60,12 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
+/**
+ * Fragmento que implementa la agenda interactiva del usuario.
+ * Gestiona la visualización del calendario mensual, la creación, edición y eliminación
+ * de eventos, y programa notificaciones locales mediante AlarmManager en base a
+ * reglas de tiempo específicas para cada tipo de evento.
+ */
 public class CalendarioFragment extends Fragment {
 
     private CalendarView calendarView;
@@ -131,6 +137,13 @@ public class CalendarioFragment extends Fragment {
                 calendarioActual.get(Calendar.YEAR));
     }
 
+    /**
+     * Habilita las funcionalidades interactivas del calendario para usuarios autenticados.
+     * Vincula listeners de selección de días, activa gestos de swipe y solicita la
+     * sincronización inicial de los datos estructurados en Firebase.
+     *
+     * @param user Instancia activa del usuario autenticado.
+     */
     private void configurarModoUsuario(final FirebaseUser user) {
         layoutAvisoInvitado.setVisibility(View.GONE);
         fabAgregarEvento.setVisibility(View.VISIBLE);
@@ -147,7 +160,6 @@ public class CalendarioFragment extends Fragment {
                 e.printStackTrace();
             }
 
-            // Al tocar un día concreto, desactivamos los filtros
             verTodosLosEventos = false;
             filtroTipoActual = "Todos";
             filtroMascotaActual = "Todas";
@@ -168,6 +180,11 @@ public class CalendarioFragment extends Fragment {
         cargarPuntitosEnCalendario(user.getUid());
     }
 
+    /**
+     * Restringe el acceso a la gestión de eventos para usuarios no registrados.
+     * Mantiene el componente de calendario visual pero desactiva interacciones clave
+     * informando al usuario de la necesidad de inicio de sesión.
+     */
     private void configurarModoInvitado() {
         layoutAvisoInvitado.setVisibility(View.VISIBLE);
         layoutSinEventos.setVisibility(View.GONE);
@@ -195,6 +212,13 @@ public class CalendarioFragment extends Fragment {
         }
     }
 
+    /**
+     * Coordina la consulta al repositorio de eventos basándose en el estado
+     * del conmutador "verTodosLosEventos". Determina si se requiere una consulta
+     * completa o filtrada por fecha exacta.
+     *
+     * @param uid Identificador del usuario propietario de los eventos.
+     */
     private void refrescarEventos(String uid) {
         if (verTodosLosEventos) {
             eventoRepository.obtenerTodosLosEventos(uid, new EventoRepository.LeerEventosCallback() {
@@ -226,6 +250,11 @@ public class CalendarioFragment extends Fragment {
         }
     }
 
+    /**
+     * Aplica reglas lógicas iterativas sobre la colección de eventos cargada en memoria.
+     * Evalúa condiciones paramétricas (Tipo de evento, Vinculación de mascota) para
+     * construir una lista final que es delegada al adaptador de la vista.
+     */
     private void ejecutarFiltroEnMemoria() {
         List<Evento> listaFiltrada = new ArrayList<>();
 
@@ -376,6 +405,13 @@ public class CalendarioFragment extends Fragment {
         tvFechaSeleccionada.setText(String.format(Locale.getDefault(), "Eventos para el %02d/%02d/%d", dia, mes + 1, anio));
     }
 
+    /**
+     * Mantiene un canal abierto con la base de datos para mapear todos los eventos
+     * del usuario y asignar un indicador visual (huella) en los días correspondientes
+     * dentro de la vista del componente de calendario.
+     *
+     * @param uid Identificador del usuario autenticado.
+     */
     private void cargarPuntitosEnCalendario(String uid) {
         DatabaseReference ref = FirebaseDatabase.getInstance().getReference().child("eventos").child(uid);
         ref.addValueEventListener(new ValueEventListener() {
@@ -424,6 +460,15 @@ public class CalendarioFragment extends Fragment {
         });
     }
 
+    /**
+     * Genera una intención vinculada a un PendingIntent para programar el
+     * disparo de un BroadcastReceiver en un punto de tiempo futuro establecido.
+     *
+     * @param tiempoEventoMillis Instante objetivo del evento en milisegundos.
+     * @param titulo Título de la notificación.
+     * @param mensaje Cuerpo de la notificación.
+     * @param milisegundosAntes Decalaje de tiempo para el disparo prematuro de la alerta.
+     */
     private void programarNotificacion(long tiempoEventoMillis, String titulo, String mensaje, long milisegundosAntes) {
         long tiempoActual = System.currentTimeMillis();
         long tiempoAlarma = tiempoEventoMillis - milisegundosAntes;
@@ -454,6 +499,11 @@ public class CalendarioFragment extends Fragment {
         }
     }
 
+    /**
+     * Adjunta un manejador de gestos al RecyclerView de eventos para interceptar
+     * desplazamientos laterales e implementar un borrado contextual o la apertura
+     * de diálogos de edición mediante acciones rápidas.
+     */
     private void configurarSwipe(Context context) {
         ItemTouchHelper.SimpleCallback simpleCallback = new ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT) {
             @Override
@@ -546,6 +596,11 @@ public class CalendarioFragment extends Fragment {
                 .show();
     }
 
+    /**
+     * Levanta un cuadro de diálogo para la estructuración de la agenda, con selectores
+     * de fecha, hora y listas desplegables. Infiere programáticamente múltiples alarmas
+     * según la tipología del objeto Evento instanciado.
+     */
     private void mostrarDialogoAgregarEvento(@Nullable Evento eventoExistente) {
         AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
         View dialogView = getLayoutInflater().inflate(R.layout.dialog_agregar_evento, null);

@@ -22,12 +22,23 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
+/**
+ * Adaptador para el RecyclerView encargado de renderizar la lista de artículos.
+ * Gestiona la visualización de artículos oficiales y comunitarios, integrando
+ * soporte de imágenes híbrido (Base64 heredado y URLs de Firebase Storage),
+ * además de implementar la lógica del botón "Me gusta" en tiempo real y el menú
+ * contextual según los permisos del usuario (edición/eliminación o reportes).
+ */
 public class ArticuloAdapter extends RecyclerView.Adapter<ArticuloAdapter.ArticuloViewHolder> {
+
     private List<Articulo> articulos;
     private OnArticuloClickListener listener;
     private boolean mostrarOpciones = false;
 
-    // ✨ Interfaz actualizada para manejar las nuevas acciones
+    /**
+     * Interfaz para la gestión delegada de eventos e interacciones del usuario
+     * con los elementos que componen la lista de artículos.
+     */
     public interface OnArticuloClickListener {
         void onArticuloClick(Articulo articulo);
         void onEditarClick(Articulo articulo);
@@ -58,18 +69,14 @@ public class ArticuloAdapter extends RecyclerView.Adapter<ArticuloAdapter.Articu
         String fecha = new SimpleDateFormat("dd MMM", Locale.getDefault()).format(new Date(articulo.getTimestampCreacion()));
         holder.tvAutor.setText(articulo.isEsOficial() ? "✓ Oficial • " + fecha : "Por: " + articulo.getAutor());
 
-        // Manejo de imagen
-        // LÓGICA HÍBRIDA PARA ARTÍCULOS
         if (articulo.getImagenPortadaBase64() != null && !articulo.getImagenPortadaBase64().isEmpty()) {
             if (articulo.getImagenPortadaBase64().startsWith("http")) {
-                // Usamos Glide para URLs modernas
                 com.bumptech.glide.Glide.with(holder.itemView.getContext())
                         .load(articulo.getImagenPortadaBase64())
                         .centerCrop()
                         .into(holder.ivIcono);
                 holder.ivIcono.setImageTintList(null);
             } else {
-                // Código antiguo (Base64)
                 try {
                     byte[] decodedString = Base64.decode(articulo.getImagenPortadaBase64(), Base64.DEFAULT);
                     holder.ivIcono.setImageBitmap(BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length));
@@ -83,12 +90,10 @@ public class ArticuloAdapter extends RecyclerView.Adapter<ArticuloAdapter.Articu
             holder.ivIcono.setImageResource(articulo.isEsOficial() ? R.drawable.consejos : R.drawable.profile);
         }
 
-        // Definimos quiénes somos una sola vez
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
         String currentUserId = (currentUser != null) ? currentUser.getUid() : "";
         boolean soyAutor = currentUser != null && articulo.getIdAutor() != null && articulo.getIdAutor().equals(currentUserId);
 
-        // Mostramos opciones si soy el autor, o si NO es oficial y estoy logueado (para reportar)
         if (currentUser != null && (soyAutor || !articulo.isEsOficial())) {
             holder.btnMenu.setVisibility(View.VISIBLE);
             holder.btnMenu.setOnClickListener(v -> {
@@ -160,6 +165,7 @@ public class ArticuloAdapter extends RecyclerView.Adapter<ArticuloAdapter.Articu
         TextView tvTitulo, tvDescripcion, tvAutor, tvLikeCount;
         ImageView ivIcono;
         ImageButton btnMenu, btnLike;
+
         public ArticuloViewHolder(@NonNull View itemView) {
             super(itemView);
             tvTitulo = itemView.findViewById(R.id.tvTituloArticulo);

@@ -32,6 +32,11 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Fragmento encargado de localizar y listar parques caninos y áreas de recreo.
+ * Se integra con la API de Google Places (Text Search) mediante solicitudes asíncronas
+ * con la librería Volley, basando sus consultas en el flujo de datos del BusquedaViewModel.
+ */
 public class ParquesFragment extends Fragment {
 
     private ProgressBar progressBarParques;
@@ -62,6 +67,14 @@ public class ParquesFragment extends Fragment {
         return root;
     }
 
+    /**
+     * Emite una solicitud HTTP GET hacia la API de Google Places.
+     * Analiza el objeto JSON devuelto para instanciar modelos de tipo LocalServicio.
+     * Implementa lógica de contingencia (fallback) para asignar imágenes genéricas y
+     * gestionar la potencial ausencia de horarios comerciales en recintos públicos.
+     *
+     * @param ciudad Nombre del municipio a utilizar como filtro geográfico en la consulta.
+     */
     private void cargarDeGoogle(String ciudad) {
         progressBarParques.setVisibility(View.VISIBLE);
         layoutSinParques.setVisibility(View.GONE);
@@ -100,7 +113,6 @@ public class ParquesFragment extends Fragment {
                             double rating = place.optDouble("rating", 0.0);
                             int totalResenas = place.optInt("user_ratings_total", 0);
 
-                            // Foto de parque/perros jugando por defecto
                             String imageUrl = "https://images.unsplash.com/photo-1541882672465-3cfa05d6df90?w=500&q=80";
                             if (place.has("photos")) {
                                 String photoRef = place.getJSONArray("photos").getJSONObject(0).getString("photo_reference");
@@ -112,7 +124,6 @@ public class ParquesFragment extends Fragment {
                             double lat = location.getDouble("lat");
                             double lon = location.getDouble("lng");
 
-                            // Los parques a veces no tienen "opening_hours", la API lo manejará sin romper la app.
                             boolean abierto = true;
                             boolean tieneHorario = false;
                             if (place.has("opening_hours")) {
@@ -144,6 +155,12 @@ public class ParquesFragment extends Fragment {
         Volley.newRequestQueue(requireContext()).add(request);
     }
 
+    /**
+     * Transiciona el estado de la vista para ocultar la lista principal
+     * y notificar al usuario sobre el tipo de incidencia encontrada.
+     *
+     * @param mensaje Detalle del fallo en la obtención de datos o de la ausencia de resultados.
+     */
     private void mostrarError(String mensaje) {
         tvMensajeParques.setText(mensaje);
         layoutSinParques.setVisibility(View.VISIBLE);

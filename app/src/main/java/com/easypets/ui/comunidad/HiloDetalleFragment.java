@@ -30,6 +30,12 @@ import com.google.firebase.database.ValueEventListener;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Fragmento encargado de mostrar el detalle de un hilo del foro.
+ * Permite visualizar la descripción inicial, la información del autor y la lista de respuestas.
+ * Gestiona la creación, edición y eliminación (lógica) de respuestas, e integra
+ * un sistema de notificaciones automáticas orientadas al autor y a menciones de usuarios.
+ */
 public class HiloDetalleFragment extends Fragment {
 
     private String hiloId, titulo, descripcion, idAutor;
@@ -61,7 +67,6 @@ public class HiloDetalleFragment extends Fragment {
             timestampCreacion = getArguments().getLong("timestamp");
         }
 
-        // Vincular vistas
         Toolbar toolbar = view.findViewById(R.id.toolbarHilo);
         TextView tvTitulo = view.findViewById(R.id.tvDetalleTitulo);
         TextView tvDescripcion = view.findViewById(R.id.tvDetalleDescripcion);
@@ -73,7 +78,6 @@ public class HiloDetalleFragment extends Fragment {
         tvAutorDetalle = view.findViewById(R.id.tvAutorDetalle);
         tvFechaDetalle = view.findViewById(R.id.tvFechaDetalle);
 
-        // Configurar cabecera
         tvTitulo.setText(titulo);
         tvDescripcion.setText(descripcion);
         CharSequence tiempo = android.text.format.DateUtils.getRelativeTimeSpanString(
@@ -94,9 +98,9 @@ public class HiloDetalleFragment extends Fragment {
         respuestasRef = FirebaseDatabase.getInstance().getReference("foro_respuestas").child(hiloId);
 
         if (currentUser == null) {
-            etNuevaRespuesta.setEnabled(false); // Bloqueamos escritura
-            etNuevaRespuesta.setHint("Inicia sesión para participar"); // Cambiamos el mensaje
-            btnEnviarRespuesta.setEnabled(false); // Apagamos el botón
+            etNuevaRespuesta.setEnabled(false);
+            etNuevaRespuesta.setHint("Inicia sesión para participar");
+            btnEnviarRespuesta.setEnabled(false);
         } else {
             etNuevaRespuesta.setEnabled(true);
             etNuevaRespuesta.setHint("Escribe una respuesta...");
@@ -142,6 +146,9 @@ public class HiloDetalleFragment extends Fragment {
         return view;
     }
 
+    /**
+     * Sincroniza las respuestas del hilo con Firebase Database mediante un listener en tiempo real.
+     */
     private void cargarRespuestas() {
         respuestasRef.addValueEventListener(new ValueEventListener() {
             @Override
@@ -168,6 +175,10 @@ public class HiloDetalleFragment extends Fragment {
         });
     }
 
+    /**
+     * Procesa el envío de una nueva respuesta o la actualización de una existente.
+     * Analiza el texto mediante expresiones regulares para detectar menciones.
+     */
     private void enviarRespuesta() {
         if (currentUser == null) {
             Toast.makeText(getContext(), "Debes iniciar sesión para responder", Toast.LENGTH_SHORT).show();
@@ -177,11 +188,9 @@ public class HiloDetalleFragment extends Fragment {
         String texto = etNuevaRespuesta.getText().toString().trim();
         if (texto.isEmpty()) return;
 
-        // Deshabilitar botón temporalmente para evitar doble clic
         actualizarEstadoBoton(false);
 
         if (respuestaAEditar != null) {
-            // --- MODO EDICIÓN ---
             respuestaAEditar.setTexto(texto);
             respuestaAEditar.setEditado(true);
 
@@ -203,13 +212,11 @@ public class HiloDetalleFragment extends Fragment {
                 respuestasRef.child(idRespuesta).setValue(nuevaRespuesta)
                         .addOnSuccessListener(aVoid -> {
                             limpiarPostEnvio();
-                            // Pasamos el texto a la notificación del dueño
                             enviarNotificacionAlDueño(texto);
 
-                            // Buscar @menciones en el texto y notificar a los mencionados
                             java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("@(\\w+)").matcher(texto);
                             while (matcher.find()) {
-                                String nickMencionado = matcher.group(1); // Coge la palabra sin el @
+                                String nickMencionado = matcher.group(1);
                                 notificarMencion(nickMencionado);
                             }
                         })
@@ -221,7 +228,9 @@ public class HiloDetalleFragment extends Fragment {
         }
     }
 
-    // Método auxiliar para resetear la interfaz después de enviar o editar
+    /**
+     * Restablece el estado de los componentes de la interfaz asociados a la edición o envío de mensajes.
+     */
     private void limpiarPostEnvio() {
         respuestaAEditar = null;
         etNuevaRespuesta.setText("");
@@ -229,6 +238,9 @@ public class HiloDetalleFragment extends Fragment {
         actualizarEstadoBoton(false);
     }
 
+    /**
+     * Obtiene el perfil público del usuario creador del hilo desde la base de datos.
+     */
     private void cargarDatosAutorPrincipal() {
         if (idAutor == null) return;
 
@@ -288,6 +300,12 @@ public class HiloDetalleFragment extends Fragment {
         }
     }
 
+    /**
+     * Ejecuta el borrado lógico de una respuesta (Soft Delete), reemplazando su contenido
+     * y autor, para no quebrar la secuencia del hilo.
+     *
+     * @param respuesta Instancia de la respuesta a eliminar.
+     */
     private void confirmarBorrado(RespuestaForo respuesta) {
         new androidx.appcompat.app.AlertDialog.Builder(requireContext())
                 .setTitle("Eliminar respuesta")
@@ -312,11 +330,14 @@ public class HiloDetalleFragment extends Fragment {
                 .show();
     }
 
-    // RECIBE EL TEXTO DEL COMENTARIO PARA RECORTARLO
+    /**
+     * Construye un registro de notificación dirigido al creador del hilo y lo deposita
+     * en su buzón de Firebase para gestionar el Deep Linking futuro.
+     *
+     * @param textoComentario Contenido de la respuesta (se recorta internamente para la UI).
+     */
     private void enviarNotificacionAlDueño(String textoComentario) {
         if (idAutor == null || currentUser == null) return;
-
-        // No enviamos notificación si nos respondemos a nosotros mismos
         if (idAutor.equals(currentUser.getUid())) return;
 
         DatabaseReference buzonRef = FirebaseDatabase.getInstance().getReference()
@@ -325,14 +346,12 @@ public class HiloDetalleFragment extends Fragment {
 
         String idNotificacion = buzonRef.push().getKey();
 
-        // Recortamos el comentario a un máximo de 50 caracteres para la notificación
         String fragmento = textoComentario;
         if (fragmento.length() > 50) {
             fragmento = fragmento.substring(0, 50) + "...";
         }
-        final String fragmentoFinal = fragmento; // Variable final para usar dentro del EventListener
+        final String fragmentoFinal = fragmento;
 
-        // Buscamos nuestro propio nombre para enviarlo en la notificación
         FirebaseDatabase.getInstance().getReference("usuarios").child(currentUser.getUid())
                 .addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
@@ -348,13 +367,10 @@ public class HiloDetalleFragment extends Fragment {
                             }
                         }
 
-                        // Creamos la "carta" con los datos dinámicos actualizados
                         java.util.HashMap<String, Object> carta = new java.util.HashMap<>();
                         carta.put("titulo", miNombre + " ha comentado \uD83D\uDCAC");
-                        carta.put("mensaje", "\"" + fragmentoFinal + "\""); // Metemos el texto entre comillas
+                        carta.put("mensaje", "\"" + fragmentoFinal + "\"");
                         carta.put("mostrada", false);
-
-                        // Añadimos los datos ocultos para la navegación (Deep Linking)
                         carta.put("tipo", "foro_respuesta");
                         carta.put("hiloId", hiloId);
                         carta.put("hiloTitulo", titulo);
@@ -369,11 +385,16 @@ public class HiloDetalleFragment extends Fragment {
                     @Override public void onCancelled(@NonNull DatabaseError error) {}
                 });
     }
-    // MÉTODO PARA ENVIAR LA NOTIFICACIÓN DE MENCIÓN EN EL FORO
+
+    /**
+     * Rastrea la existencia de un usuario mediante su nickname para emitir una notificación
+     * personalizada en caso de que haya sido referenciado en el comentario.
+     *
+     * @param nickMencionado Cadena de texto correspondiente al nombre de usuario referenciado.
+     */
     private void notificarMencion(String nickMencionado) {
         if (currentUser == null) return;
 
-        // Buscamos en la base de datos qué usuario tiene ese Nick
         FirebaseDatabase.getInstance().getReference("usuarios")
                 .orderByChild("nick").equalTo(nickMencionado)
                 .addListenerForSingleValueEvent(new ValueEventListener() {
@@ -383,12 +404,10 @@ public class HiloDetalleFragment extends Fragment {
                             for (DataSnapshot userSnapshot : snapshot.getChildren()) {
                                 String idUsuarioMencionado = userSnapshot.getKey();
 
-                                // No te autodenotifiques si te mencionas a ti mismo
                                 if (idUsuarioMencionado != null && !idUsuarioMencionado.equals(currentUser.getUid())) {
                                     DatabaseReference notifRef = FirebaseDatabase.getInstance().getReference("notificaciones").child(idUsuarioMencionado);
                                     String idNotif = notifRef.push().getKey();
 
-                                    // Buscamos nuestro propio nick para ponerlo en el mensaje
                                     FirebaseDatabase.getInstance().getReference("usuarios").child(currentUser.getUid())
                                             .addListenerForSingleValueEvent(new ValueEventListener() {
                                                 @Override

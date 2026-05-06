@@ -32,6 +32,11 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Fragmento encargado de listar las guarderías y hoteles para mascotas.
+ * Consume la API de Google Places (Text Search) de forma asíncrona mediante Volley
+ * para recuperar datos geolocalizados en base a la ciudad emitida por el ViewModel.
+ */
 public class GuarderiasFragment extends Fragment {
 
     private ProgressBar progressBarGuarderias;
@@ -56,13 +61,20 @@ public class GuarderiasFragment extends Fragment {
         rvGuarderias.setLayoutManager(new LinearLayoutManager(getContext()));
         rvGuarderias.setAdapter(adapter);
 
-        // MVVM: Escuchar las búsquedas de la cabecera
         BusquedaViewModel viewModel = new ViewModelProvider(requireActivity()).get(BusquedaViewModel.class);
         viewModel.getCiudadBuscada().observe(getViewLifecycleOwner(), this::cargarDeGoogle);
 
         return root;
     }
 
+    /**
+     * Realiza una petición GET a la API de Google Places Search.
+     * Procesa la respuesta en formato JSON para extraer los detalles de cada establecimiento
+     * (nombre, dirección, valoración, estado de apertura y referencias fotográficas)
+     * y delega la actualización visual al adaptador del RecyclerView.
+     *
+     * @param ciudad Nombre de la ubicación geográfica sobre la cual acotar la búsqueda.
+     */
     private void cargarDeGoogle(String ciudad) {
         progressBarGuarderias.setVisibility(View.VISIBLE);
         layoutSinGuarderias.setVisibility(View.GONE);
@@ -76,7 +88,6 @@ public class GuarderiasFragment extends Fragment {
             return;
         }
 
-        // Búsqueda ampliada a hoteles y guarderías
         String query = "guardería u hotel de mascotas en " + ciudad.trim();
         String url = "https://maps.googleapis.com/maps/api/place/textsearch/json?query="
                 + Uri.encode(query) + "&key=" + apiKey + "&language=es";
@@ -102,7 +113,6 @@ public class GuarderiasFragment extends Fragment {
                             double rating = place.optDouble("rating", 0.0);
                             int totalResenas = place.optInt("user_ratings_total", 0);
 
-                            // Extraer foto o poner placeholder
                             String imageUrl = "https://images.unsplash.com/photo-1541599540903-2a6a1614740e?w=500&q=80";
                             if (place.has("photos")) {
                                 String photoRef = place.getJSONArray("photos").getJSONObject(0).getString("photo_reference");
@@ -114,7 +124,6 @@ public class GuarderiasFragment extends Fragment {
                             double lat = location.getDouble("lat");
                             double lon = location.getDouble("lng");
 
-                            // Extraer horarios para estado abierto/cerrado
                             boolean abierto = false;
                             boolean tieneHorario = false;
                             if (place.has("opening_hours")) {
@@ -146,6 +155,12 @@ public class GuarderiasFragment extends Fragment {
         Volley.newRequestQueue(requireContext()).add(request);
     }
 
+    /**
+     * Actualiza la interfaz de usuario para reflejar estados de error o listas vacías,
+     * ocultando el RecyclerView y mostrando un mensaje descriptivo de contingencia.
+     *
+     * @param mensaje Texto descriptivo del error a presentar al usuario.
+     */
     private void mostrarError(String mensaje) {
         tvMensajeGuarderias.setText(mensaje);
         layoutSinGuarderias.setVisibility(View.VISIBLE);

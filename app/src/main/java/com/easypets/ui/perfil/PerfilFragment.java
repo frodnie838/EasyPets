@@ -43,7 +43,14 @@ import com.google.firebase.storage.StorageReference;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Fragmento responsable de la gestión de la cuenta del usuario.
+ * Provee la interfaz para la consulta y actualización de la información de perfil
+ * (nombre, apellidos, nickname, avatar), diferenciando el comportamiento para usuarios
+ * invitados y usuarios autenticados.
+ */
 public class PerfilFragment extends Fragment {
+
     private LinearLayout layoutRegistrado, layoutInvitado;
     private ImageView ivFotoPerfil;
     private TextView tvNombre, tvCorreo, tvNick;
@@ -58,7 +65,7 @@ public class PerfilFragment extends Fragment {
     private String fotoBase64Actual = "";
 
     private String fotoBase64Temporal = "";
-    private Uri uriImagenPerfil = null; // ✨ NUEVO: Variable para Storage
+    private Uri uriImagenPerfil = null;
     private ImageView ivFotoDialogoTemporal;
 
     private final ActivityResultLauncher<androidx.activity.result.PickVisualMediaRequest> photoPickerLauncher = registerForActivityResult(
@@ -70,7 +77,7 @@ public class PerfilFragment extends Fragment {
                         ivFotoDialogoTemporal.setPadding(0, 0, 0, 0);
                         ivFotoDialogoTemporal.setImageTintList(null);
                     }
-                    fotoBase64Temporal = ""; // Limpiamos el texto antiguo
+                    fotoBase64Temporal = "";
                 }
             }
     );
@@ -117,6 +124,13 @@ public class PerfilFragment extends Fragment {
         btnCerrarSesion.setOnClickListener(v -> cerrarSesion());
     }
 
+    /**
+     * Vincula un listener en tiempo real al nodo de usuario de Firebase Realtime Database
+     * para mantener sincronizados los datos personales del usuario actual en la interfaz.
+     * Gestiona la retrocompatibilidad en la carga del avatar (Base64 vs URLs de Firebase Storage).
+     *
+     * @param currentUser Instancia autenticada del usuario actual.
+     */
     private void configurarPerfilUsuario(FirebaseUser currentUser) {
         tvCorreo.setText(currentUser.getEmail());
         userRef = FirebaseDatabase.getInstance().getReference().child("usuarios").child(currentUser.getUid());
@@ -164,10 +178,16 @@ public class PerfilFragment extends Fragment {
         btnAjustes.setOnClickListener(v -> startActivity(new Intent(getActivity(), AjustesActivity.class)));
     }
 
+    /**
+     * Construye un cuadro de diálogo para la edición del perfil de usuario.
+     * Implementa lógica de validación asíncrona para confirmar la disponibilidad
+     * del nuevo apodo (nickname) consultando la base de datos de todos los usuarios
+     * antes de permitir la actualización.
+     */
     private void mostrarDialogoEditar() {
         if (getContext() == null) return;
 
-        uriImagenPerfil = null; // Reiniciar
+        uriImagenPerfil = null;
         AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
         View dialogView = LayoutInflater.from(getContext()).inflate(R.layout.dialog_editar_cuenta, null);
         builder.setView(dialogView);
@@ -291,6 +311,11 @@ public class PerfilFragment extends Fragment {
         } catch (Exception e) { e.printStackTrace(); }
     }
 
+    /**
+     * Cierra la sesión activa del usuario en Firebase Auth y revoca explícitamente
+     * el acceso federado (CredentialManager API de Android 14) para forzar que
+     * el selector de cuentas de Google aparezca en el próximo inicio de sesión.
+     */
     private void cerrarSesion() {
         if (mAuth.getCurrentUser() != null) {
             Toast.makeText(getContext(), "Cerrando sesión...", Toast.LENGTH_SHORT).show();
@@ -324,6 +349,10 @@ public class PerfilFragment extends Fragment {
         } else { irALogin(); }
     }
 
+    /**
+     * Levanta un diálogo inmersivo sin bordes para que el usuario
+     * pueda previsualizar su fotografía de perfil en formato original.
+     */
     private void mostrarFotoGrande() {
         if (getContext() == null) return;
 

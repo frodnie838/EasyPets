@@ -24,6 +24,11 @@ import com.google.firebase.database.ValueEventListener;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Actividad encargada de la edición de la cartilla sanitaria de una mascota.
+ * Permite visualizar y actualizar parcialmente (PATCH) los datos médicos
+ * en la base de datos en tiempo real de Firebase.
+ */
 public class EditarCartillaActivity extends AppCompatActivity {
 
     private EditText etMicrochip, etAlergias, etPatologias, etMedicacion;
@@ -37,11 +42,9 @@ public class EditarCartillaActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_editar_cartilla);
 
-        // Barra blanca del sistema
         getWindow().setStatusBarColor(ContextCompat.getColor(this, R.color.white));
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
 
-        // Vistas
         etMicrochip = findViewById(R.id.etCartillaMicrochip);
         cbEsterilizado = findViewById(R.id.cbCartillaEsterilizado);
         etAlergias = findViewById(R.id.etCartillaAlergias);
@@ -52,7 +55,6 @@ public class EditarCartillaActivity extends AppCompatActivity {
 
         btnCancelar.setOnClickListener(v -> finish());
 
-        // Obtener la mascota de Firebase
         idMascota = getIntent().getStringExtra("idMascota");
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
 
@@ -66,6 +68,10 @@ public class EditarCartillaActivity extends AppCompatActivity {
         btnGuardar.setOnClickListener(v -> guardarCartilla());
     }
 
+    /**
+     * Realiza una consulta asíncrona a Firebase para obtener los datos actuales
+     * de la mascota y pre-poblar los campos del formulario.
+     */
     private void cargarDatosCartilla() {
         mascotaRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
@@ -87,11 +93,15 @@ public class EditarCartillaActivity extends AppCompatActivity {
         });
     }
 
+    /**
+     * Ejecuta una actualización parcial (updateChildren) en el nodo de la mascota.
+     * Actualiza exclusivamente los campos médicos mediante un Map, asegurando que
+     * no se sobrescriba ni se pierda información base como el nombre, raza o fotografía.
+     */
     private void guardarCartilla() {
         btnGuardar.setEnabled(false);
         btnGuardar.setText("Guardando...");
 
-        // Usamos un Map para actualizar SOLO los datos médicos sin borrar el nombre, foto, etc.
         Map<String, Object> actualizacionesMedicas = new HashMap<>();
         actualizacionesMedicas.put("microchip", etMicrochip.getText().toString().trim());
         actualizacionesMedicas.put("esterilizado", cbEsterilizado.isChecked());
@@ -102,7 +112,7 @@ public class EditarCartillaActivity extends AppCompatActivity {
         mascotaRef.updateChildren(actualizacionesMedicas)
                 .addOnSuccessListener(aVoid -> {
                     Toast.makeText(this, "Cartilla actualizada", Toast.LENGTH_SHORT).show();
-                    finish(); // Vuelve al detalle
+                    finish();
                 })
                 .addOnFailureListener(e -> {
                     Toast.makeText(this, "Error al guardar", Toast.LENGTH_SHORT).show();

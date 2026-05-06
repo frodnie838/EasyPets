@@ -31,6 +31,11 @@ import com.google.firebase.storage.StorageReference;
 
 import java.util.Calendar;
 
+/**
+ * Actividad responsable de gestionar el alta de nuevas mascotas y la edición
+ * de los perfiles existentes. Incluye validación de formularios, selección de
+ * imágenes mediante el selector nativo y subida de archivos a Firebase Storage.
+ */
 public class AgregarMascotaActivity extends AppCompatActivity {
 
     private EditText etNombre, etRaza, etPeso, etColor, etFechaNacimiento;
@@ -45,7 +50,7 @@ public class AgregarMascotaActivity extends AppCompatActivity {
     private String idMascotaAEditar = null;
 
     private String fotoBase64 = "";
-    private Uri uriImagenSeleccionada = null; // ✨ NUEVO: Variable para Firebase Storage
+    private Uri uriImagenSeleccionada = null;
 
     private final ActivityResultLauncher<androidx.activity.result.PickVisualMediaRequest> photoPickerLauncher = registerForActivityResult(
             new ActivityResultContracts.PickVisualMedia(), uri -> {
@@ -54,7 +59,7 @@ public class AgregarMascotaActivity extends AppCompatActivity {
                     com.bumptech.glide.Glide.with(this).load(uri).into(ivFotoMascota);
                     ivFotoMascota.setPadding(0, 0, 0, 0);
                     ivFotoMascota.setImageTintList(null);
-                    fotoBase64 = ""; // Limpiamos el texto antiguo si eligen foto nueva
+                    fotoBase64 = "";
                 }
             }
     );
@@ -101,6 +106,10 @@ public class AgregarMascotaActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Configura la interfaz de usuario en modo de actualización.
+     * Recupera los datos de la mascota desde el repositorio y rellena los campos del formulario.
+     */
     private void prepararModoEdicion() {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user == null) return;
@@ -146,6 +155,10 @@ public class AgregarMascotaActivity extends AppCompatActivity {
         });
     }
 
+    /**
+     * Muestra un selector de fecha nativo (DatePickerDialog) limitando la selección
+     * máxima a la fecha actual para evitar fechas de nacimiento futuras.
+     */
     private void mostrarCalendario() {
         Calendar calendario = Calendar.getInstance();
         int anio = calendario.get(Calendar.YEAR);
@@ -161,6 +174,11 @@ public class AgregarMascotaActivity extends AppCompatActivity {
         datePickerDialog.show();
     }
 
+    /**
+     * Realiza las validaciones de los campos requeridos.
+     * Si el usuario seleccionó una nueva imagen de perfil, gestiona la subida a
+     * Firebase Storage antes de persistir los datos estructurados en Realtime Database.
+     */
     private void guardarOActualizarMascota() {
         String nombre = etNombre.getText().toString().trim();
         String especie = dropdownEspecie.getText().toString().trim();
@@ -169,7 +187,7 @@ public class AgregarMascotaActivity extends AppCompatActivity {
         String pesoStr = etPeso.getText().toString().trim();
         String fechaNacimiento = etFechaNacimiento.getText().toString().trim();
 
-        // ✨ SOLUCIÓN: Usamos una variable temporal para descubrir el sexo...
+        // Extracción del estado del RadioGroup para el sexo
         String sexoTemporal = "";
         int selectedId = rgSexo.getCheckedRadioButtonId();
         if (selectedId != -1) {
@@ -177,7 +195,6 @@ public class AgregarMascotaActivity extends AppCompatActivity {
             sexoTemporal = rbSeleccionado.getText().toString();
         }
 
-        // ✨ ...y luego lo guardamos en una variable "final" para que Java nos deje usarla en la Lambda
         final String sexo = sexoTemporal;
 
         if (TextUtils.isEmpty(nombre)) { etNombre.setError("Obligatorio"); return; }
@@ -207,23 +224,26 @@ public class AgregarMascotaActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Construye el modelo de datos de la Mascota aplicando valores por defecto a los
+     * campos opcionales no completados, y delega la operación final al Repositorio.
+     */
     private void ejecutarGuardadoFinal(String uid, String nombre, String especie, String raza, String sexo, String fechaNacimiento, String color, String pesoStr) {
 
-        // ✨ ORDEN 100% CORREGIDO BASADO EN TU ARCHIVO MASCOTA.JAVA
         Mascota mascotaListaParaSubir = new Mascota(
-                idMascotaAEditar,                                            // 1. id
-                nombre,                                                      // 2. nombre
-                especie,                                                     // 3. especie
-                raza.isEmpty() ? "Desconocida" : raza,                       // 4. raza
-                sexo,                                                        // 5. sexo
-                fechaNacimiento.isEmpty() ? "Desconocida" : fechaNacimiento, // 6. fechaNacimiento
-                color.isEmpty() ? "Desconocido" : color,                     // 7. color
-                pesoStr.isEmpty() ? "0" : pesoStr,                           // 8. peso
-                "",                                                          // 9. microchip
-                false,                                                       // 10. esterilizado
-                "",                                                          // 11. patologias
-                fotoBase64,                                                  // 12. fotoPerfilUrl
-                System.currentTimeMillis()                                   // 13. timestamp
+                idMascotaAEditar,
+                nombre,
+                especie,
+                raza.isEmpty() ? "Desconocida" : raza,
+                sexo,
+                fechaNacimiento.isEmpty() ? "Desconocida" : fechaNacimiento,
+                color.isEmpty() ? "Desconocido" : color,
+                pesoStr.isEmpty() ? "0" : pesoStr,
+                "",
+                false,
+                "",
+                fotoBase64,
+                System.currentTimeMillis()
         );
 
         if (idMascotaAEditar == null) {

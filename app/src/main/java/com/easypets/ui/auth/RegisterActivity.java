@@ -47,6 +47,11 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.TimeZone;
 
+/**
+ * Actividad encargada de gestionar el registro de nuevos usuarios.
+ * Incluye validación de campos, comprobación de disponibilidad del nickname,
+ * aceptación de términos y condiciones, e integración con Google Sign-In.
+ */
 public class RegisterActivity extends AppCompatActivity {
 
     private EditText nombreEditText, apellidosEditText, nickEditText, emailEditText, passwordEditText, confirmPasswordEditText;
@@ -63,7 +68,7 @@ public class RegisterActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_register);
 
-        // ✨ FORZAMOS LA BARRA DE SISTEMA A BLANCO OPACO (Igual que el Main)
+        // Configuración de la barra de estado para mantener consistencia visual con MainActivity
         getWindow().setStatusBarColor(ContextCompat.getColor(this, R.color.white));
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
 
@@ -83,10 +88,10 @@ public class RegisterActivity extends AppCompatActivity {
         loginTextView = findViewById(R.id.loginTextView);
         tvTerminos = findViewById(R.id.tvTerminos);
 
+        // Estado inicial del botón de registro
         btnRegistrar.setEnabled(false);
         btnRegistrar.setAlpha(0.5f);
 
-        // ✨ CONFIGURACIÓN DEL TEXTO CLICABLE EN EL CHECKBOX
         configurarTextoTerminos(tvTerminos);
 
         termsCheckBox.setOnCheckedChangeListener((buttonView, isChecked) -> {
@@ -107,13 +112,19 @@ public class RegisterActivity extends AppCompatActivity {
             startActivity(i);
         });
 
+        // Intercepta la solicitud automática proveniente del fallo en LoginActivity
         boolean abrirGoogle = getIntent().getBooleanExtra("abrirGoogleAutomatico", false);
         if (abrirGoogle) {
             signInConGoogle();
         }
     }
 
-    // ✨ MÉTODO MAGIA: HACE EL TEXTO CLICABLE
+    /**
+     * Aplica un SpannableString al TextView de términos y condiciones para habilitar
+     * la interactividad parcial del texto.
+     *
+     * @param tv TextView objetivo de la configuración.
+     */
     private void configurarTextoTerminos(TextView tv) {
         String textoCompleto = "Acepto los Términos y Condiciones";
         SpannableString spannableString = new SpannableString(textoCompleto);
@@ -127,13 +138,12 @@ public class RegisterActivity extends AppCompatActivity {
             @Override
             public void updateDrawState(@NonNull TextPaint ds) {
                 super.updateDrawState(ds);
-                // Pintamos las letras verdes y subrayadas
                 ds.setColor(ContextCompat.getColor(RegisterActivity.this, R.color.color_acento_primario));
                 ds.setUnderlineText(true);
             }
         };
 
-        // Empieza en la letra 11 ("T") y acaba en la 33 ("s")
+        // Aplica el formato interactivo únicamente a la subcadena "Términos y Condiciones"
         spannableString.setSpan(clickableSpan, 11, 33, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
 
         tv.setText(spannableString);
@@ -141,7 +151,10 @@ public class RegisterActivity extends AppCompatActivity {
         tv.setHighlightColor(android.graphics.Color.TRANSPARENT);
     }
 
-    // ✨ DIÁLOGO DE TÉRMINOS
+    /**
+     * Despliega un cuadro de diálogo nativo con la normativa de privacidad
+     * y uso responsable de la aplicación.
+     */
     private void mostrarDialogoTerminos() {
         new AlertDialog.Builder(this)
                 .setTitle("Términos y Condiciones")
@@ -154,6 +167,9 @@ public class RegisterActivity extends AppCompatActivity {
                 .show();
     }
 
+    /**
+     * Lanza la interfaz del sistema para la autenticación federada con cuenta de Google.
+     */
     private void signInConGoogle() {
         GetGoogleIdOption googleIdOption = new GetGoogleIdOption.Builder()
                 .setFilterByAuthorizedAccounts(false)
@@ -191,6 +207,11 @@ public class RegisterActivity extends AppCompatActivity {
         );
     }
 
+    /**
+     * Procesa la respuesta del CredentialManager para validar y crear el perfil del nuevo usuario.
+     *
+     * @param result Respuesta exitosa de la API de credenciales.
+     */
     private void manejarRespuestaGoogle(GetCredentialResponse result) {
         try {
             androidx.credentials.Credential credential = result.getCredential();
@@ -239,6 +260,11 @@ public class RegisterActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Captura los datos de los EditText, valida las reglas de negocio y procede
+     * a registrar la credencial en Firebase Authentication. Previamente, verifica
+     * que el nickname seleccionado no se encuentre ya registrado.
+     */
     private void registrarUsuario() {
         String nombre = nombreEditText.getText().toString().trim();
         String apellidos = apellidosEditText.getText().toString().trim();
@@ -257,6 +283,7 @@ public class RegisterActivity extends AppCompatActivity {
         btnRegistrar.setEnabled(false);
         btnRegistrar.setText("Comprobando...");
 
+        // Verificación de disponibilidad del nickname en la base de datos
         db.child("usuarios").orderByChild("nick").equalTo(nick).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
@@ -294,6 +321,17 @@ public class RegisterActivity extends AppCompatActivity {
         });
     }
 
+    /**
+     * Escribe el nodo estructural del usuario en la base de datos en tiempo real
+     * tras validarse correctamente sus credenciales en Authentication.
+     *
+     * @param uid       Identificador de usuario.
+     * @param nombre    Nombre proporcionado en el formulario.
+     * @param apellidos Apellidos proporcionados (opcional).
+     * @param nick      Nombre de usuario único.
+     * @param email     Dirección de correo electrónico.
+     * @param fotoUrl   Ruta del avatar del proveedor externo, nulo en registro tradicional.
+     */
     private void guardarDatosFirestore(String uid, String nombre, String apellidos, String nick, String email, String fotoUrl) {
         Date date = new Date();
         SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
@@ -313,6 +351,7 @@ public class RegisterActivity extends AppCompatActivity {
         if (fotoUrl != null && !fotoUrl.isEmpty()) {
             usuario.put("fotoPerfil", fotoUrl);
         }
+
         db.child("usuarios").child(uid).setValue(usuario)
                 .addOnSuccessListener(aVoid -> {
                     Toast.makeText(RegisterActivity.this, "¡Bienvenido @" + nick + "!", Toast.LENGTH_SHORT).show();

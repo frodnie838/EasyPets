@@ -32,6 +32,11 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Fragmento encargado de listar los refugios y asociaciones protectoras de animales.
+ * Se integra con la API de Google Places (Text Search) mediante solicitudes asíncronas
+ * con la librería Volley, basando sus consultas en el flujo de datos del BusquedaViewModel.
+ */
 public class ProtectorasFragment extends Fragment {
 
     private ProgressBar progressBarProtectoras;
@@ -62,6 +67,14 @@ public class ProtectorasFragment extends Fragment {
         return root;
     }
 
+    /**
+     * Emite una solicitud HTTP GET hacia la API de Google Places.
+     * Analiza el objeto JSON devuelto para instanciar modelos de tipo LocalServicio.
+     * Implementa lógica de contingencia (fallback) para asignar imágenes genéricas si
+     * el establecimiento no dispone de referencias fotográficas en su ficha de Google.
+     *
+     * @param ciudad Nombre del municipio a utilizar como filtro geográfico en la consulta.
+     */
     private void cargarDeGoogle(String ciudad) {
         progressBarProtectoras.setVisibility(View.VISIBLE);
         layoutSinProtectoras.setVisibility(View.GONE);
@@ -75,7 +88,6 @@ public class ProtectorasFragment extends Fragment {
             return;
         }
 
-        // Búsqueda orientada a refugios y protectoras
         String query = "protectora o refugio de animales en " + ciudad.trim();
         String url = "https://maps.googleapis.com/maps/api/place/textsearch/json?query="
                 + Uri.encode(query) + "&key=" + apiKey + "&language=es";
@@ -101,7 +113,6 @@ public class ProtectorasFragment extends Fragment {
                             double rating = place.optDouble("rating", 0.0);
                             int totalResenas = place.optInt("user_ratings_total", 0);
 
-                            // Foto emotiva de perros rescatados
                             String imageUrl = "https://images.unsplash.com/photo-1544568100-847a948585b9?w=500&q=80";
                             if (place.has("photos")) {
                                 String photoRef = place.getJSONArray("photos").getJSONObject(0).getString("photo_reference");
@@ -144,6 +155,12 @@ public class ProtectorasFragment extends Fragment {
         Volley.newRequestQueue(requireContext()).add(request);
     }
 
+    /**
+     * Transiciona el estado de la vista para ocultar la lista principal
+     * y notificar al usuario sobre el tipo de incidencia encontrada.
+     *
+     * @param mensaje Detalle del fallo en la obtención de datos o de la ausencia de resultados.
+     */
     private void mostrarError(String mensaje) {
         tvMensajeProtectoras.setText(mensaje);
         layoutSinProtectoras.setVisibility(View.VISIBLE);

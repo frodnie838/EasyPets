@@ -21,12 +21,22 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import java.util.List;
 
+/**
+ * Adaptador para el RecyclerView encargado de renderizar el hilo de respuestas de un debate.
+ * Gestiona el formato dinámico de texto (resaltado de menciones vía Regex), los estados
+ * visuales condicionales (mensajes editados o eliminados, aplicando Soft Delete visual)
+ * y la recuperación asíncrona de la identidad visual del autor mediante Firebase Realtime Database.
+ */
 public class RespuestaAdapter extends RecyclerView.Adapter<RespuestaAdapter.RespuestaViewHolder> {
+
     private List<RespuestaForo> respuestas;
     private OnRespuestaAccionListener listener;
     private String currentUserId;
 
-    // Interfaz para comunicar el clic con el Fragment
+    /**
+     * Interfaz de comunicación delegada que permite a la vista contenedora (Fragment/Activity)
+     * interceptar e implementar la lógica de negocio para la edición y eliminación de respuestas.
+     */
     public interface OnRespuestaAccionListener {
         void onBorrarClick(RespuestaForo respuesta);
         void onEditarClick(RespuestaForo respuesta);
@@ -52,14 +62,12 @@ public class RespuestaAdapter extends RecyclerView.Adapter<RespuestaAdapter.Resp
 
         String texto = respuesta.getTexto();
         android.text.SpannableString spannable = new android.text.SpannableString(texto);
-        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("@\\w+"); // Busca palabras que empiecen por @
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("@\\w+");
         java.util.regex.Matcher matcher = pattern.matcher(texto);
 
-        // Obtenemos el color primario de tu app
         int colorPrimario = androidx.core.content.ContextCompat.getColor(holder.itemView.getContext(), R.color.color_acento_primario);
 
         while (matcher.find()) {
-            // Ponemos el color y negrita a la mención
             spannable.setSpan(new android.text.style.ForegroundColorSpan(colorPrimario), matcher.start(), matcher.end(), android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             spannable.setSpan(new android.text.style.StyleSpan(android.graphics.Typeface.BOLD), matcher.start(), matcher.end(), android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
@@ -69,25 +77,21 @@ public class RespuestaAdapter extends RecyclerView.Adapter<RespuestaAdapter.Resp
         holder.tvFecha.setText(" • " + tiempo);
 
         if (respuesta.isEliminado()) {
-            // Estilo de mensaje borrado
             holder.tvTexto.setTypeface(null, android.graphics.Typeface.ITALIC);
             holder.tvTexto.setTextColor(android.graphics.Color.parseColor("#9E9E9E"));
             holder.tvAutor.setText("Mensaje eliminado");
             holder.tvEditado.setVisibility(View.GONE);
             holder.btnMenu.setVisibility(View.GONE);
 
-            // Foto gris por defecto
             holder.ivAvatar.setImageResource(R.drawable.profile);
             holder.ivAvatar.setImageTintList(android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#E0E0E0")));
-            return; // Salimos de la función para no cargar los datos de Firebase del autor
+            return;
         } else {
-            // Estilo normal
             holder.tvTexto.setTypeface(null, android.graphics.Typeface.NORMAL);
             holder.tvTexto.setTextColor(android.graphics.Color.BLACK);
             holder.tvEditado.setVisibility(respuesta.isEditado() ? View.VISIBLE : View.GONE);
         }
 
-        // Lógica de foto, Nick y botón Menú (SOLO SI NO ESTÁ ELIMINADO)
         holder.tvAutor.setText("Cargando...");
         holder.ivAvatar.setImageResource(R.drawable.profile);
         holder.ivAvatar.setImageTintList(android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#9E9E9E")));
@@ -113,7 +117,6 @@ public class RespuestaAdapter extends RecyclerView.Adapter<RespuestaAdapter.Resp
             holder.btnMenu.setVisibility(View.GONE);
         }
 
-        // Carga del autor desde Firebase
         FirebaseDatabase.getInstance().getReference("usuarios").child(respuesta.getIdAutor())
                 .addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
@@ -127,7 +130,6 @@ public class RespuestaAdapter extends RecyclerView.Adapter<RespuestaAdapter.Resp
                                 holder.tvAutor.setText(nombre != null ? nombre : "Usuario");
                             }
 
-                            // ✨ LÓGICA HÍBRIDA PARA LAS RESPUESTAS DEL FORO
                             String foto = snapshot.child("fotoPerfil").getValue(String.class);
                             if (foto != null && !foto.isEmpty()) {
                                 if (foto.startsWith("http")) {

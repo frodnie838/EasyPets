@@ -27,6 +27,11 @@ import com.google.firebase.auth.FirebaseUser;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Fragmento principal encargado de mostrar y gestionar la lista de mascotas del usuario.
+ * Presenta diferentes estados de interfaz dependiendo de si el usuario está autenticado,
+ * es un invitado, o si aún no tiene mascotas registradas en la plataforma (Empty State).
+ */
 public class MascotasFragment extends Fragment {
 
     private View layoutLogueado;
@@ -60,7 +65,6 @@ public class MascotasFragment extends Fragment {
         mascotaRepository = new MascotaRepository();
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
 
-        // Si hay usuario y NO es un invitado (anónimo)
         if (user != null && !user.isAnonymous()) {
             layoutLogueado.setVisibility(View.VISIBLE);
             layoutInvitado.setVisibility(View.GONE);
@@ -88,7 +92,6 @@ public class MascotasFragment extends Fragment {
             cargarMascotas(user.getUid());
 
         } else {
-            // Si es un invitado o no hay sesión
             layoutLogueado.setVisibility(View.GONE);
             layoutInvitado.setVisibility(View.VISIBLE);
 
@@ -98,6 +101,13 @@ public class MascotasFragment extends Fragment {
         return view;
     }
 
+    /**
+     * Inicia un listener en tiempo real para obtener y mantener sincronizada
+     * la lista de mascotas asociadas al usuario actual. Gestiona dinámicamente la visibilidad
+     * del RecyclerView frente al estado vacío de la interfaz.
+     *
+     * @param uid Identificador único del usuario autenticado.
+     */
     private void cargarMascotas(String uid) {
         mascotaRepository.escucharMascotas(uid, new MascotaRepository.LeerMascotasCallback() {
             @Override
@@ -124,6 +134,11 @@ public class MascotasFragment extends Fragment {
         });
     }
 
+    /**
+     * Método del ciclo de vida del fragmento.
+     * Se encarga de liberar recursos y detener los listeners activos de Firebase Database
+     * para evitar fugas de memoria (Memory Leaks) cuando la vista es destruida.
+     */
     @Override
     public void onDestroyView() {
         super.onDestroyView();

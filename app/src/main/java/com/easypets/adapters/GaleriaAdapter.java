@@ -27,6 +27,12 @@ import com.google.firebase.database.ValueEventListener;
 
 import java.util.List;
 
+/**
+ * Adaptador para el RecyclerView encargado de renderizar el feed o galería comunitaria.
+ * Gestiona la carga de imágenes híbridas (Base64 y Storage), la sincronización en tiempo
+ * real del contador de comentarios anidando listeners en el ViewHolder, y la delegación de
+ * interacciones sociales (Likes, Comentarios) condicionadas al estado de autenticación del usuario.
+ */
 public class GaleriaAdapter extends RecyclerView.Adapter<GaleriaAdapter.ViewHolder> {
 
     private List<PublicacionMascota> listaPublicaciones;
@@ -34,6 +40,11 @@ public class GaleriaAdapter extends RecyclerView.Adapter<GaleriaAdapter.ViewHold
     private OnGaleriaClickListener listener;
     private boolean mostrarOpciones = false;
 
+    /**
+     * Interfaz para delegar los eventos de interacción de la comunidad.
+     * Permite a la vista contenedora gestionar la lógica de "Me gusta",
+     * apertura de hilos de comentarios y menús contextuales de moderación/edición.
+     */
     public interface OnGaleriaClickListener {
         void onLikeClick(PublicacionMascota publicacion);
         void onComentarClick(PublicacionMascota publicacion);
@@ -48,7 +59,7 @@ public class GaleriaAdapter extends RecyclerView.Adapter<GaleriaAdapter.ViewHold
         if (currentUser != null && !currentUser.isAnonymous()) {
             miUid = currentUser.getUid();
         } else {
-            miUid = null; // Modo invitado
+            miUid = null;
         }
     }
 
@@ -97,8 +108,6 @@ public class GaleriaAdapter extends RecyclerView.Adapter<GaleriaAdapter.ViewHold
             holder.comentariosRef.removeEventListener(holder.comentariosListener);
         }
 
-        // ✨ TAREA 3: OPCIÓN "Mirar pero no tocar"
-        // Siempre mostramos el botón y contamos los comentarios para generar interés
         holder.btnComentar.setVisibility(View.VISIBLE);
         holder.tvComentariosCount.setVisibility(View.VISIBLE);
 
@@ -124,7 +133,6 @@ public class GaleriaAdapter extends RecyclerView.Adapter<GaleriaAdapter.ViewHold
 
         holder.btnOpciones.setVisibility(miUid != null ? View.VISIBLE : View.GONE);
 
-        // Bloqueamos el clic de "Me gusta" si es invitado
         holder.btnLike.setOnClickListener(v -> {
             if (miUid == null) {
                 Toast.makeText(v.getContext(), "Inicia sesión para dar 'Me gusta' ❤️", Toast.LENGTH_SHORT).show();
@@ -133,7 +141,6 @@ public class GaleriaAdapter extends RecyclerView.Adapter<GaleriaAdapter.ViewHold
             }
         });
 
-        // Dejamos que abran los comentarios para que lean
         holder.btnComentar.setOnClickListener(v -> listener.onComentarClick(publicacion));
 
         holder.btnOpciones.setOnClickListener(v -> listener.onOpcionesClick(publicacion, v));

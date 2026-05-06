@@ -69,6 +69,12 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * Fragmento principal que gestiona el módulo de "Educación y Comunidad".
+ * Implementa un sistema de pestañas (Tabs) para navegar entre Artículos Oficiales,
+ * Galería de la Comunidad, Foros de debate y las Publicaciones propias del usuario.
+ * Incluye lógica de paginación para optimizar la carga de datos.
+ */
 public class EducacionFragment extends Fragment {
 
     private RecyclerView rvContenido;
@@ -280,6 +286,10 @@ public class EducacionFragment extends Fragment {
         return view;
     }
 
+    /**
+     * Inicializa el componente TabLayout y gestiona la visualización de los adaptadores
+     * correspondientes según la pestaña seleccionada por el usuario.
+     */
     private void configurarPestanas() {
         tabLayout.removeAllTabs();
         tabLayout.addTab(tabLayout.newTab().setText("Oficiales"));
@@ -391,6 +401,10 @@ public class EducacionFragment extends Fragment {
         }
     }
 
+    /**
+     * Filtra los datos cargados en memoria basándose en la cadena introducida
+     * en el cuadro de búsqueda principal (etBuscador).
+     */
     private void aplicarFiltroActual() {
         if (etBuscador == null) return;
         String texto = etBuscador.getText().toString().toLowerCase().trim();
@@ -416,6 +430,10 @@ public class EducacionFragment extends Fragment {
         }
     }
 
+    /**
+     * Inicia la carga paginada de la galería de mascotas para optimizar
+     * la memoria y reducir las llamadas a la base de datos.
+     */
     private void cargarGaleria() {
         listaGaleria.clear();
         galeriaAdapter.notifyDataSetChanged();
@@ -451,6 +469,10 @@ public class EducacionFragment extends Fragment {
         });
     }
 
+    /**
+     * Solicita a la base de datos el siguiente lote de publicaciones para
+     * implementar el "scroll infinito".
+     */
     private void cargarMasGaleria() {
         if (isLoadingMore || !hasMoreData) return;
         isLoadingMore = true;
@@ -603,6 +625,12 @@ public class EducacionFragment extends Fragment {
         if (etBuscador != null && buscadorWatcher != null) etBuscador.removeTextChangedListener(buscadorWatcher);
     }
 
+    /**
+     * Despliega un componente BottomSheetDialog con los detalles y contenido
+     * completo de un artículo seleccionado.
+     *
+     * @param articulo Objeto que contiene los datos del artículo a visualizar.
+     */
     private void mostrarArticuloCompleto(Articulo articulo) {
         BottomSheetDialog bottomSheet = new BottomSheetDialog(requireContext());
         NestedScrollView scrollView = new NestedScrollView(requireContext());
@@ -962,6 +990,12 @@ public class EducacionFragment extends Fragment {
         dialog.show();
     }
 
+    /**
+     * Levanta el panel interactivo (BottomSheet) para visualizar y publicar
+     * comentarios asociados a una publicación específica de la galería.
+     *
+     * @param publicacion Instancia de la publicación que recibe los comentarios.
+     */
     private void mostrarBottomSheetComentarios(PublicacionMascota publicacion) {
         BottomSheetDialog bottomSheetDialog = new BottomSheetDialog(requireContext());
         View view = LayoutInflater.from(requireContext()).inflate(R.layout.layout_bottom_sheet_comentarios, null);
@@ -981,7 +1015,6 @@ public class EducacionFragment extends Fragment {
         List<ComentarioMascota> listaComentarios = new ArrayList<>();
         ComentarioMascotaAdapter adaptadorComentarios = new ComentarioMascotaAdapter(listaComentarios);
 
-        // ✨ LÓGICA DE BORRAR COMENTARIO CON TOQUE LARGO ✨
         adaptadorComentarios.setOnComentarioLongClickListener(comentario -> {
             if (currentUser != null && comentario.getIdAutor().equals(currentUser.getUid())) {
                 new AlertDialog.Builder(requireContext())

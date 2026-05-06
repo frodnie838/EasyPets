@@ -32,6 +32,11 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Fragmento encargado de listar los establecimientos de farmacia veterinaria.
+ * Consume la API de Google Places (Text Search) de forma asíncrona mediante Volley
+ * para recuperar datos geolocalizados en base a la ciudad emitida por el ViewModel.
+ */
 public class FarmaciasFragment extends Fragment {
 
     private ProgressBar progressBarFarmacias;
@@ -62,6 +67,13 @@ public class FarmaciasFragment extends Fragment {
         return root;
     }
 
+    /**
+     * Realiza una petición GET a la API de Google Places Search.
+     * Procesa la respuesta en formato JSON para extraer los detalles de cada establecimiento
+     * y delega la actualización visual al adaptador del RecyclerView.
+     *
+     * @param ciudad Nombre de la ubicación geográfica sobre la cual acotar la búsqueda.
+     */
     private void cargarDeGoogle(String ciudad) {
         progressBarFarmacias.setVisibility(View.VISIBLE);
         layoutSinFarmacias.setVisibility(View.GONE);
@@ -75,7 +87,6 @@ public class FarmaciasFragment extends Fragment {
             return;
         }
 
-        // Búsqueda orientada a farmacias
         String query = "farmacia veterinaria en " + ciudad.trim();
         String url = "https://maps.googleapis.com/maps/api/place/textsearch/json?query="
                 + Uri.encode(query) + "&key=" + apiKey + "&language=es";
@@ -101,7 +112,6 @@ public class FarmaciasFragment extends Fragment {
                             double rating = place.optDouble("rating", 0.0);
                             int totalResenas = place.optInt("user_ratings_total", 0);
 
-                            // Foto genérica de farmacia
                             String imageUrl = "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=500&q=80";
                             if (place.has("photos")) {
                                 String photoRef = place.getJSONArray("photos").getJSONObject(0).getString("photo_reference");
@@ -144,6 +154,12 @@ public class FarmaciasFragment extends Fragment {
         Volley.newRequestQueue(requireContext()).add(request);
     }
 
+    /**
+     * Notifica al usuario de un evento adverso durante la carga de datos,
+     * ocultando la lista principal y mostrando una vista de contingencia.
+     *
+     * @param mensaje Causa del error a visualizar en pantalla.
+     */
     private void mostrarError(String mensaje) {
         tvMensajeFarmacias.setText(mensaje);
         layoutSinFarmacias.setVisibility(View.VISIBLE);

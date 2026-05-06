@@ -8,7 +8,6 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.media.RingtoneManager;
 import android.os.Build;
-import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
@@ -18,30 +17,38 @@ import com.easypets.ui.base.MainActivity;
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
 
+/**
+ * Servicio encargado de interceptar y gestionar las notificaciones Push
+ * entrantes a través de Firebase Cloud Messaging (FCM).
+ */
 public class MyFirebaseMessagingService extends FirebaseMessagingService {
 
+    /**
+     * Método invocado automáticamente cuando el dispositivo recibe un mensaje Push desde el servidor.
+     *
+     * @param remoteMessage Objeto que contiene la información y carga útil (payload) del mensaje.
+     */
     @Override
     public void onMessageReceived(@NonNull RemoteMessage remoteMessage) {
         super.onMessageReceived(remoteMessage);
 
-        // ✨ EL GUARDIÁN: Miramos los Ajustes del usuario antes de hacer nada ✨
+        // Verificación de las preferencias del usuario para notificaciones
         SharedPreferences prefs = getSharedPreferences("AjustesEasyPets", Context.MODE_PRIVATE);
         boolean notificacionesActivadas = prefs.getBoolean("notificaciones", true);
 
         if (!notificacionesActivadas) {
-            // Si el interruptor está apagado, abortamos misión de forma silenciosa.
-            Log.d("FIREBASE_AVISOS", "Notificación Push (Foro/Comunidad) bloqueada por los ajustes del usuario.");
+            // Si el usuario ha deshabilitado las notificaciones en la configuración, se aborta la ejecución
             return;
         }
 
-        // --- A partir de aquí, el código original que lanza el aviso en el móvil ---
+        // Extracción de título y cuerpo de la notificación
         String titulo = remoteMessage.getNotification() != null ? remoteMessage.getNotification().getTitle() : "EasyPets";
-        String mensaje = remoteMessage.getNotification() != null ? remoteMessage.getNotification().getBody() : "Nueva notificación";
+        String mensaje = remoteMessage.getNotification() != null ? remoteMessage.getNotification().getBody() : "";
 
         Intent intent = new Intent(this, MainActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
 
-        // Rescatamos los datos ocultos que nos manda index.js
+        // Extracción de la carga útil (Data Payload) proveniente del Backend
         if (remoteMessage.getData().size() > 0) {
             intent.putExtra("tipoNotif", remoteMessage.getData().get("tipoNotif"));
             intent.putExtra("hiloId", remoteMessage.getData().get("hiloId"));
@@ -52,7 +59,12 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         }
 
         int requestID = (int) System.currentTimeMillis();
-        PendingIntent pendingIntent = PendingIntent.getActivity(this, requestID, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        PendingIntent pendingIntent = PendingIntent.getActivity(
+                this,
+                requestID,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
 
         String channelId = "easypets_avisos";
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, channelId)
@@ -65,11 +77,21 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                 .setPriority(NotificationCompat.PRIORITY_HIGH);
 
         NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+
+        // Creación del canal de notificaciones requerido para Android 8.0 (API 26) o superior
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(channelId, "Avisos EasyPets", NotificationManager.IMPORTANCE_HIGH);
-            manager.createNotificationChannel(channel);
+            NotificationChannel channel = new NotificationChannel(
+                    channelId,
+                    "Avisos EasyPets",
+                    NotificationManager.IMPORTANCE_HIGH
+            );
+            if (manager != null) {
+                manager.createNotificationChannel(channel);
+            }
         }
-        manager.notify(requestID, builder.build());
-        Log.d("FIREBASE_AVISOS", "Notificación Push mostrada con éxito.");
+
+        if (manager != null) {
+            manager.notify(requestID, builder.build());
+        }
     }
 }

@@ -20,11 +20,21 @@ import com.easypets.models.Mascota;
 
 import java.util.List;
 
+/**
+ * Adaptador para el RecyclerView responsable de la representación visual del listado de mascotas.
+ * Incorpora una estrategia de carga híbrida para los avatares (soportando URLs de Firebase Storage
+ * y cadenas Base64 por retrocompatibilidad), además de gestionar previsualizaciones a pantalla
+ * completa y delegar eventos de navegación mediante interfaces.
+ */
 public class MascotaAdapter extends RecyclerView.Adapter<MascotaAdapter.MascotaViewHolder> {
 
     private List<Mascota> listaMascotas;
     private OnItemClickListener listener;
 
+    /**
+     * Interfaz de comunicación para delegar los eventos de selección
+     * sobre un elemento específico de la colección de mascotas.
+     */
     public interface OnItemClickListener {
         void onItemClick(Mascota mascota);
     }
@@ -55,27 +65,22 @@ public class MascotaAdapter extends RecyclerView.Adapter<MascotaAdapter.MascotaV
             }
         });
 
-        // ✨ LÓGICA HÍBRIDA CORREGIDA PARA EL ADAPTADOR
         if (mascota.getFotoPerfilUrl() != null && !mascota.getFotoPerfilUrl().isEmpty()) {
             if (mascota.getFotoPerfilUrl().startsWith("http")) {
-                // Foto de Firebase Storage (Nueva)
                 com.bumptech.glide.Glide.with(holder.itemView.getContext())
                         .load(mascota.getFotoPerfilUrl())
                         .centerCrop()
                         .into(holder.ivFotoMascota);
 
-                // Limpiamos los estilos de la huella por defecto
                 holder.ivFotoMascota.setPadding(0, 0, 0, 0);
                 holder.ivFotoMascota.setImageTintList(null);
                 holder.ivFotoMascota.setScaleType(ImageView.ScaleType.CENTER_CROP);
             } else {
-                // Foto en Base64 (Antigua)
                 try {
                     byte[] decodedString = Base64.decode(mascota.getFotoPerfilUrl(), Base64.DEFAULT);
                     Bitmap decodedByte = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
                     holder.ivFotoMascota.setImageBitmap(decodedByte);
 
-                    // Limpiamos los estilos de la huella por defecto
                     holder.ivFotoMascota.setPadding(0, 0, 0, 0);
                     holder.ivFotoMascota.setImageTintList(null);
                     holder.ivFotoMascota.setScaleType(ImageView.ScaleType.CENTER_CROP);
@@ -94,6 +99,13 @@ public class MascotaAdapter extends RecyclerView.Adapter<MascotaAdapter.MascotaV
         });
     }
 
+    /**
+     * Despliega un diálogo inmersivo sin bordes para la previsualización ampliada
+     * de la fotografía asociada al perfil de la mascota.
+     *
+     * @param context  Contexto subyacente de la vista actual.
+     * @param drawable Recurso gráfico a renderizar en pantalla completa.
+     */
     private void mostrarFotoGrande(Context context, android.graphics.drawable.Drawable drawable) {
         android.app.Dialog dialog = new android.app.Dialog(context, android.R.style.Theme_Black_NoTitleBar_Fullscreen);
         dialog.setContentView(R.layout.dialog_ver_foto);
@@ -118,6 +130,12 @@ public class MascotaAdapter extends RecyclerView.Adapter<MascotaAdapter.MascotaV
         return listaMascotas.size();
     }
 
+    /**
+     * Aplica un estado visual por defecto (placeholder vectorial) con estilos específicos
+     * en los casos donde la mascota no posea avatar o el procesamiento de este falle.
+     *
+     * @param holder El ViewHolder objetivo sobre el cual aplicar la configuración.
+     */
     private void ponerHuellaPorDefecto(MascotaViewHolder holder) {
         Context context = holder.itemView.getContext();
         holder.ivFotoMascota.setImageResource(R.drawable.huella);

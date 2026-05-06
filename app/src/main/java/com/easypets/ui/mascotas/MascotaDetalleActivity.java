@@ -30,6 +30,11 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
+/**
+ * Actividad encargada de presentar el detalle completo del perfil de una mascota.
+ * Permite visualizar información general, historial médico y gestionar opciones
+ * de edición o eliminación del registro mediante sincronización en tiempo real.
+ */
 public class MascotaDetalleActivity extends AppCompatActivity {
 
     private TextView tvNombre, tvEspecie, tvRaza, tvPeso, tvSexo, tvColor, tvFechaNacimiento, tvMicrochip, tvEsterilizado, tvAlergias, tvPatologias, tvMedicacion;
@@ -75,7 +80,6 @@ public class MascotaDetalleActivity extends AppCompatActivity {
         layoutConDatosMedicos = findViewById(R.id.layoutConDatosMedicos);
         btnEditarCartilla = findViewById(R.id.btnEditarCartilla);
 
-        // Click listener para la foto de detalle
         ivDetalleFoto.setOnClickListener(v -> {
             if (ivDetalleFoto.getDrawable() != null) {
                 mostrarFotoGrande();
@@ -86,14 +90,12 @@ public class MascotaDetalleActivity extends AppCompatActivity {
             iniciarListenerTiempoReal();
         }
 
-        // Click para editar los datos básicos
         btnEditar.setOnClickListener(v -> {
             Intent intent = new Intent(MascotaDetalleActivity.this, AgregarMascotaActivity.class);
             intent.putExtra("idMascota", idMascotaSeleccionada);
             startActivity(intent);
         });
 
-        // ✨ Click para abrir la nueva pantalla de Cartilla Sanitaria
         btnEditarCartilla.setOnClickListener(v -> {
             Intent intent = new Intent(MascotaDetalleActivity.this, EditarCartillaActivity.class);
             intent.putExtra("idMascota", idMascotaSeleccionada);
@@ -103,6 +105,10 @@ public class MascotaDetalleActivity extends AppCompatActivity {
         btnEliminar.setOnClickListener(v -> mostrarDialogoConfirmacion());
     }
 
+    /**
+     * Construye un cuadro de diálogo a pantalla completa para previsualizar
+     * el avatar de la mascota sin obstrucciones visuales.
+     */
     private void mostrarFotoGrande() {
         Dialog dialog = new Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen);
         dialog.setContentView(R.layout.dialog_ver_foto);
@@ -122,6 +128,11 @@ public class MascotaDetalleActivity extends AppCompatActivity {
         dialog.show();
     }
 
+    /**
+     * Sincroniza dinámicamente el fragmento con Firebase Realtime Database.
+     * Adapta la interfaz condicionalmente según la existencia de datos médicos previos
+     * y resuelve la retrocompatibilidad en el almacenamiento de imágenes (Base64 vs Storage).
+     */
     private void iniciarListenerTiempoReal() {
         mascotaRef = FirebaseDatabase.getInstance().getReference()
                 .child("mascotas")
@@ -146,11 +157,6 @@ public class MascotaDetalleActivity extends AppCompatActivity {
                     tvAlergias.setText(mascota.getAlergias() != null && !mascota.getAlergias().isEmpty() ? mascota.getAlergias() : "Ninguna");
                     tvPatologias.setText(mascota.getPatologias() != null && !mascota.getPatologias().isEmpty() ? mascota.getPatologias() : "Ninguna");
                     tvMedicacion.setText(mascota.getMedicacionActual() != null && !mascota.getMedicacionActual().isEmpty() ? mascota.getMedicacionActual() : "Ninguna");
-
-                    String microchip = mascota.getMicrochip();
-                    String alergias = mascota.getAlergias();
-                    String patologias = mascota.getPatologias();
-                    String medicacion = mascota.getMedicacionActual();
 
                     boolean tieneDatos = (mascota.getMicrochip() != null && !mascota.getMicrochip().isEmpty()) ||
                             mascota.isEsterilizado() ||
@@ -184,27 +190,22 @@ public class MascotaDetalleActivity extends AppCompatActivity {
                         btnEditarCartilla.setIconTint(cslAcento);
                     }
 
-                    // ✨ LÓGICA HÍBRIDA PARA EL DETALLE DE LA MASCOTA
                     if (mascota.getFotoPerfilUrl() != null && !mascota.getFotoPerfilUrl().isEmpty()) {
                         if (mascota.getFotoPerfilUrl().startsWith("http")) {
-                            // Foto de Firebase Storage (Nueva)
                             com.bumptech.glide.Glide.with(MascotaDetalleActivity.this)
                                     .load(mascota.getFotoPerfilUrl())
                                     .centerCrop()
                                     .into(ivDetalleFoto);
 
-                            // Limpiamos los estilos de la huella
                             ivDetalleFoto.setPadding(0, 0, 0, 0);
                             ivDetalleFoto.setImageTintList(null);
                             ivDetalleFoto.setScaleType(ImageView.ScaleType.CENTER_CROP);
                         } else {
-                            // Foto en Base64 (Antigua)
                             try {
                                 byte[] decodedString = Base64.decode(mascota.getFotoPerfilUrl(), Base64.DEFAULT);
                                 Bitmap decodedByte = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
                                 ivDetalleFoto.setImageBitmap(decodedByte);
 
-                                // Limpiamos los estilos de la huella
                                 ivDetalleFoto.setPadding(0, 0, 0, 0);
                                 ivDetalleFoto.setImageTintList(null);
                                 ivDetalleFoto.setScaleType(ImageView.ScaleType.CENTER_CROP);

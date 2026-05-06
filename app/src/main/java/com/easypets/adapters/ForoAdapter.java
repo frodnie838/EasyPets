@@ -22,11 +22,23 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import java.util.List;
 
+/**
+ * Adaptador para el RecyclerView encargado de renderizar la lista de hilos de debate en el foro.
+ * Gestiona la visualización de la metainformación del hilo, la consulta asíncrona de los datos
+ * del autor (avatar y nickname) desde Firebase Realtime Database, y la interacción bidireccional
+ * del sistema de "Me gusta" (Likes).
+ */
 public class ForoAdapter extends RecyclerView.Adapter<ForoAdapter.ForoViewHolder> {
+
     private List<HiloForo> hilos;
     private OnHiloAccionListener listener;
     private boolean mostrarOpciones = false;
 
+    /**
+     * Interfaz para delegar los eventos de interacción sobre los hilos del foro,
+     * permitiendo gestionar la navegación al detalle y la administración (edición/eliminación)
+     * por parte del autor.
+     */
     public interface OnHiloAccionListener {
         void onHiloClick(HiloForo hilo);
         void onEditarClick(HiloForo hilo);
@@ -86,7 +98,6 @@ public class ForoAdapter extends RecyclerView.Adapter<ForoAdapter.ForoViewHolder
             holder.btnMenu.setVisibility(View.GONE);
         }
 
-        // Carga visual del autor (Foto y nombre)
         holder.tvAutor.setText("Cargando...");
         holder.ivAvatar.setImageResource(R.drawable.profile);
         holder.ivAvatar.setImageTintList(android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#9E9E9E")));
@@ -128,21 +139,18 @@ public class ForoAdapter extends RecyclerView.Adapter<ForoAdapter.ForoViewHolder
         int numeroDeLikes = 0;
         boolean isLikedByMe = false;
 
-        // Comprobamos los likes actuales
         if (hilo.getLikes() != null) {
             numeroDeLikes = hilo.getLikes().size();
             isLikedByMe = hilo.getLikes().containsKey(currentUserId);
         }
 
-        // Diseño: Simetría y contadores
         if (numeroDeLikes == 0) {
-            holder.tvLikeCount.setVisibility(View.GONE); // Desaparece si es 0
+            holder.tvLikeCount.setVisibility(View.GONE);
         } else {
             holder.tvLikeCount.setVisibility(View.VISIBLE);
             holder.tvLikeCount.setText(String.valueOf(numeroDeLikes));
         }
 
-        // Diseño: Corazón lleno o vacío
         if (isLikedByMe) {
             holder.btnLike.setImageResource(R.drawable.ic_heart_filled);
             holder.btnLike.setImageTintList(android.content.res.ColorStateList.valueOf(androidx.core.content.ContextCompat.getColor(holder.itemView.getContext(), R.color.color_acento_primario)));
@@ -150,18 +158,17 @@ public class ForoAdapter extends RecyclerView.Adapter<ForoAdapter.ForoViewHolder
             holder.btnLike.setImageResource(R.drawable.ic_heart_outline);
         }
 
-        // Acción al pulsar el corazón
         boolean finalIsLikedByMe = isLikedByMe;
         holder.btnLike.setOnClickListener(v -> {
-            if (currentUserId.isEmpty()) return; // Si no hay usuario, no hace nada
+            if (currentUserId.isEmpty()) return;
 
             DatabaseReference likesRef = FirebaseDatabase.getInstance().getReference("foro_hilos")
                     .child(hilo.getId()).child("likes").child(currentUserId);
 
             if (finalIsLikedByMe) {
-                likesRef.removeValue(); // Quitar like
+                likesRef.removeValue();
             } else {
-                likesRef.setValue(true); // Dar like
+                likesRef.setValue(true);
             }
         });
         holder.itemView.setOnClickListener(v -> listener.onHiloClick(hilo));
@@ -169,6 +176,13 @@ public class ForoAdapter extends RecyclerView.Adapter<ForoAdapter.ForoViewHolder
 
     @Override public int getItemCount() { return hilos.size(); }
 
+    /**
+     * Ejecuta la descarga de un recurso gráfico en un hilo secundario y asigna
+     * el resultado al componente visual en el hilo principal (UI Thread).
+     *
+     * @param urlImagen URL remota de la imagen a cargar.
+     * @param targetImageView Componente ImageView destino.
+     */
     private void cargarFotoGoogle(String urlImagen, ImageView targetImageView) {
         new Thread(() -> {
             try {
@@ -189,6 +203,7 @@ public class ForoAdapter extends RecyclerView.Adapter<ForoAdapter.ForoViewHolder
         TextView tvTitulo, tvDescripcion, tvAutor, tvFecha, tvLikeCount;
         ImageView ivAvatar;
         ImageButton btnMenu, btnLike;
+
         public ForoViewHolder(@NonNull View itemView) {
             super(itemView);
             tvTitulo = itemView.findViewById(R.id.tvTituloHilo);

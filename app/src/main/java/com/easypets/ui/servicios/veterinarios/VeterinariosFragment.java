@@ -34,6 +34,12 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Fragmento encargado de la visualización de clínicas y servicios veterinarios.
+ * Emplea la arquitectura MVVM para reaccionar a eventos de búsqueda globales
+ * y consume la API de Google Places para presentar resultados geolocalizados
+ * mediante solicitudes asíncronas con la librería Volley.
+ */
 public class VeterinariosFragment extends Fragment {
 
     private ProgressBar progressBarVeterinarios;
@@ -59,13 +65,11 @@ public class VeterinariosFragment extends Fragment {
         rvVeterinarios.setLayoutManager(new LinearLayoutManager(getContext()));
         rvVeterinarios.setAdapter(adapter);
 
-        // Escuchamos al mensajero global
         com.easypets.ui.servicios.BusquedaViewModel viewModel = new androidx.lifecycle.ViewModelProvider(requireActivity()).get(com.easypets.ui.servicios.BusquedaViewModel.class);
         viewModel.getCiudadBuscada().observe(getViewLifecycleOwner(), ciudad -> {
             buscarEnGoogle(ciudad);
         });
 
-        // Bugfix visual del BottomNavigation
         if (getActivity() != null) {
             BottomNavigationView bottomNav = getActivity().findViewById(R.id.bottom_navigation);
             if (bottomNav != null) {
@@ -77,12 +81,22 @@ public class VeterinariosFragment extends Fragment {
                 menu.setGroupCheckable(0, true, true);
             }
         }
+
         layoutSinVeterinarios.setVisibility(View.VISIBLE);
         tvMensajeVeterinarios.setText("Busca una ciudad arriba para ver los veterinarios cercanos 🐾");
         rvVeterinarios.setVisibility(View.GONE);
+
         return view;
     }
 
+    /**
+     * Construye y emite una petición GET hacia la API de Google Places Search.
+     * Analiza el JSON obtenido para extraer parámetros comerciales (nombre, dirección,
+     * horarios de apertura y material fotográfico), aplicando un fallback a imágenes
+     * genéricas de stock cuando es necesario, para poblar el RecyclerView subyacente.
+     *
+     * @param ciudad Criterio geográfico utilizado para filtrar los establecimientos.
+     */
     private void buscarEnGoogle(String ciudad) {
         progressBarVeterinarios.setVisibility(View.VISIBLE);
         rvVeterinarios.setVisibility(View.GONE);
@@ -121,7 +135,6 @@ public class VeterinariosFragment extends Fragment {
                             double rating = place.optDouble("rating", 0.0);
                             int totalResenas = place.optInt("user_ratings_total", 0);
 
-                            // Imagen por defecto de veterinario si el local no tiene foto
                             String imageUrl = "https://images.unsplash.com/photo-1629909613654-28e377c37b09?w=500&q=80";
                             if (place.has("photos")) {
                                 String photoRef = place.getJSONArray("photos").getJSONObject(0).getString("photo_reference");
@@ -133,7 +146,6 @@ public class VeterinariosFragment extends Fragment {
                             double lat = location.getDouble("lat");
                             double lon = location.getDouble("lng");
 
-                            // Comprobamos si Google nos da el horario
                             boolean abierto = false;
                             boolean tieneHorario = false;
                             if (place.has("opening_hours")) {
@@ -165,6 +177,12 @@ public class VeterinariosFragment extends Fragment {
         Volley.newRequestQueue(requireContext()).add(request);
     }
 
+    /**
+     * Reconfigura la interfaz gráfica para desplegar mensajes de error en
+     * situaciones de conectividad deficiente o fallos en el parseo de datos.
+     *
+     * @param mensaje Detalle técnico o amigable del error encontrado.
+     */
     private void mostrarError(String mensaje) {
         tvMensajeVeterinarios.setText(mensaje);
         layoutSinVeterinarios.setVisibility(View.VISIBLE);

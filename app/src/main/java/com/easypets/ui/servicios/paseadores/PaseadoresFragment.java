@@ -32,6 +32,11 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Fragmento responsable de listar los paseadores de perros disponibles.
+ * Utiliza la API de Google Places (Text Search) para obtener resultados geolocalizados
+ * basándose en la ciudad proporcionada a través de un BusquedaViewModel compartido.
+ */
 public class PaseadoresFragment extends Fragment {
 
     private ProgressBar progressBarPaseadores;
@@ -62,6 +67,14 @@ public class PaseadoresFragment extends Fragment {
         return root;
     }
 
+    /**
+     * Realiza una solicitud HTTP asíncrona a la API de Google Places.
+     * Analiza el objeto JSON de respuesta para extraer información relevante de cada
+     * paseador (nombre, dirección, valoración, disponibilidad y referencias fotográficas),
+     * inyectando los datos en el adaptador para su visualización.
+     *
+     * @param ciudad Localidad empleada como criterio de búsqueda geográfica.
+     */
     private void cargarDeGoogle(String ciudad) {
         progressBarPaseadores.setVisibility(View.VISIBLE);
         layoutSinPaseadores.setVisibility(View.GONE);
@@ -100,7 +113,6 @@ public class PaseadoresFragment extends Fragment {
                             double rating = place.optDouble("rating", 0.0);
                             int totalResenas = place.optInt("user_ratings_total", 0);
 
-                            // Foto temática de paseo de perros
                             String imageUrl = "https://images.unsplash.com/photo-1522276498395-f4f68f7f8454?w=500&q=80";
                             if (place.has("photos")) {
                                 String photoRef = place.getJSONArray("photos").getJSONObject(0).getString("photo_reference");
@@ -143,6 +155,12 @@ public class PaseadoresFragment extends Fragment {
         Volley.newRequestQueue(requireContext()).add(request);
     }
 
+    /**
+     * Muestra un layout de contingencia notificando al usuario de un problema
+     * durante la obtención o procesamiento de los datos de la API.
+     *
+     * @param mensaje Causa del error a visualizar en la interfaz de usuario.
+     */
     private void mostrarError(String mensaje) {
         tvMensajePaseadores.setText(mensaje);
         layoutSinPaseadores.setVisibility(View.VISIBLE);

@@ -32,6 +32,11 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Fragmento encargado de listar los establecimientos de peluquería canina y felina.
+ * Implementa el patrón MVVM observando un BusquedaViewModel compartido para reaccionar
+ * a los cambios de ubicación, y consume la API de Google Places de forma asíncrona.
+ */
 public class PeluqueriasFragment extends Fragment {
 
     private ProgressBar progressBarPeluquerias;
@@ -56,13 +61,20 @@ public class PeluqueriasFragment extends Fragment {
         rvPeluquerias.setLayoutManager(new LinearLayoutManager(getContext()));
         rvPeluquerias.setAdapter(adapter);
 
-        // MVVM: Escuchar las búsquedas de la cabecera
         BusquedaViewModel viewModel = new ViewModelProvider(requireActivity()).get(BusquedaViewModel.class);
         viewModel.getCiudadBuscada().observe(getViewLifecycleOwner(), this::cargarDeGoogle);
 
         return root;
     }
 
+    /**
+     * Construye y ejecuta una petición HTTP GET mediante Volley dirigida a la API de Google Places.
+     * Analiza el JSON resultante para poblar la lista de establecimientos, implementando
+     * asignación dinámica de imágenes con fallback a fotografías de stock (Unsplash) en caso
+     * de no existir referencias multimedia en la base de datos de Google.
+     *
+     * @param ciudad Localidad empleada como parámetro de filtro en la consulta de Places API.
+     */
     private void cargarDeGoogle(String ciudad) {
         progressBarPeluquerias.setVisibility(View.VISIBLE);
         layoutSinPeluquerias.setVisibility(View.GONE);
@@ -76,7 +88,6 @@ public class PeluqueriasFragment extends Fragment {
             return;
         }
 
-        // Búsqueda orientada a peluquerías
         String query = "peluquería de mascotas en " + ciudad.trim();
         String url = "https://maps.googleapis.com/maps/api/place/textsearch/json?query="
                 + Uri.encode(query) + "&key=" + apiKey + "&language=es";
@@ -102,7 +113,6 @@ public class PeluqueriasFragment extends Fragment {
                             double rating = place.optDouble("rating", 0.0);
                             int totalResenas = place.optInt("user_ratings_total", 0);
 
-                            // Foto por defecto de perro en peluquería
                             String imageUrl = "https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?w=500&q=80";
                             if (place.has("photos")) {
                                 String photoRef = place.getJSONArray("photos").getJSONObject(0).getString("photo_reference");
@@ -145,6 +155,12 @@ public class PeluqueriasFragment extends Fragment {
         Volley.newRequestQueue(requireContext()).add(request);
     }
 
+    /**
+     * Alterna la visibilidad de los componentes de la interfaz para desplegar
+     * un mensaje de aviso cuando ocurre una anomalía en la red o no hay resultados.
+     *
+     * @param mensaje Información descriptiva del estado de error a mostrar.
+     */
     private void mostrarError(String mensaje) {
         tvMensajePeluquerias.setText(mensaje);
         layoutSinPeluquerias.setVisibility(View.VISIBLE);
